@@ -1,0 +1,42 @@
+[build-system]
+# license as an SPDX expression (PEP 639) needs setuptools >= 77.
+requires = ["setuptools>=77", "setuptools_scm>=8", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "instrument-cluster"
+dynamic = ["version"]
+description = "An Instrument Cluster"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE", "LICENSES/*.txt"]
+requires-python = ">=3.12"
+dependencies = [
+    "cryptography>=44.0.0",
+    "numpy>=2.4.2",
+    "pydantic>=2.11.7",
+    "pygame>=2.6.1",
+    "pyopengl>=3.1.10",
+]
+
+[project.scripts]
+instrument-cluster = "instrument_cluster.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
+
+[tool.setuptools.package-data]
+instrument_cluster = ["assets/**/*", "db/cars.json", "db/tracks.json", "db/NOTICE.md"]
+
+[dependency-groups]
+dev = [
+    "matplotlib>=3.11.0",
+    "pytest>=9.0.1",
+    "pytest-cov>=7.0.0",
+]

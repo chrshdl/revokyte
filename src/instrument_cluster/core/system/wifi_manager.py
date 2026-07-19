@@ -1,0 +1,326 @@
+"""Runtime Wi-Fi provisioning for the instrument cluster.
+
+The OS image (see instrument-cluster-os) drives the radio with
+``wpa_supplicant@wlan0.service`` reading
+``/etc/wpa_supplicant/wpa_supplicant-wlan0.conf`` (a symlink onto the
+persistent ``/data`` partition), while ``systemd-networkd`` handles DHCP. Until
+now those credentials had to be hand-written onto the boot partition before
+flashing. This module lets the app provision them from the display instead:
+
+* :meth:`WifiManager.scan` lists nearby networks via ``wpa_cli``.
+* :meth:`WifiManager.connect` writes the persistent ``wpa_supplicant`` config
+  and restarts the service so the network is joined now *and* on every reboot.
+* :meth:`WifiManager.is_connected` reports association + DHCP state.
+
+On a development machine (no ``wpa_cli``/``wlan0``) :attr:`available` is False
+and the app skips the Wi-Fi gate entirely.
+"""
+
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+import tempfile
+import time
+from dataclasses import dataclass
+
+from ...logger import Logger
+
+logger = Logger("wifi_manager").get()
+
+DEFAULT_INTERFACE = "wlan0"
+DEFAULT_CONF_PATH = "/etc/wpa_supplicant/wpa_supplicant-wlan0.conf"
+DEFAULT_SERVICE = "wpa_supplicant@wlan0.service"
+DEFAULT_COUNTRY = "DE"
+
+
+def _resolve_bin(name: str, *fallbacks: str) -> str | None:
+    """Locate a binary by PATH, falling back to known absolute locations.
+
+    systemd service units don't always carry ``/usr/sbin`` in ``PATH``; resolve
+    explicitly so Wi-Fi support doesn't silently disappear when ``wpa_cli`` is
+    only on ``sbin`` paths.
+    """
+    found = shutil.which(name)
+    if found:
+        return found
+    for path in fallbacks:
+        if os.path.exists(path):
+            return path
+    return None
+
+
+@dataclass(frozen=True)
+class Network:
+    """A single scan result, deduplicated by SSID."""
+
+    ssid: str
+    secured: bool
+    signal_dbm: int
+
+    @property
+    def bars(self) -> int:
+        """Signal strength bucketed to 0..4 bars for display."""
+        if self.signal_dbm >= -55:
+            return 4
+        if self.signal_dbm >= -67:
+            return 3
+        if self.signal_dbm >= -78:
+            return 2
+        if self.signal_dbm >= -88:
+            return 1
+        return 0
+
+
+class WifiManager:
+    def __init__(
+        self,
+        interface: str = DEFAULT_INTERFACE,
+        conf_path: str = DEFAULT_CONF_PATH,
+        service: str = DEFAULT_SERVICE,
+        country: str = DEFAULT_COUNTRY,
+    ):
+        self.interface = interface
+        self.conf_path = conf_path
+        self.service = service
+        self.country = country
+
+        self._wpa_cli_bin = _resolve_bin("wpa_cli", "/usr/sbin/wpa_cli", "/sbin/wpa_cli")
+        self._systemctl_bin = _resolve_bin(
+            "systemctl", "/usr/bin/systemctl", "/bin/systemctl"
+        )
+
+    # ------------------------------------------------------------------
+    # availability
+    # ------------------------------------------------------------------
+    @property
+    def available(self) -> bool:
+        """True when this device can actually drive Wi-Fi (i.e. on the Pi)."""
+        if self._wpa_cli_bin is None or self._systemctl_bin is None:
+            return False
+        return os.path.exists(f"/sys/class/net/{self.interface}")
+
+    # ------------------------------------------------------------------
+    # subprocess helpers
+    # ------------------------------------------------------------------
+    def _wpa_cli(self, *args: str, timeout: float = 5.0) -> str:
+        out = subprocess.run(
+            [self._wpa_cli_bin or "wpa_cli", "-i", self.interface, *args],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+        return out.stdout
+
+    # ------------------------------------------------------------------
+    # scanning
+    # ------------------------------------------------------------------
+    def scan(self, settle: float = 2.5) -> list[Network]:
+        """Trigger a scan and return nearby networks, strongest first.
+
+        ``settle`` is how long we wait for the radio to populate results after
+        asking it to scan. Safe to call repeatedly (rescan).
+        """
+        try:
+            self._wpa_cli("scan")
+            time.sleep(settle)
+            results = self._wpa_cli("scan_results")
+        except (subprocess.SubprocessError, OSError) as e:
+            logger.error(f"Wi-Fi scan failed: {e}")
+            return []
+        return self._parse_scan_results(results)
+
+    @staticmethod
+    def _parse_scan_results(text: str) -> list[Network]:
+        """Parse ``wpa_cli scan_results`` output.
+
+        Columns are tab-separated: bssid / frequency / signal / flags / ssid.
+        Hidden networks (blank SSID) are dropped; duplicates collapse to the
+        strongest signal.
+        """
+        best: dict[str, Network] = {}
+        for line in text.splitlines():
+            parts = line.split("\t")
+            if len(parts) < 5 or parts[0].lower().startswith("bssid"):
+                continue
+            try:
+                signal = int(parts[2])
+            except ValueError:
+                continue
+            flags = parts[3]
+            ssid = parts[4].strip()
+            if not ssid:
+                continue
+            secured = any(tag in flags for tag in ("WPA", "WEP", "PSK", "SAE"))
+            existing = best.get(ssid)
+            if existing is None or signal > existing.signal_dbm:
+                best[ssid] = Network(ssid=ssid, secured=secured, signal_dbm=signal)
+        return sorted(best.values(), key=lambda n: n.signal_dbm, reverse=True)
+
+    # ------------------------------------------------------------------
+    # status
+    # ------------------------------------------------------------------
+    def status(self) -> dict[str, str]:
+        try:
+            return self._parse_status(self._wpa_cli("status"))
+        except (subprocess.SubprocessError, OSError) as e:
+            logger.error(f"Wi-Fi status failed: {e}")
+            return {}
+
+    @staticmethod
+    def _parse_status(text: str) -> dict[str, str]:
+        status: dict[str, str] = {}
+        for line in text.splitlines():
+            if "=" in line:
+                key, _, value = line.partition("=")
+                status[key.strip()] = value.strip()
+        return status
+
+    def is_associated(self) -> bool:
+        """True when wpa_supplicant has completed association, regardless of DHCP state.
+
+        Use this for the boot gate: DHCP may still be in flight at startup, but
+        association alone is enough to know the user already has credentials.
+        """
+        return self.status().get("wpa_state") == "COMPLETED"
+
+    def wait_for_association(self, timeout: float = 10.0, poll: float = 0.5) -> bool:
+        """Block until wpa_supplicant reaches COMPLETED state, or timeout expires.
+
+        Polls is_associated() every ``poll`` seconds. This runs before the main
+        pygame loop so it does not block the UI. Returns immediately if already
+        associated.
+        """
+        if self.is_associated():
+            return True
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            time.sleep(poll)
+            if self.is_associated():
+                return True
+        return False
+
+    def is_connected(self) -> bool:
+        """Associated *and* has an IP lease (so the network is actually usable)."""
+        status = self.status()
+        return (
+            status.get("wpa_state") == "COMPLETED"
+            and bool(status.get("ip_address"))
+        )
+
+    def current_ssid(self) -> str | None:
+        return self.status().get("ssid") or None
+
+    # ------------------------------------------------------------------
+    # connecting
+    # ------------------------------------------------------------------
+    def connect(self, ssid: str, psk: str | None) -> None:
+        """Persist credentials and (re)join the network.
+
+        ``psk`` may be None/empty for an open network. Raises on failure to
+        write the config or restart the service; association success must be
+        confirmed separately via :meth:`wait_for_connection`.
+        """
+        self._write_config(ssid, psk)
+        # Prefer wpa_cli reconfigure over a full service restart: reconfigure
+        # reloads the config in-place while preserving wpa_supplicant's BSSID
+        # blacklist. A full restart resets that state, so on routers with
+        # multiple BSSIDs (dual-band APs) wpa_supplicant redundantly hammers
+        # a failing BSSID from scratch on every attempt, blowing the 25-second
+        # connection window. reconfigure lets the blacklist accumulate across
+        # retries so bad BSSIDs are skipped on the next attempt. Fall back to
+        # a restart only when wpa_supplicant isn't running at all.
+        reconfigure_ok = False
+        try:
+            result = subprocess.run(
+                [self._wpa_cli_bin or "wpa_cli", "-i", self.interface, "reconfigure"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+            reconfigure_ok = result.returncode == 0 and "OK" in result.stdout
+        except (subprocess.SubprocessError, OSError):
+            pass
+
+        if not reconfigure_ok:
+            try:
+                subprocess.run(
+                    [self._systemctl_bin or "systemctl", "restart", self.service],
+                    capture_output=True,
+                    text=True,
+                    timeout=20,
+                    check=True,
+                )
+            except subprocess.CalledProcessError as e:
+                raise RuntimeError(
+                    f"Failed to restart {self.service}: {e.stderr or e}"
+                ) from e
+
+    def wait_for_connection(self, timeout: float = 60.0, poll: float = 1.0) -> bool:
+        """Poll until associated with an IP, or ``timeout`` seconds elapse."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if self.is_connected():
+                return True
+            time.sleep(poll)
+        return self.is_connected()
+
+    def _write_config(self, ssid: str, psk: str | None) -> None:
+        content = self._build_config(ssid, psk, self.country)
+        directory = os.path.dirname(self.conf_path) or "."
+        os.makedirs(directory, exist_ok=True)
+        # Atomic replace so a crash mid-write can't leave a truncated config
+        # that would brick Wi-Fi on the next boot.
+        fd, tmp = tempfile.mkstemp(dir=directory, prefix=".wpa_supplicant-")
+        try:
+            with os.fdopen(fd, "w") as f:
+                f.write(content)
+                f.flush()
+                os.fsync(f.fileno())
+            os.chmod(tmp, 0o600)
+            os.replace(tmp, self.conf_path)
+        except Exception:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
+
+    @staticmethod
+    def _escape(value: str) -> str:
+        """Escape a value for a wpa_supplicant double-quoted string."""
+        return value.replace("\\", "\\\\").replace('"', '\\"')
+
+    @staticmethod
+    def _hash_psk(ssid: str, psk: str) -> str:
+        """Derive the 256-bit PSK hex string from SSID + passphrase.
+
+        Uses PBKDF2-HMAC-SHA1 with 4096 iterations — identical to the
+        ``wpa_passphrase`` tool. The resulting 64-char hex string is written
+        without quotes so wpa_supplicant treats it as a raw PSK rather than
+        a plaintext passphrase, keeping credentials off the filesystem.
+        """
+        import hashlib
+        return hashlib.pbkdf2_hmac("sha1", psk.encode(), ssid.encode(), 4096, 32).hex()
+
+    @classmethod
+    def _build_config(cls, ssid: str, psk: str | None, country: str) -> str:
+        lines = [
+            "ctrl_interface=/run/wpa_supplicant",
+            "update_config=1",
+            f"country={country}",
+            "",
+            "network={",
+            f'    ssid="{cls._escape(ssid)}"',
+        ]
+        if psk:
+            lines.append(f"    psk={cls._hash_psk(ssid, psk)}")
+            lines.append("    key_mgmt=WPA-PSK")
+        else:
+            lines.append("    key_mgmt=NONE")
+        lines.append("}")
+        lines.append("")
+        return "\n".join(lines)

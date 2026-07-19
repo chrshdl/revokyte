@@ -1,0 +1,4322 @@
+{
+    "24": {
+        "name": "180SX Type X '96",
+        "max_power_kw": 151,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 274,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7000
+    },
+    "31": {
+        "name": "Camaro Z28 '69",
+        "max_power_kw": 216,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 393,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7000
+    },
+    "36": {
+        "name": "Chevelle SS 454 '70",
+        "max_power_kw": 335,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 677,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 6500
+    },
+    "37": {
+        "name": "Civic SiR･II (EG) '93",
+        "max_power_kw": 125,
+        "max_power_rpm": 7800,
+        "max_torque_nm": 157,
+        "max_torque_rpm": 7300,
+        "redline_rpm": 8800
+    },
+    "41": {
+        "name": "Corvette Stingray (C3) '69",
+        "max_power_kw": 261,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 534,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 6500
+    },
+    "48": {
+        "name": "Fairlady 240ZG (HS30) '71",
+        "max_power_kw": 110,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 206,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 6500
+    },
+    "51": {
+        "name": "FTO GP Version R '97",
+        "max_power_kw": 147,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 200,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 8500
+    },
+    "63": {
+        "name": "Corolla Levin 1600GT APEX (AE86) '83",
+        "max_power_kw": 95,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 149,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7500
+    },
+    "78": {
+        "name": "Silvia K's Aero (S14) '96",
+        "max_power_kw": 161,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 274,
+        "max_torque_rpm": 4400,
+        "redline_rpm": 7000
+    },
+    "82": {
+        "name": "Supra RZ '97",
+        "max_power_kw": 242,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 532,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 6500
+    },
+    "102": {
+        "name": "Skyline GTS-R (R31) '87",
+        "max_power_kw": 154,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 245,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7500
+    },
+    "104": {
+        "name": "Sileighty '98",
+        "max_power_kw": 151,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 274,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7000
+    },
+    "105": {
+        "name": "205 Turbo 16 Evolution 2 '86",
+        "max_power_kw": 334,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 490,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 9000
+    },
+    "116": {
+        "name": "GT-One (TS020) '99",
+        "max_power_kw": 570,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 821,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 8500
+    },
+    "135": {
+        "name": "S800 '66",
+        "max_power_kw": 51,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 65,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 9000
+    },
+    "137": {
+        "name": "Beat '91",
+        "max_power_kw": 47,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 59,
+        "max_torque_rpm": 7000,
+        "redline_rpm": 9000
+    },
+    "140": {
+        "name": "NSX GT500 '00",
+        "max_power_kw": 359,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 454,
+        "max_torque_rpm": 7000,
+        "redline_rpm": 9000
+    },
+    "145": {
+        "name": "Copen '02",
+        "max_power_kw": 46,
+        "max_power_rpm": 6400,
+        "max_torque_nm": 110,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 7400
+    },
+    "173": {
+        "name": "R5 Turbo '80",
+        "max_power_kw": 119,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 210,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7000
+    },
+    "187": {
+        "name": "Tuscan Speed 6 '00",
+        "max_power_kw": 268,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 419,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "201": {
+        "name": "Eunos Roadster (NA) '89",
+        "max_power_kw": 87,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 136,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 7500
+    },
+    "203": {
+        "name": "Integra Type R (DC2) '98",
+        "max_power_kw": 148,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 186,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9000
+    },
+    "204": {
+        "name": "Civic Type R (EK) '98",
+        "max_power_kw": 135,
+        "max_power_rpm": 8300,
+        "max_torque_nm": 162,
+        "max_torque_rpm": 7500,
+        "redline_rpm": 9300
+    },
+    "205": {
+        "name": "RX-7 Spirit R Type A (FD) '02",
+        "max_power_kw": 218,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 332,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7500
+    },
+    "207": {
+        "name": "MR2 GT-S '97",
+        "max_power_kw": 180,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 304,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7000
+    },
+    "210": {
+        "name": "R34 GT-R V･spec II Nür '02",
+        "max_power_kw": 251,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 469,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 8500
+    },
+    "211": {
+        "name": "Lancer Evolution V GSR '98",
+        "max_power_kw": 228,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 414,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7500
+    },
+    "216": {
+        "name": "McLaren F1 GTR Race Car '97",
+        "max_power_kw": 449,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 711,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7500
+    },
+    "293": {
+        "name": "NSX Type R '92",
+        "max_power_kw": 212,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 306,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8000
+    },
+    "296": {
+        "name": "787B '91",
+        "max_power_kw": 515,
+        "max_power_rpm": 9100,
+        "max_torque_nm": 608,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 10100
+    },
+    "301": {
+        "name": "Lancer Evolution IV GSR '96",
+        "max_power_kw": 204,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 353,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 7500
+    },
+    "315": {
+        "name": "Cobra 427 '66",
+        "max_power_kw": 361,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 651,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7500
+    },
+    "334": {
+        "name": "Clio V6 24V '00",
+        "max_power_kw": 171,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 300,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7000
+    },
+    "345": {
+        "name": "Sprinter Trueno 1600GT APEX (S.Shigeno Version)",
+        "max_power_kw": 154,
+        "max_power_rpm": 9500,
+        "max_torque_nm": 172,
+        "max_torque_rpm": 7500,
+        "redline_rpm": 10500
+    },
+    "365": {
+        "name": "155 2.5 V6 TI '93",
+        "max_power_kw": 308,
+        "max_power_rpm": 11500,
+        "max_torque_nm": 294,
+        "max_torque_rpm": 7500,
+        "redline_rpm": 12500
+    },
+    "374": {
+        "name": "RX-7 GT-X (FC) '90",
+        "max_power_kw": 151,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 270,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7500
+    },
+    "379": {
+        "name": "Impreza Coupe WRX Type R STi Ver.VI '99",
+        "max_power_kw": 206,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 353,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7500
+    },
+    "387": {
+        "name": "300 SL Coupé '54",
+        "max_power_kw": 158,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 274,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7000
+    },
+    "396": {
+        "name": "NSX Type R '02",
+        "max_power_kw": 216,
+        "max_power_rpm": 7100,
+        "max_torque_nm": 321,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8100
+    },
+    "451": {
+        "name": "Impreza 22B-STi '98",
+        "max_power_kw": 216,
+        "max_power_rpm": 6200,
+        "max_torque_nm": 380,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 7200
+    },
+    "485": {
+        "name": "GT-R GT500 '99",
+        "max_power_kw": 371,
+        "max_power_rpm": 5800,
+        "max_torque_nm": 706,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 6800
+    },
+    "489": {
+        "name": "R33 GT-R V･spec '97",
+        "max_power_kw": 238,
+        "max_power_rpm": 6800,
+        "max_torque_nm": 427,
+        "max_torque_rpm": 4400,
+        "redline_rpm": 7800
+    },
+    "514": {
+        "name": "S2000 '99",
+        "max_power_kw": 180,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 217,
+        "max_torque_rpm": 7500,
+        "redline_rpm": 9000
+    },
+    "533": {
+        "name": "Stratos '73",
+        "max_power_kw": 138,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 226,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 8000
+    },
+    "543": {
+        "name": "XJ220 '92",
+        "max_power_kw": 384,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 641,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 8000
+    },
+    "575": {
+        "name": "190 E 2.5-16 Evolution II '91",
+        "max_power_kw": 172,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 245,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "604": {
+        "name": "2000GT '67",
+        "max_power_kw": 114,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 177,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "655": {
+        "name": "Z4 3.0i '03",
+        "max_power_kw": 169,
+        "max_power_rpm": 5900,
+        "max_torque_nm": 300,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 6900
+    },
+    "665": {
+        "name": "Superbird '70",
+        "max_power_kw": 317,
+        "max_power_rpm": 5000,
+        "max_torque_nm": 664,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 6000
+    },
+    "688": {
+        "name": "Integra Type R (DC2) '95",
+        "max_power_kw": 147,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 181,
+        "max_torque_rpm": 7500,
+        "redline_rpm": 9000
+    },
+    "709": {
+        "name": "Fairlady Z 300ZX TT 2seater '89",
+        "max_power_kw": 206,
+        "max_power_rpm": 6200,
+        "max_torque_nm": 388,
+        "max_torque_rpm": 3600,
+        "redline_rpm": 7200
+    },
+    "729": {
+        "name": "Avantime 3.0 V6 24V '02",
+        "max_power_kw": 152,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 285,
+        "max_torque_rpm": 3800,
+        "redline_rpm": 7000
+    },
+    "761": {
+        "name": "Delta HF Integrale Rally Car '92",
+        "max_power_kw": 246,
+        "max_power_rpm": 6900,
+        "max_torque_nm": 483,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7900
+    },
+    "773": {
+        "name": "R32 GT-R V･spec II '94",
+        "max_power_kw": 228,
+        "max_power_rpm": 6800,
+        "max_torque_nm": 391,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7800
+    },
+    "779": {
+        "name": "Cappuccino '91",
+        "max_power_kw": 46,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 84,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7500
+    },
+    "781": {
+        "name": "Celica GT-FOUR Rally Car (ST205) '95",
+        "max_power_kw": 222,
+        "max_power_rpm": 4800,
+        "max_torque_nm": 500,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 5800
+    },
+    "799": {
+        "name": "Lancer Evolution VIII MR GSR '04",
+        "max_power_kw": 206,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 400,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7500
+    },
+    "808": {
+        "name": "V6 Escudo Pikes Peak Special '98",
+        "max_power_kw": 732,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 932,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9000
+    },
+    "810": {
+        "name": "Sprinter Trueno 1600GT APEX (AE86) '83",
+        "max_power_kw": 95,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 149,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7500
+    },
+    "818": {
+        "name": "Corvette (C2) '63",
+        "max_power_kw": 268,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 478,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7000
+    },
+    "821": {
+        "name": "Civic Type R (EK) '97",
+        "max_power_kw": 131,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 158,
+        "max_torque_rpm": 7500,
+        "redline_rpm": 9000
+    },
+    "829": {
+        "name": "Delta HF Integrale Evoluzione '91",
+        "max_power_kw": 156,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 304,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7000
+    },
+    "836": {
+        "name": "Skyline 2000GT-R (KPGC110) '73",
+        "max_power_kw": 117,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 177,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8000
+    },
+    "837": {
+        "name": "Skyline Hard Top 2000GT-R (KPGC10) '70",
+        "max_power_kw": 117,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 177,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8000
+    },
+    "843": {
+        "name": "Supra 3.0GT Turbo A '88",
+        "max_power_kw": 198,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 358,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 7000
+    },
+    "919": {
+        "name": "Silvia Q's (S13) '88",
+        "max_power_kw": 98,
+        "max_power_rpm": 6400,
+        "max_torque_nm": 158,
+        "max_torque_rpm": 5200,
+        "redline_rpm": 7400
+    },
+    "931": {
+        "name": "Lancer Evolution III GSR '95",
+        "max_power_kw": 197,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 309,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 7500
+    },
+    "942": {
+        "name": "Corvette ZR-1 (C4) '89",
+        "max_power_kw": 280,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 501,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7000
+    },
+    "954": {
+        "name": "R92CP '92",
+        "max_power_kw": 588,
+        "max_power_rpm": 7600,
+        "max_torque_nm": 785,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8600
+    },
+    "959": {
+        "name": "TT Coupé 3.2 quattro '03",
+        "max_power_kw": 178,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 321,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 7000
+    },
+    "967": {
+        "name": "ɛ̃fini RX-7 Type R (FD) '91",
+        "max_power_kw": 187,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 294,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7500
+    },
+    "998": {
+        "name": "Sauber Mercedes C9 '89",
+        "max_power_kw": 529,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 810,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 8000
+    },
+    "1027": {
+        "name": "DeLorean S2 '04",
+        "max_power_kw": 147,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 286,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7000
+    },
+    "1040": {
+        "name": "Ford GT LM Race Car Spec II",
+        "max_power_kw": 452,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 713,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7500
+    },
+    "1044": {
+        "name": "Sports 800 '65",
+        "max_power_kw": 32,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 67,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 6500
+    },
+    "1067": {
+        "name": "XJR-9 '88",
+        "max_power_kw": 559,
+        "max_power_rpm": 7200,
+        "max_torque_nm": 781,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8200
+    },
+    "1069": {
+        "name": "2J '70",
+        "max_power_kw": 509,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 745,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 8000
+    },
+    "1365": {
+        "name": "R8 4.2 '07",
+        "max_power_kw": 309,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 430,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 8500
+    },
+    "1370": {
+        "name": "MINI Cooper S '05",
+        "max_power_kw": 125,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 220,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7000
+    },
+    "1373": {
+        "name": "Viper GTS '02",
+        "max_power_kw": 334,
+        "max_power_rpm": 5000,
+        "max_torque_nm": 664,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 6000
+    },
+    "1378": {
+        "name": "F430 '06",
+        "max_power_kw": 369,
+        "max_power_rpm": 9000,
+        "max_torque_nm": 464,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 10000
+    },
+    "1384": {
+        "name": "Fairlady Z Version S (Z33) '07",
+        "max_power_kw": 231,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 358,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "1385": {
+        "name": "Swift Sport '07",
+        "max_power_kw": 92,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 148,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "1399": {
+        "name": "M3 '07",
+        "max_power_kw": 309,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 400,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 9500
+    },
+    "1402": {
+        "name": "Viper SRT10 Coupe '06",
+        "max_power_kw": 379,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 725,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 6500
+    },
+    "1409": {
+        "name": "F40 '92",
+        "max_power_kw": 351,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 577,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 8000
+    },
+    "1410": {
+        "name": "512 BB '76",
+        "max_power_kw": 264,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 451,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 8000
+    },
+    "1425": {
+        "name": "Ford GT LM Spec II Test Car",
+        "max_power_kw": 440,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 723,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7500
+    },
+    "1426": {
+        "name": "Ford GT '06",
+        "max_power_kw": 410,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 679,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7500
+    },
+    "1427": {
+        "name": "BNR34 GT-R N1 base",
+        "max_power_kw": 463,
+        "max_power_rpm": 7200,
+        "max_torque_nm": 628,
+        "max_torque_rpm": 5400,
+        "redline_rpm": 8200
+    },
+    "1431": {
+        "name": "RE Amemiya FD3S RX-7",
+        "max_power_kw": 273,
+        "max_power_rpm": 6900,
+        "max_torque_nm": 469,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7900
+    },
+    "1433": {
+        "name": "Amuse S2000 GT1 Turbo",
+        "max_power_kw": 459,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 569,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 9000
+    },
+    "1448": {
+        "name": "Silvia spec-R Aero (S15) '02",
+        "max_power_kw": 183,
+        "max_power_rpm": 6400,
+        "max_torque_nm": 274,
+        "max_torque_rpm": 6400,
+        "redline_rpm": 7400
+    },
+    "1458": {
+        "name": "Fairlady Z (Z34) '08",
+        "max_power_kw": 247,
+        "max_power_rpm": 7200,
+        "max_torque_nm": 365,
+        "max_torque_rpm": 5200,
+        "redline_rpm": 8200
+    },
+    "1461": {
+        "name": "Silvia K's Dia Selection (S13) '90",
+        "max_power_kw": 128,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 225,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7500
+    },
+    "1466": {
+        "name": "GT-R GT500 '08",
+        "max_power_kw": 393,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 550,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 8000
+    },
+    "1470": {
+        "name": "Supra GT500 '97",
+        "max_power_kw": 367,
+        "max_power_rpm": 6900,
+        "max_torque_nm": 642,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7900
+    },
+    "1474": {
+        "name": "Enzo Ferrari '02",
+        "max_power_kw": 491,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 657,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 9000
+    },
+    "1480": {
+        "name": "Corvette ZR1 (C6) '09",
+        "max_power_kw": 477,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 819,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7500
+    },
+    "1481": {
+        "name": "Countach 25th Anniversary '88",
+        "max_power_kw": 335,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 492,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "1484": {
+        "name": "Countach LP400 '74",
+        "max_power_kw": 278,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 360,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 9000
+    },
+    "1504": {
+        "name": "458 Italia '09",
+        "max_power_kw": 420,
+        "max_power_rpm": 9000,
+        "max_torque_nm": 540,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 10000
+    },
+    "1506": {
+        "name": "Gallardo LP 560-4 '08",
+        "max_power_kw": 412,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 540,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9000
+    },
+    "1507": {
+        "name": "SLS AMG '10",
+        "max_power_kw": 425,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 650,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "1508": {
+        "name": "Lancer Evolution VI GSR T.M. SCP '99",
+        "max_power_kw": 232,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 413,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 7500
+    },
+    "1510": {
+        "name": "NSX GT500 '08",
+        "max_power_kw": 386,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 588,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8500
+    },
+    "1516": {
+        "name": "SC430 GT500 '08",
+        "max_power_kw": 385,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 584,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8000
+    },
+    "1523": {
+        "name": "500 F '68",
+        "max_power_kw": 12,
+        "max_power_rpm": 4500,
+        "max_torque_nm": 30,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 5500
+    },
+    "1527": {
+        "name": "500 1.2 8V Lounge SS '08",
+        "max_power_kw": 48,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 102,
+        "max_torque_rpm": 3200,
+        "redline_rpm": 6500
+    },
+    "1528": {
+        "name": "SLR McLaren '09",
+        "max_power_kw": 459,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 780,
+        "max_torque_rpm": 4800,
+        "redline_rpm": 7500
+    },
+    "1536": {
+        "name": "Zonda R '09",
+        "max_power_kw": 550,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 710,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8500
+    },
+    "1537": {
+        "name": "Prius G '09",
+        "max_power_kw": 109,
+        "max_power_rpm": 5000,
+        "max_torque_nm": 142,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 6000
+    },
+    "1539": {
+        "name": "GranTurismo S '08",
+        "max_power_kw": 327,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 490,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "1540": {
+        "name": "McLaren F1 '94",
+        "max_power_kw": 467,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 651,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8500
+    },
+    "1541": {
+        "name": "TTS Coupé '09",
+        "max_power_kw": 200,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 350,
+        "max_torque_rpm": 3300,
+        "redline_rpm": 7000
+    },
+    "1542": {
+        "name": "Corvette Convertible (C3) '69",
+        "max_power_kw": 222,
+        "max_power_rpm": 5000,
+        "max_torque_nm": 515,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 6000
+    },
+    "1543": {
+        "name": "Challenger R/T '70",
+        "max_power_kw": 317,
+        "max_power_rpm": 5000,
+        "max_torque_nm": 664,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 6000
+    },
+    "1544": {
+        "name": "430 Scuderia '07",
+        "max_power_kw": 374,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 471,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 9500
+    },
+    "1545": {
+        "name": "Murciélago LP 640 '09",
+        "max_power_kw": 471,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 660,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 9000
+    },
+    "1549": {
+        "name": "Amuse NISMO 380RS Super Leggera",
+        "max_power_kw": 283,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 410,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "1551": {
+        "name": "330 P4 '67",
+        "max_power_kw": 334,
+        "max_power_rpm": 7900,
+        "max_torque_nm": 523,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 8900
+    },
+    "1553": {
+        "name": "XJ13 '66",
+        "max_power_kw": 380,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 524,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 8500
+    },
+    "1562": {
+        "name": "LFA '10",
+        "max_power_kw": 412,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 479,
+        "max_torque_rpm": 7000,
+        "redline_rpm": 9500
+    },
+    "1563": {
+        "name": "Mégane Trophy '11",
+        "max_power_kw": 268,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 389,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8500
+    },
+    "1565": {
+        "name": "Mark IV Race Car '67",
+        "max_power_kw": 375,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 637,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7000
+    },
+    "1578": {
+        "name": "8C Competizione '08",
+        "max_power_kw": 330,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 481,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "1581": {
+        "name": "GT by Citroën Road Car",
+        "max_power_kw": 373,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 521,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 9000
+    },
+    "1582": {
+        "name": "Miura P400 Bertone Prototype '67",
+        "max_power_kw": 260,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 369,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8000
+    },
+    "1645": {
+        "name": "GIULIA TZ2 carrozzata da ZAGATO '65",
+        "max_power_kw": 125,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 173,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8500
+    },
+    "1646": {
+        "name": "908 HDi FAP '10",
+        "max_power_kw": 522,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 1200,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7000
+    },
+    "1671": {
+        "name": "Sambabus Typ 2 '62",
+        "max_power_kw": 25,
+        "max_power_rpm": 3500,
+        "max_torque_nm": 82,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 4500
+    },
+    "1689": {
+        "name": "Civic Type R (EK) Touring Car",
+        "max_power_kw": 184,
+        "max_power_rpm": 8800,
+        "max_torque_nm": 201,
+        "max_torque_rpm": 8300,
+        "redline_rpm": 9800
+    },
+    "1722": {
+        "name": "MP4-12C '10",
+        "max_power_kw": 447,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 630,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 8500
+    },
+    "1729": {
+        "name": "Mustang Mach 1 '71",
+        "max_power_kw": 225,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 501,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 6500
+    },
+    "1746": {
+        "name": "Roadster Touring Car",
+        "max_power_kw": 153,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 201,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 8500
+    },
+    "1770": {
+        "name": "Aventador LP 700-4 '11",
+        "max_power_kw": 515,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 690,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 9500
+    },
+    "1773": {
+        "name": "Scirocco R '10",
+        "max_power_kw": 188,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 330,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 7000
+    },
+    "1778": {
+        "name": "Volkswagen 1200 '66",
+        "max_power_kw": 25,
+        "max_power_rpm": 3500,
+        "max_torque_nm": 82,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 4500
+    },
+    "1796": {
+        "name": "A110 '72",
+        "max_power_kw": 103,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 155,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7500
+    },
+    "1797": {
+        "name": "SLS AMG GT3 '11",
+        "max_power_kw": 458,
+        "max_power_rpm": 6700,
+        "max_torque_nm": 720,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7700
+    },
+    "1893": {
+        "name": "Z8 '01",
+        "max_power_kw": 295,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 500,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7500
+    },
+    "1895": {
+        "name": "Dino 246 GT '71",
+        "max_power_kw": 142,
+        "max_power_rpm": 7400,
+        "max_torque_nm": 225,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8400
+    },
+    "1898": {
+        "name": "One-77 '11",
+        "max_power_kw": 558,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 750,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 9000
+    },
+    "1900": {
+        "name": "XNR Ghia Roadster '60",
+        "max_power_kw": 186,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 271,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "1902": {
+        "name": "Z4 GT3 '11",
+        "max_power_kw": 389,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 515,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 9000
+    },
+    "1904": {
+        "name": "M3 GT '11",
+        "max_power_kw": 373,
+        "max_power_rpm": 8400,
+        "max_torque_nm": 500,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 9400
+    },
+    "1905": {
+        "name": "GT-R NISMO GT3 '13",
+        "max_power_kw": 441,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 686,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7500
+    },
+    "1907": {
+        "name": "X-BOW R '12",
+        "max_power_kw": 222,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 400,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7000
+    },
+    "1916": {
+        "name": "Corvette C7 '14",
+        "max_power_kw": 338,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 623,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7000
+    },
+    "1925": {
+        "name": "G.T.350 '65",
+        "max_power_kw": 227,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 445,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7000
+    },
+    "1926": {
+        "name": "Cobra Daytona Coupe '64",
+        "max_power_kw": 286,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 461,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 8000
+    },
+    "1927": {
+        "name": "Sport quattro S1 Pikes Peak '87",
+        "max_power_kw": 438,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 589,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 9000
+    },
+    "1931": {
+        "name": "250 GT Berlinetta passo corto '61",
+        "max_power_kw": 205,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 300,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8000
+    },
+    "1932": {
+        "name": "1500 Biposto Bertone B.A.T 1 '52",
+        "max_power_kw": 54,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 99,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 6500
+    },
+    "1933": {
+        "name": "MiTo '09",
+        "max_power_kw": 113,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 201,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 6500
+    },
+    "1935": {
+        "name": "GT40 Mark I '66",
+        "max_power_kw": 264,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 456,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 7500
+    },
+    "1956": {
+        "name": "Viper GTS '13",
+        "max_power_kw": 477,
+        "max_power_rpm": 6400,
+        "max_torque_nm": 814,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7400
+    },
+    "1965": {
+        "name": "R18 TDI '11",
+        "max_power_kw": 397,
+        "max_power_rpm": 4800,
+        "max_torque_nm": 900,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 5800
+    },
+    "1973": {
+        "name": "Abarth 500 '09",
+        "max_power_kw": 99,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 179,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 6500
+    },
+    "1975": {
+        "name": "RX500 '70",
+        "max_power_kw": 184,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 231,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 9000
+    },
+    "1984": {
+        "name": "McLaren F1 GTR - BMW '95",
+        "max_power_kw": 447,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 651,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 8500
+    },
+    "1985": {
+        "name": "Firebird Trans Am '78",
+        "max_power_kw": 163,
+        "max_power_rpm": 4000,
+        "max_torque_nm": 434,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 5000
+    },
+    "1986": {
+        "name": "R8 Gordini '66",
+        "max_power_kw": 75,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 117,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "1987": {
+        "name": "Mégane R.S. Trophy '11",
+        "max_power_kw": 195,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 360,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 6500
+    },
+    "1990": {
+        "name": "Diablo GT '00",
+        "max_power_kw": 426,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 630,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8500
+    },
+    "2010": {
+        "name": "250 GTO '62",
+        "max_power_kw": 220,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 300,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 8500
+    },
+    "2011": {
+        "name": "500 Mondial Pinin Farina Coupe '54",
+        "max_power_kw": 125,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 174,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8500
+    },
+    "2017": {
+        "name": "GTO '84",
+        "max_power_kw": 293,
+        "max_power_rpm": 6900,
+        "max_torque_nm": 500,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7900
+    },
+    "2018": {
+        "name": "365 GTB4 '71",
+        "max_power_kw": 259,
+        "max_power_rpm": 7300,
+        "max_torque_nm": 431,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8300
+    },
+    "2026": {
+        "name": "Aqua S '11",
+        "max_power_kw": 81,
+        "max_power_rpm": 5000,
+        "max_torque_nm": 111,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 6000
+    },
+    "2049": {
+        "name": "Veyron 16.4 '13",
+        "max_power_kw": 735,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 1250,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 7000
+    },
+    "2050": {
+        "name": "Huayra '13",
+        "max_power_kw": 544,
+        "max_power_rpm": 5700,
+        "max_torque_nm": 1100,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 6700
+    },
+    "2051": {
+        "name": "Genesis Coupe 3.8 '13",
+        "max_power_kw": 256,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 395,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7500
+    },
+    "2055": {
+        "name": "Mercedes-Benz AMG VGT",
+        "max_power_kw": 430,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 800,
+        "max_torque_rpm": 2800,
+        "redline_rpm": 6500
+    },
+    "2059": {
+        "name": "Corvette Stingray Racer Concept '59",
+        "max_power_kw": 234,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 392,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7000
+    },
+    "2060": {
+        "name": "Racing Kart 125 Shifter",
+        "max_power_kw": 37,
+        "max_power_rpm": 14000,
+        "max_torque_nm": 25,
+        "max_torque_rpm": 14000,
+        "redline_rpm": 15000
+    },
+    "2074": {
+        "name": "M4 '14",
+        "max_power_kw": 317,
+        "max_power_rpm": 5700,
+        "max_torque_nm": 550,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 6700
+    },
+    "2076": {
+        "name": "Mercedes-Benz AMG VGT Racing Series",
+        "max_power_kw": 440,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 819,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 6500
+    },
+    "2077": {
+        "name": "Red Bull X2014 Standard",
+        "max_power_kw": 595,
+        "max_power_rpm": 16000,
+        "max_torque_nm": 380,
+        "max_torque_rpm": 13000,
+        "redline_rpm": 17000
+    },
+    "2078": {
+        "name": "Red Bull X2014 Junior",
+        "max_power_kw": 183,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 226,
+        "max_torque_rpm": 7500,
+        "redline_rpm": 9500
+    },
+    "2087": {
+        "name": "BMW VGT",
+        "max_power_kw": 403,
+        "max_power_rpm": 6700,
+        "max_torque_nm": 680,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 7700
+    },
+    "2095": {
+        "name": "Concept XR-PHEV EVOLUTION VGT",
+        "max_power_kw": 374,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 1015,
+        "max_torque_rpm": 1000,
+        "redline_rpm": 8500
+    },
+    "2098": {
+        "name": "GTI Roadster VGT",
+        "max_power_kw": 411,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 665,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7500
+    },
+    "2099": {
+        "name": "VIZIV GT VGT",
+        "max_power_kw": 470,
+        "max_power_rpm": 7700,
+        "max_torque_nm": 489,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8700
+    },
+    "2101": {
+        "name": "TS030 Hybrid '12",
+        "max_power_kw": 394,
+        "max_power_rpm": 10000,
+        "max_torque_nm": 415,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 11000
+    },
+    "2103": {
+        "name": "DP-100 VGT",
+        "max_power_kw": 596,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 1050,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 7500
+    },
+    "2107": {
+        "name": "Chaparral 2X VGT",
+        "max_power_kw": 675,
+        "max_power_rpm": 9100,
+        "max_torque_nm": 796,
+        "max_torque_rpm": 6200,
+        "redline_rpm": 10100
+    },
+    "2108": {
+        "name": "SRT Tomahawk X VGT",
+        "max_power_kw": 1928,
+        "max_power_rpm": 13800,
+        "max_torque_nm": 1218,
+        "max_torque_rpm": 11300,
+        "redline_rpm": 14800
+    },
+    "2109": {
+        "name": "MINI Clubman VGT",
+        "max_power_kw": 289,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 428,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 7500
+    },
+    "2110": {
+        "name": "SRT Tomahawk GTS-R VGT",
+        "max_power_kw": 1081,
+        "max_power_rpm": 9200,
+        "max_torque_nm": 975,
+        "max_torque_rpm": 7400,
+        "redline_rpm": 10200
+    },
+    "2111": {
+        "name": "SRT Tomahawk S VGT",
+        "max_power_kw": 750,
+        "max_power_rpm": 9200,
+        "max_torque_nm": 679,
+        "max_torque_rpm": 7400,
+        "redline_rpm": 10200
+    },
+    "2112": {
+        "name": "Alpine VGT",
+        "max_power_kw": 330,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 579,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 6500
+    },
+    "2113": {
+        "name": "PEUGEOT VGT",
+        "max_power_kw": 651,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 843,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9000
+    },
+    "2116": {
+        "name": "Alpine VGT Race",
+        "max_power_kw": 330,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 579,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 6500
+    },
+    "2117": {
+        "name": "INFINITI CONCEPT VGT",
+        "max_power_kw": 399,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 510,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8000
+    },
+    "2119": {
+        "name": "Italdesign VGT Street Mode",
+        "max_power_kw": 909,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 560,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9500
+    },
+    "2120": {
+        "name": "Italdesign VGT Off-road Mode",
+        "max_power_kw": 909,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 560,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9500
+    },
+    "2121": {
+        "name": "Honda Sports VGT",
+        "max_power_kw": 301,
+        "max_power_rpm": 7600,
+        "max_torque_nm": 400,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 8600
+    },
+    "2122": {
+        "name": "IsoRivolta Zagato VGT",
+        "max_power_kw": 417,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 580,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 8000
+    },
+    "2123": {
+        "name": "LF-LC GT VGT",
+        "max_power_kw": 456,
+        "max_power_rpm": 12500,
+        "max_torque_nm": 461,
+        "max_torque_rpm": 7500,
+        "redline_rpm": 13500
+    },
+    "2124": {
+        "name": "GTI Supersport VGT",
+        "max_power_kw": 411,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 665,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7500
+    },
+    "2127": {
+        "name": "GT-R LM NISMO '15",
+        "max_power_kw": 450,
+        "max_power_rpm": 5400,
+        "max_torque_nm": 937,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 6400
+    },
+    "2131": {
+        "name": "V12 Vantage GT3 '12",
+        "max_power_kw": 441,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 686,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 7500
+    },
+    "2134": {
+        "name": "Bugatti VGT",
+        "max_power_kw": 1213,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 1834,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7500
+    },
+    "2136": {
+        "name": "4C '14",
+        "max_power_kw": 175,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 350,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 7000
+    },
+    "2138": {
+        "name": "Mustang GT '15",
+        "max_power_kw": 324,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 542,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7500
+    },
+    "2139": {
+        "name": "RC F '14",
+        "max_power_kw": 350,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 530,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "2141": {
+        "name": "Golf VII GTI '14",
+        "max_power_kw": 161,
+        "max_power_rpm": 4700,
+        "max_torque_nm": 350,
+        "max_torque_rpm": 1500,
+        "redline_rpm": 5700
+    },
+    "2143": {
+        "name": "R8 LMS '15",
+        "max_power_kw": 436,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 574,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 8500
+    },
+    "2144": {
+        "name": "S-FR '15",
+        "max_power_kw": 99,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 150,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8000
+    },
+    "2145": {
+        "name": "Focus ST '15",
+        "max_power_kw": 186,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 365,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 6500
+    },
+    "2146": {
+        "name": "F-type R '14",
+        "max_power_kw": 404,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 679,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7500
+    },
+    "2147": {
+        "name": "Veneno '14",
+        "max_power_kw": 551,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 721,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 9500
+    },
+    "2148": {
+        "name": "Roadster S (ND) '15",
+        "max_power_kw": 95,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 150,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "2149": {
+        "name": "Mercedes-AMG GT S '15",
+        "max_power_kw": 374,
+        "max_power_rpm": 6300,
+        "max_torque_nm": 649,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 7300
+    },
+    "2150": {
+        "name": "Lancer Evolution Final '15",
+        "max_power_kw": 230,
+        "max_power_rpm": 6400,
+        "max_torque_nm": 429,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7400
+    },
+    "2152": {
+        "name": "Charger SRT Hellcat '15",
+        "max_power_kw": 527,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 882,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7000
+    },
+    "2153": {
+        "name": "WRX STI Type S '14",
+        "max_power_kw": 225,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 425,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7500
+    },
+    "2154": {
+        "name": "86 GT '15",
+        "max_power_kw": 147,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 205,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 8000
+    },
+    "2155": {
+        "name": "Polo GTI '14",
+        "max_power_kw": 141,
+        "max_power_rpm": 4700,
+        "max_torque_nm": 320,
+        "max_torque_rpm": 1500,
+        "redline_rpm": 5700
+    },
+    "2156": {
+        "name": "2&4 powered by RC213V",
+        "max_power_kw": 157,
+        "max_power_rpm": 13500,
+        "max_torque_nm": 118,
+        "max_torque_rpm": 11000,
+        "redline_rpm": 14500
+    },
+    "2157": {
+        "name": "V8 Vantage Gr.4",
+        "max_power_kw": 298,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 490,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "2158": {
+        "name": "458 Italia GT3 '13",
+        "max_power_kw": 404,
+        "max_power_rpm": 9000,
+        "max_torque_nm": 549,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 10000
+    },
+    "2159": {
+        "name": "Mustang Gr.3",
+        "max_power_kw": 424,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 600,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 8000
+    },
+    "2160": {
+        "name": "Genesis Gr.3",
+        "max_power_kw": 429,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 542,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9000
+    },
+    "2161": {
+        "name": "GT-R Gr.4",
+        "max_power_kw": 319,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 500,
+        "max_torque_rpm": 3800,
+        "redline_rpm": 7500
+    },
+    "2162": {
+        "name": "LaFerrari '13",
+        "max_power_kw": 708,
+        "max_power_rpm": 9000,
+        "max_torque_nm": 700,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 10000
+    },
+    "2163": {
+        "name": "Genesis Gr.4",
+        "max_power_kw": 286,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 411,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8000
+    },
+    "2164": {
+        "name": "Mustang Gr.4",
+        "max_power_kw": 295,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 501,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7500
+    },
+    "2166": {
+        "name": "4C Gr.4",
+        "max_power_kw": 220,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 356,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 8000
+    },
+    "2167": {
+        "name": "GT-R '17",
+        "max_power_kw": 421,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 633,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 8000
+    },
+    "2169": {
+        "name": "TTS Coupé '14",
+        "max_power_kw": 227,
+        "max_power_rpm": 6300,
+        "max_torque_nm": 380,
+        "max_torque_rpm": 3300,
+        "redline_rpm": 7300
+    },
+    "2170": {
+        "name": "A 45 AMG '13",
+        "max_power_kw": 265,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 450,
+        "max_torque_rpm": 2900,
+        "redline_rpm": 7000
+    },
+    "2171": {
+        "name": "Huracán LP 610-4 '15",
+        "max_power_kw": 448,
+        "max_power_rpm": 8300,
+        "max_torque_nm": 560,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9300
+    },
+    "2172": {
+        "name": "DS 3 Racing '11",
+        "max_power_kw": 151,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 274,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 7000
+    },
+    "2173": {
+        "name": "Atenza Sedan XD L Package '15",
+        "max_power_kw": 128,
+        "max_power_rpm": 4400,
+        "max_torque_nm": 420,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 5400
+    },
+    "2174": {
+        "name": "650S '14",
+        "max_power_kw": 478,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 679,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 8500
+    },
+    "2175": {
+        "name": "V8 Vantage S '15",
+        "max_power_kw": 320,
+        "max_power_rpm": 7100,
+        "max_torque_nm": 490,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8100
+    },
+    "2176": {
+        "name": "RCZ GT Line '15",
+        "max_power_kw": 113,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 240,
+        "max_torque_rpm": 1500,
+        "redline_rpm": 7000
+    },
+    "2177": {
+        "name": "Huracán GT3 '15",
+        "max_power_kw": 430,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 581,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9000
+    },
+    "2178": {
+        "name": "S-FR Racing Concept '16",
+        "max_power_kw": 260,
+        "max_power_rpm": 6400,
+        "max_torque_nm": 449,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 7400
+    },
+    "2179": {
+        "name": "Bugatti VGT (Gr.1)",
+        "max_power_kw": 478,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 723,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7500
+    },
+    "2180": {
+        "name": "HYUNDAI N 2025 VGT (Gr.1)",
+        "max_power_kw": 477,
+        "max_power_rpm": 9000,
+        "max_torque_nm": 602,
+        "max_torque_rpm": 7000,
+        "redline_rpm": 10000
+    },
+    "2181": {
+        "name": "LM55 VGT (Gr.1)",
+        "max_power_kw": 478,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 565,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9500
+    },
+    "2182": {
+        "name": "650S GT3 '15",
+        "max_power_kw": 404,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 559,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 8500
+    },
+    "2183": {
+        "name": "Corvette C7 Gr.3",
+        "max_power_kw": 426,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 715,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7000
+    },
+    "2184": {
+        "name": "F-type Gr.3",
+        "max_power_kw": 412,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 679,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7500
+    },
+    "2185": {
+        "name": "Lancer Evolution Final Gr.3",
+        "max_power_kw": 455,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 653,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "2186": {
+        "name": "WRX Gr.3",
+        "max_power_kw": 441,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 619,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 8500
+    },
+    "2187": {
+        "name": "FT-1 VGT (Gr.3)",
+        "max_power_kw": 406,
+        "max_power_rpm": 9300,
+        "max_torque_nm": 470,
+        "max_torque_rpm": 5800,
+        "redline_rpm": 10300
+    },
+    "2188": {
+        "name": "R.S.01 GT3 '16",
+        "max_power_kw": 398,
+        "max_power_rpm": 6700,
+        "max_torque_nm": 626,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7700
+    },
+    "2190": {
+        "name": "GT by Citroën Race Car (Gr.3)",
+        "max_power_kw": 447,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 584,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9500
+    },
+    "2192": {
+        "name": "Volkswagen GTI VGT (Gr.3)",
+        "max_power_kw": 411,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 665,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7500
+    },
+    "3183": {
+        "name": "PEUGEOT VGT (Gr.3)",
+        "max_power_kw": 404,
+        "max_power_rpm": 7800,
+        "max_torque_nm": 554,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 8800
+    },
+    "3185": {
+        "name": "4C Gr.3",
+        "max_power_kw": 394,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 529,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 9000
+    },
+    "3187": {
+        "name": "Alpine VGT '17",
+        "max_power_kw": 443,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 555,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 9000
+    },
+    "3188": {
+        "name": "SRT Tomahawk VGT (Gr.1)",
+        "max_power_kw": 517,
+        "max_power_rpm": 9200,
+        "max_torque_nm": 595,
+        "max_torque_rpm": 7500,
+        "redline_rpm": 10200
+    },
+    "3192": {
+        "name": "SLS AMG Gr.4",
+        "max_power_kw": 312,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 478,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "3209": {
+        "name": "M4 Safety Car",
+        "max_power_kw": 317,
+        "max_power_rpm": 5700,
+        "max_torque_nm": 550,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 6700
+    },
+    "3210": {
+        "name": "Mercedes-AMG GT Safety Car",
+        "max_power_kw": 374,
+        "max_power_rpm": 6300,
+        "max_torque_nm": 649,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 7300
+    },
+    "3214": {
+        "name": "Civic Type R (FK2) '15",
+        "max_power_kw": 227,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 399,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 7500
+    },
+    "3215": {
+        "name": "208 GTi by Peugeot Sport '14",
+        "max_power_kw": 152,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 300,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 7000
+    },
+    "3216": {
+        "name": "R.S.01 '16",
+        "max_power_kw": 404,
+        "max_power_rpm": 6700,
+        "max_torque_nm": 630,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7700
+    },
+    "3217": {
+        "name": "Camaro SS '16",
+        "max_power_kw": 338,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 618,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7000
+    },
+    "3218": {
+        "name": "M6 GT3 Endurance Model '16",
+        "max_power_kw": 435,
+        "max_power_rpm": 6100,
+        "max_torque_nm": 750,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7100
+    },
+    "3219": {
+        "name": "NSX '17",
+        "max_power_kw": 425,
+        "max_power_rpm": 6700,
+        "max_torque_nm": 550,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 7700
+    },
+    "3220": {
+        "name": "Clio R.S. 220 Trophy '15",
+        "max_power_kw": 161,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 280,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 7000
+    },
+    "3221": {
+        "name": "M6 GT3 Sprint Model '16",
+        "max_power_kw": 435,
+        "max_power_rpm": 6100,
+        "max_torque_nm": 750,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7100
+    },
+    "3222": {
+        "name": "86 GRMN '16",
+        "max_power_kw": 160,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 221,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8500
+    },
+    "3223": {
+        "name": "Viper SRT GT3-R '15",
+        "max_power_kw": 506,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 869,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7000
+    },
+    "3224": {
+        "name": "Mercedes-AMG GT3 '16",
+        "max_power_kw": 458,
+        "max_power_rpm": 6700,
+        "max_torque_nm": 720,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7700
+    },
+    "3225": {
+        "name": "GT-R Safety Car",
+        "max_power_kw": 421,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 633,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 8000
+    },
+    "3227": {
+        "name": "LC500 '17",
+        "max_power_kw": 350,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 540,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "3228": {
+        "name": "RC F GT3 prototype '16",
+        "max_power_kw": 393,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 608,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "3229": {
+        "name": "Mustang Gr.B Rally Car",
+        "max_power_kw": 409,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 571,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 8000
+    },
+    "3230": {
+        "name": "Lancer Evolution Final Gr.B Rally Car",
+        "max_power_kw": 389,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 620,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 8000
+    },
+    "3231": {
+        "name": "Scirocco Gr.4",
+        "max_power_kw": 267,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 396,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 8000
+    },
+    "3232": {
+        "name": "WRX Gr.B Rally Car",
+        "max_power_kw": 389,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 598,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 8500
+    },
+    "3234": {
+        "name": "Genesis Gr.B Rally Car",
+        "max_power_kw": 372,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 464,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9000
+    },
+    "3235": {
+        "name": "NSX Gr.3",
+        "max_power_kw": 424,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 583,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 8500
+    },
+    "3237": {
+        "name": "Atenza Gr.3",
+        "max_power_kw": 423,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 569,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 9000
+    },
+    "3238": {
+        "name": "RCZ Gr.3",
+        "max_power_kw": 388,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 549,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 8500
+    },
+    "3239": {
+        "name": "NSX Gr.B Rally Car",
+        "max_power_kw": 415,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 573,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 8500
+    },
+    "3241": {
+        "name": "GT-R Gr.B Rally Car",
+        "max_power_kw": 404,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 633,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7500
+    },
+    "3242": {
+        "name": "RCZ Gr.B Rally Car",
+        "max_power_kw": 385,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 548,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 8500
+    },
+    "3245": {
+        "name": "M4 Gr.4",
+        "max_power_kw": 294,
+        "max_power_rpm": 5700,
+        "max_torque_nm": 510,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 6700
+    },
+    "3246": {
+        "name": "Veyron Gr.4",
+        "max_power_kw": 323,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 549,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 7000
+    },
+    "3247": {
+        "name": "Corvette C7 Gr.4",
+        "max_power_kw": 309,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 569,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7000
+    },
+    "3248": {
+        "name": "GT by Citroën Gr.4",
+        "max_power_kw": 294,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 384,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9500
+    },
+    "3249": {
+        "name": "Viper Gr.4",
+        "max_power_kw": 319,
+        "max_power_rpm": 6400,
+        "max_torque_nm": 546,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7400
+    },
+    "3251": {
+        "name": "NSX Gr.4",
+        "max_power_kw": 294,
+        "max_power_rpm": 6700,
+        "max_torque_nm": 433,
+        "max_torque_rpm": 3800,
+        "redline_rpm": 7700
+    },
+    "3252": {
+        "name": "F-type Gr.4",
+        "max_power_kw": 298,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 501,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7500
+    },
+    "3253": {
+        "name": "Huracán Gr.4",
+        "max_power_kw": 301,
+        "max_power_rpm": 8300,
+        "max_torque_nm": 377,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9300
+    },
+    "3254": {
+        "name": "RC F Gr.4",
+        "max_power_kw": 312,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 472,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "3256": {
+        "name": "Atenza Gr.4",
+        "max_power_kw": 293,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 429,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 8000
+    },
+    "3257": {
+        "name": "650S Gr.4",
+        "max_power_kw": 298,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 423,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 8500
+    },
+    "3258": {
+        "name": "Lancer Evolution Final Gr.4",
+        "max_power_kw": 290,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 463,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 8000
+    },
+    "3259": {
+        "name": "RCZ Gr.4",
+        "max_power_kw": 257,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 392,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 8000
+    },
+    "3260": {
+        "name": "Mégane Gr.4",
+        "max_power_kw": 261,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 452,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7500
+    },
+    "3261": {
+        "name": "WRX Gr.4",
+        "max_power_kw": 281,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 481,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 8000
+    },
+    "3262": {
+        "name": "86 Gr.4",
+        "max_power_kw": 267,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 371,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 8000
+    },
+    "3263": {
+        "name": "458 Italia Gr.4",
+        "max_power_kw": 279,
+        "max_power_rpm": 9000,
+        "max_torque_nm": 360,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 10000
+    },
+    "3264": {
+        "name": "Focus Gr.B Rally Car",
+        "max_power_kw": 401,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 580,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 8500
+    },
+    "3265": {
+        "name": "86 Gr.B Rally Car",
+        "max_power_kw": 385,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 465,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9000
+    },
+    "3267": {
+        "name": "F12berlinetta '12",
+        "max_power_kw": 544,
+        "max_power_rpm": 8300,
+        "max_torque_nm": 690,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 9300
+    },
+    "3268": {
+        "name": "911 GT3 RS (991) '16",
+        "max_power_kw": 366,
+        "max_power_rpm": 8100,
+        "max_torque_nm": 461,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 9100
+    },
+    "3295": {
+        "name": null,
+        "max_power_kw": 151,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 212,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 8000
+    },
+    "3296": {
+        "name": "Corvette C7 Gr.3 Road Car",
+        "max_power_kw": 368,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 661,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7000
+    },
+    "3297": {
+        "name": "WRX STI Isle of Man '16",
+        "max_power_kw": 431,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 549,
+        "max_torque_rpm": 7500,
+        "redline_rpm": 8500
+    },
+    "3298": {
+        "name": "TT Cup '16",
+        "max_power_kw": 250,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 399,
+        "max_torque_rpm": 1500,
+        "redline_rpm": 7500
+    },
+    "3299": {
+        "name": "4C Gr.3 Road Car",
+        "max_power_kw": 330,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 447,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 9000
+    },
+    "3300": {
+        "name": "Mustang Gr.3 Road Car",
+        "max_power_kw": 374,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 523,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 8000
+    },
+    "3301": {
+        "name": "Lancer Evolution Final Gr.B Road Car",
+        "max_power_kw": 353,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 562,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 8000
+    },
+    "3303": {
+        "name": "RCZ Gr.3 Road Car",
+        "max_power_kw": 349,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 497,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 8500
+    },
+    "3304": {
+        "name": "WRX Gr.B Road Car",
+        "max_power_kw": 353,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 542,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 8500
+    },
+    "3305": {
+        "name": "Beetle Gr.3",
+        "max_power_kw": 441,
+        "max_power_rpm": 8400,
+        "max_torque_nm": 592,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9400
+    },
+    "3306": {
+        "name": "Atenza Gr.3 Road Car",
+        "max_power_kw": 360,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 460,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 9000
+    },
+    "3309": {
+        "name": "Vulcan '16",
+        "max_power_kw": 611,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 800,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 8500
+    },
+    "3310": {
+        "name": "Cayman GT4 Clubsport '16",
+        "max_power_kw": 283,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 420,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8500
+    },
+    "3311": {
+        "name": "911 RSR (991) '17",
+        "max_power_kw": 380,
+        "max_power_rpm": 8100,
+        "max_torque_nm": 488,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 9100
+    },
+    "3312": {
+        "name": "TS050 - Hybrid '16",
+        "max_power_kw": 368,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 504,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 8500
+    },
+    "3313": {
+        "name": "919 Hybrid '16",
+        "max_power_kw": 372,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 518,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 8500
+    },
+    "3314": {
+        "name": "Audi VGT",
+        "max_power_kw": 548,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 700,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8500
+    },
+    "3315": {
+        "name": "McLaren VGT",
+        "max_power_kw": 846,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 851,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 9000
+    },
+    "3316": {
+        "name": "COPEN RJ VGT",
+        "max_power_kw": 109,
+        "max_power_rpm": 6700,
+        "max_torque_nm": 202,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7700
+    },
+    "3332": {
+        "name": "L500R HYbrid VGT 2017",
+        "max_power_kw": 380,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 339,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 7000
+    },
+    "3333": {
+        "name": "L750R HYbrid VGT 2017",
+        "max_power_kw": 517,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 878,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 7000
+    },
+    "3334": {
+        "name": "R18 '16",
+        "max_power_kw": 377,
+        "max_power_rpm": 4600,
+        "max_torque_nm": 851,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 5600
+    },
+    "3335": {
+        "name": "McLaren VGT (Gr.1)",
+        "max_power_kw": 606,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 662,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 9000
+    },
+    "3336": {
+        "name": "F-150 SVT Raptor '11",
+        "max_power_kw": 306,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 588,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 6500
+    },
+    "3337": {
+        "name": "A110 '17",
+        "max_power_kw": 185,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 320,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 7000
+    },
+    "3338": {
+        "name": "CHC 1967 Chevy Nova",
+        "max_power_kw": 546,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 939,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7500
+    },
+    "3339": {
+        "name": "BRZ Drift Car '17",
+        "max_power_kw": 773,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 1187,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7500
+    },
+    "3340": {
+        "name": "RC F GT3 '17",
+        "max_power_kw": 399,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 616,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 8000
+    },
+    "3341": {
+        "name": "Pantera '71",
+        "max_power_kw": 242,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 467,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 6500
+    },
+    "3342": {
+        "name": "F1500T-A",
+        "max_power_kw": 735,
+        "max_power_rpm": 11000,
+        "max_torque_nm": 658,
+        "max_torque_rpm": 9500,
+        "redline_rpm": 12000
+    },
+    "3343": {
+        "name": "DB11 '16",
+        "max_power_kw": 447,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 700,
+        "max_torque_rpm": 1500,
+        "redline_rpm": 7500
+    },
+    "3344": {
+        "name": "M3 Sport Evolution '89",
+        "max_power_kw": 174,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 240,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "3345": {
+        "name": "GT-R NISMO '17",
+        "max_power_kw": 441,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 652,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 8000
+    },
+    "3346": {
+        "name": "Mach Forty",
+        "max_power_kw": 587,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 1057,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7500
+    },
+    "3348": {
+        "name": "NSX CONCEPT-GT '16",
+        "max_power_kw": 450,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 613,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 9500
+    },
+    "3349": {
+        "name": "RC F GT500 '16",
+        "max_power_kw": 458,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 588,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 9000
+    },
+    "3350": {
+        "name": "GT-R NISMO GT500 '16",
+        "max_power_kw": 456,
+        "max_power_rpm": 8100,
+        "max_torque_nm": 588,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 9100
+    },
+    "3352": {
+        "name": "GR Supra Racing Concept '18",
+        "max_power_kw": 441,
+        "max_power_rpm": 6800,
+        "max_torque_nm": 697,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 7800
+    },
+    "3353": {
+        "name": "Clio R.S. 220 Trophy '16",
+        "max_power_kw": 161,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 280,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 7000
+    },
+    "3354": {
+        "name": "BRZ S '15",
+        "max_power_kw": 147,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 205,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 8000
+    },
+    "3356": {
+        "name": "Mini-Cooper 'S' '65",
+        "max_power_kw": 48,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 75,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7500
+    },
+    "3357": {
+        "name": "S660 '15",
+        "max_power_kw": 47,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 104,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 8000
+    },
+    "3358": {
+        "name": "911 GT3 (996) '01",
+        "max_power_kw": 264,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 371,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "3359": {
+        "name": "911 GT3 (997) '09",
+        "max_power_kw": 319,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 430,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 8500
+    },
+    "3360": {
+        "name": "McLaren P1 GTR '16",
+        "max_power_kw": 735,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 824,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8500
+    },
+    "3361": {
+        "name": "E-type Coupé '61",
+        "max_power_kw": 197,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 353,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 6500
+    },
+    "3362": {
+        "name": "F50 '95",
+        "max_power_kw": 381,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 471,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9500
+    },
+    "3363": {
+        "name": "DB3S '53",
+        "max_power_kw": 167,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 304,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 6500
+    },
+    "3364": {
+        "name": "GReddy Fugu Z",
+        "max_power_kw": 219,
+        "max_power_rpm": 9000,
+        "max_torque_nm": 330,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 10000
+    },
+    "3365": {
+        "name": "356 A/1500 GS GT Carrera Speedster '56",
+        "max_power_kw": 80,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 123,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7500
+    },
+    "3367": {
+        "name": "GR Supra RZ '19",
+        "max_power_kw": 250,
+        "max_power_rpm": 5800,
+        "max_torque_nm": 500,
+        "max_torque_rpm": 1800,
+        "redline_rpm": 6800
+    },
+    "3368": {
+        "name": "Tundra TRD Pro '19",
+        "max_power_kw": 283,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 543,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 6500
+    },
+    "3369": {
+        "name": "SR3 SL '13",
+        "max_power_kw": 178,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 340,
+        "max_torque_rpm": 1500,
+        "redline_rpm": 6500
+    },
+    "3370": {
+        "name": "Fit Hybrid '14",
+        "max_power_kw": 103,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 133,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7000
+    },
+    "3371": {
+        "name": "SF19 Super Formula / Toyota '19",
+        "max_power_kw": 477,
+        "max_power_rpm": 10000,
+        "max_torque_nm": 499,
+        "max_torque_rpm": 7000,
+        "redline_rpm": 11000
+    },
+    "3372": {
+        "name": "SF19 Super Formula / Honda '19",
+        "max_power_kw": 477,
+        "max_power_rpm": 10000,
+        "max_torque_nm": 499,
+        "max_torque_rpm": 7000,
+        "redline_rpm": 11000
+    },
+    "3373": {
+        "name": "962 C '88",
+        "max_power_kw": 515,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 710,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 9000
+    },
+    "3374": {
+        "name": "Red Bull X2019 Competition",
+        "max_power_kw": 600,
+        "max_power_rpm": 18000,
+        "max_torque_nm": 330,
+        "max_torque_rpm": 16500,
+        "redline_rpm": 19000
+    },
+    "3375": {
+        "name": "356 A/1500 GS Carrera '56",
+        "max_power_kw": 72,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 118,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7000
+    },
+    "3376": {
+        "name": "D-type '54",
+        "max_power_kw": 186,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 326,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7000
+    },
+    "3377": {
+        "name": "Super Bee '70",
+        "max_power_kw": 250,
+        "max_power_rpm": 4800,
+        "max_torque_nm": 577,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 5800
+    },
+    "3383": {
+        "name": "Demio XD Touring '15",
+        "max_power_kw": 77,
+        "max_power_rpm": 4000,
+        "max_torque_nm": 220,
+        "max_torque_rpm": 1500,
+        "redline_rpm": 5000
+    },
+    "3384": {
+        "name": "GTO Twin Turbo '91",
+        "max_power_kw": 213,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 417,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 7000
+    },
+    "3385": {
+        "name": "911 Turbo (930) '81",
+        "max_power_kw": 220,
+        "max_power_rpm": 5600,
+        "max_torque_nm": 411,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 6600
+    },
+    "3387": {
+        "name": "Camaro ZL1 1LE Package '18",
+        "max_power_kw": 484,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 869,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7500
+    },
+    "3388": {
+        "name": "300 SEL 6.8 AMG '71",
+        "max_power_kw": 315,
+        "max_power_rpm": 5300,
+        "max_torque_nm": 600,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 6300
+    },
+    "3389": {
+        "name": "M3 '03",
+        "max_power_kw": 253,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 365,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 9000
+    },
+    "3391": {
+        "name": "Shelby GT350R '16",
+        "max_power_kw": 391,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 583,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 8500
+    },
+    "3392": {
+        "name": "Aventador LP 750-4 SV '15",
+        "max_power_kw": 551,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 690,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 9500
+    },
+    "3393": {
+        "name": "Carrera GT '04",
+        "max_power_kw": 450,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 589,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 9000
+    },
+    "3394": {
+        "name": "DBR9 GT1 '10",
+        "max_power_kw": 447,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 665,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 7500
+    },
+    "3397": {
+        "name": "CLK-LM '98",
+        "max_power_kw": 447,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 539,
+        "max_torque_rpm": 7000,
+        "redline_rpm": 9500
+    },
+    "3398": {
+        "name": "CTR3 '07",
+        "max_power_kw": 515,
+        "max_power_rpm": 6800,
+        "max_torque_nm": 890,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7800
+    },
+    "3399": {
+        "name": "GR Supra Race Car '19",
+        "max_power_kw": 294,
+        "max_power_rpm": 5800,
+        "max_torque_nm": 587,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 6800
+    },
+    "3400": {
+        "name": "911 GT1 Strassenversion '97",
+        "max_power_kw": 397,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 600,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 8000
+    },
+    "3401": {
+        "name": "Crown Athlete G '13",
+        "max_power_kw": 230,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 376,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7500
+    },
+    "3402": {
+        "name": "Ford GT '17",
+        "max_power_kw": 482,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 745,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 7500
+    },
+    "3403": {
+        "name": "Golf I GTI '83",
+        "max_power_kw": 82,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 150,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7000
+    },
+    "3404": {
+        "name": "911 Carrera RS CS (993) '95",
+        "max_power_kw": 220,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 355,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 7500
+    },
+    "3405": {
+        "name": "R8 LMS Evo '19",
+        "max_power_kw": 430,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 574,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 8500
+    },
+    "3406": {
+        "name": "Charger SRT Hellcat Safety Car",
+        "max_power_kw": 527,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 882,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7000
+    },
+    "3407": {
+        "name": "Mégane R.S. Trophy Safety Car",
+        "max_power_kw": 195,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 360,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 6500
+    },
+    "3408": {
+        "name": "Crown Athlete G Safety Car",
+        "max_power_kw": 230,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 376,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7500
+    },
+    "3409": {
+        "name": "Mono '16",
+        "max_power_kw": 227,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 308,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 9000
+    },
+    "3410": {
+        "name": "917K '70",
+        "max_power_kw": 446,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 539,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9500
+    },
+    "3411": {
+        "name": "Giulia GTAm '20",
+        "max_power_kw": 397,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 600,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 7500
+    },
+    "3412": {
+        "name": "R8 Coupé V10 plus '16",
+        "max_power_kw": 448,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 560,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9500
+    },
+    "3413": {
+        "name": "BRZ STI Sport '18",
+        "max_power_kw": 151,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 212,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 8000
+    },
+    "3414": {
+        "name": "Lambo V12 VGT",
+        "max_power_kw": 577,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 721,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9500
+    },
+    "3415": {
+        "name": "8C 2900B Touring Berlinetta '38",
+        "max_power_kw": 133,
+        "max_power_rpm": 5000,
+        "max_torque_nm": 262,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 6000
+    },
+    "3416": {
+        "name": "Mercedes-AMG GT R '17",
+        "max_power_kw": 430,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 700,
+        "max_torque_rpm": 2800,
+        "redline_rpm": 7500
+    },
+    "3418": {
+        "name": "GR Supra RZ '20",
+        "max_power_kw": 285,
+        "max_power_rpm": 5800,
+        "max_torque_nm": 500,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 6800
+    },
+    "3419": {
+        "name": "RX-VISION GT3 CONCEPT",
+        "max_power_kw": 419,
+        "max_power_rpm": 8900,
+        "max_torque_nm": 539,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9900
+    },
+    "3420": {
+        "name": "Focus RS '18",
+        "max_power_kw": 261,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 479,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 7000
+    },
+    "3421": {
+        "name": "Merak SS '80",
+        "max_power_kw": 161,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 270,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7500
+    },
+    "3422": {
+        "name": "3.0 CSL '73",
+        "max_power_kw": 151,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 286,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 6500
+    },
+    "3423": {
+        "name": "Wicked Fabrication GT 51",
+        "max_power_kw": 277,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 522,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 6500
+    },
+    "3424": {
+        "name": "Lancer Evolution IX MR GSR '06",
+        "max_power_kw": 207,
+        "max_power_rpm": 6400,
+        "max_torque_nm": 400,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 7400
+    },
+    "3426": {
+        "name": "Roadster Shop Rampage",
+        "max_power_kw": 558,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 948,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7500
+    },
+    "3427": {
+        "name": "RX-8 Spirit R '12",
+        "max_power_kw": 172,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 216,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 9000
+    },
+    "3428": {
+        "name": "S Barker Tourer '29",
+        "max_power_kw": 132,
+        "max_power_rpm": 3200,
+        "max_torque_nm": 432,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 4200
+    },
+    "3429": {
+        "name": "Fairlady Z 432 '69",
+        "max_power_kw": 117,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 177,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8000
+    },
+    "3430": {
+        "name": "Willys MB '45",
+        "max_power_kw": 45,
+        "max_power_rpm": 4000,
+        "max_torque_nm": 142,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 5000
+    },
+    "3431": {
+        "name": "911 Carrera RS (964) '92",
+        "max_power_kw": 190,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 326,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7000
+    },
+    "3432": {
+        "name": "Impreza Sedan WRX STi '04",
+        "max_power_kw": 213,
+        "max_power_rpm": 5800,
+        "max_torque_nm": 411,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 6800
+    },
+    "3433": {
+        "name": "FXX K '14",
+        "max_power_kw": 771,
+        "max_power_rpm": 9000,
+        "max_torque_nm": 750,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 10000
+    },
+    "3434": {
+        "name": "Testarossa '91",
+        "max_power_kw": 286,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 490,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7500
+    },
+    "3436": {
+        "name": "Ford GT Race Car '18",
+        "max_power_kw": 393,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 612,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7500
+    },
+    "3437": {
+        "name": "Mangusta '69",
+        "max_power_kw": 224,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 557,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7000
+    },
+    "3438": {
+        "name": "Abarth 595 SS '70",
+        "max_power_kw": 22,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 43,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7000
+    },
+    "3439": {
+        "name": "911 Carrera RS (993) '95",
+        "max_power_kw": 220,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 355,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 7500
+    },
+    "3440": {
+        "name": "911 Turbo S Leichtbau (964) '93",
+        "max_power_kw": 280,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 490,
+        "max_torque_rpm": 4800,
+        "redline_rpm": 7000
+    },
+    "3441": {
+        "name": "300 SL (W194) '52",
+        "max_power_kw": 133,
+        "max_power_rpm": 5000,
+        "max_torque_nm": 281,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 6000
+    },
+    "3442": {
+        "name": "A112 Abarth '85",
+        "max_power_kw": 53,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 87,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7500
+    },
+    "3443": {
+        "name": "308 GTB '75",
+        "max_power_kw": 187,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 294,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8500
+    },
+    "3444": {
+        "name": "Ford Roadster",
+        "max_power_kw": 133,
+        "max_power_rpm": 3800,
+        "max_torque_nm": 418,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 4800
+    },
+    "3445": {
+        "name": "DB5 '64",
+        "max_power_kw": 210,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 380,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 6500
+    },
+    "3446": {
+        "name": "Spyder type 550/1500RS '55",
+        "max_power_kw": 81,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 123,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7500
+    },
+    "3447": {
+        "name": "Vantage '18",
+        "max_power_kw": 374,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 685,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 7000
+    },
+    "3449": {
+        "name": "Corvette C7 ZR1 '19",
+        "max_power_kw": 562,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 970,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7500
+    },
+    "3450": {
+        "name": "GT-R NISMO GT3 '18",
+        "max_power_kw": 430,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 662,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7500
+    },
+    "3451": {
+        "name": null,
+        "max_power_kw": 200,
+        "max_power_rpm": 6200,
+        "max_torque_nm": 370,
+        "max_torque_rpm": 3200,
+        "redline_rpm": 7200
+    },
+    "3452": {
+        "name": "917 LIVING LEGEND",
+        "max_power_kw": 728,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 1071,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 8000
+    },
+    "3453": {
+        "name": "M3 '89",
+        "max_power_kw": 158,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 230,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 8000
+    },
+    "3454": {
+        "name": "3.0 CSL '71",
+        "max_power_kw": 132,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 255,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7000
+    },
+    "3456": {
+        "name": "Swift Sport '17",
+        "max_power_kw": 102,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 230,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 6500
+    },
+    "3457": {
+        "name": "A220 Race Car '68",
+        "max_power_kw": 238,
+        "max_power_rpm": 7800,
+        "max_torque_nm": 343,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 8800
+    },
+    "3458": {
+        "name": "Mercedes-AMG C 63 S '15",
+        "max_power_kw": 375,
+        "max_power_rpm": 5800,
+        "max_torque_nm": 700,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 6800
+    },
+    "3459": {
+        "name": "918 Spyder '13",
+        "max_power_kw": 652,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 1280,
+        "max_torque_rpm": 1500,
+        "redline_rpm": 9500
+    },
+    "3462": {
+        "name": "GTO 'The Judge' '69",
+        "max_power_kw": 271,
+        "max_power_rpm": 5000,
+        "max_torque_nm": 603,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 6000
+    },
+    "3464": {
+        "name": "Corvette (C1) '58",
+        "max_power_kw": 181,
+        "max_power_rpm": 4900,
+        "max_torque_nm": 407,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 5900
+    },
+    "3466": {
+        "name": "Sierra RS 500 Cosworth '87",
+        "max_power_kw": 166,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 280,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7000
+    },
+    "3467": {
+        "name": "Civic Type R Limited Edition (FK8) '20",
+        "max_power_kw": 235,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 399,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 7500
+    },
+    "3468": {
+        "name": "RGT 4.2 '16",
+        "max_power_kw": 386,
+        "max_power_rpm": 8300,
+        "max_torque_nm": 482,
+        "max_torque_rpm": 5800,
+        "redline_rpm": 9300
+    },
+    "3469": {
+        "name": "F8 Tributo '19",
+        "max_power_kw": 529,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 770,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 8000
+    },
+    "3470": {
+        "name": "812 Superfast '17",
+        "max_power_kw": 588,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 719,
+        "max_torque_rpm": 7000,
+        "redline_rpm": 9500
+    },
+    "3471": {
+        "name": "Celica GT-FOUR (ST205) '94",
+        "max_power_kw": 186,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 304,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7000
+    },
+    "3473": {
+        "name": "Chiron '16",
+        "max_power_kw": 1103,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 1623,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 7500
+    },
+    "3474": {
+        "name": "BRZ GT300 '21",
+        "max_power_kw": 356,
+        "max_power_rpm": 6700,
+        "max_torque_nm": 664,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7700
+    },
+    "3475": {
+        "name": "MP4/4 '88",
+        "max_power_kw": 503,
+        "max_power_rpm": 12500,
+        "max_torque_nm": 425,
+        "max_torque_rpm": 10000,
+        "redline_rpm": 13500
+    },
+    "3476": {
+        "name": "SUZUKI VGT",
+        "max_power_kw": 318,
+        "max_power_rpm": 9900,
+        "max_torque_nm": 1249,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 10900
+    },
+    "3477": {
+        "name": "Silvia spec-R Aero (S15) Touring Car",
+        "max_power_kw": 265,
+        "max_power_rpm": 7200,
+        "max_torque_nm": 351,
+        "max_torque_rpm": 7200,
+        "redline_rpm": 8200
+    },
+    "3480": {
+        "name": "Swift Sport Gr.4",
+        "max_power_kw": 257,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 441,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7500
+    },
+    "3481": {
+        "name": "GR86 RZ '21",
+        "max_power_kw": 172,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 250,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 8000
+    },
+    "3482": {
+        "name": "V40 T5 R-Design '13",
+        "max_power_kw": 157,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 300,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 7000
+    },
+    "3483": {
+        "name": "M2 Competition '18",
+        "max_power_kw": 302,
+        "max_power_rpm": 5800,
+        "max_torque_nm": 549,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 6800
+    },
+    "3485": {
+        "name": "Mercedes-AMG GT Black Series '20",
+        "max_power_kw": 536,
+        "max_power_rpm": 6800,
+        "max_torque_nm": 799,
+        "max_torque_rpm": 5300,
+        "redline_rpm": 7800
+    },
+    "3486": {
+        "name": "Challenger SRT Demon '18",
+        "max_power_kw": 626,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 1044,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7500
+    },
+    "3487": {
+        "name": "Mustang Boss 429 '69",
+        "max_power_kw": 279,
+        "max_power_rpm": 5000,
+        "max_torque_nm": 610,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 6000
+    },
+    "3488": {
+        "name": "Cayman GT4 '16",
+        "max_power_kw": 283,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 420,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 8500
+    },
+    "3489": {
+        "name": "A6GCS/53 Spyder '54",
+        "max_power_kw": 124,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 194,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8500
+    },
+    "3490": {
+        "name": "Carrera GTS (904) '64",
+        "max_power_kw": 133,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 196,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "3493": {
+        "name": "Skyline Super Silhouette '84",
+        "max_power_kw": 418,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 539,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 8500
+    },
+    "3494": {
+        "name": "Alphard Executive Lounge '18",
+        "max_power_kw": 221,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 360,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7500
+    },
+    "3495": {
+        "name": "RX-VISION '15",
+        "max_power_kw": 386,
+        "max_power_rpm": 8800,
+        "max_torque_nm": 488,
+        "max_torque_rpm": 7500,
+        "redline_rpm": 9800
+    },
+    "3499": {
+        "name": "GR010 HYBRID '21",
+        "max_power_kw": 500,
+        "max_power_rpm": 7800,
+        "max_torque_nm": 671,
+        "max_torque_rpm": 6600,
+        "redline_rpm": 8800
+    },
+    "3500": {
+        "name": "G70 3.3T AWD P.Package '22",
+        "max_power_kw": 273,
+        "max_power_rpm": 5900,
+        "max_torque_nm": 510,
+        "max_torque_rpm": 1500,
+        "redline_rpm": 6900
+    },
+    "3501": {
+        "name": "G70 GR4",
+        "max_power_kw": 309,
+        "max_power_rpm": 6400,
+        "max_torque_nm": 527,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 7400
+    },
+    "3502": {
+        "name": "Genesis X GR3",
+        "max_power_kw": 408,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 696,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 7500
+    },
+    "3504": {
+        "name": "Z Performance '23",
+        "max_power_kw": 298,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 476,
+        "max_torque_rpm": 1500,
+        "redline_rpm": 7500
+    },
+    "3506": {
+        "name": "BRZ S '21",
+        "max_power_kw": 172,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 250,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 8000
+    },
+    "3508": {
+        "name": "SUZUKI VGT (Gr.3)",
+        "max_power_kw": 430,
+        "max_power_rpm": 10000,
+        "max_torque_nm": 490,
+        "max_torque_rpm": 7500,
+        "redline_rpm": 11000
+    },
+    "3509": {
+        "name": "911 Carrera RS (901) '73",
+        "max_power_kw": 154,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 255,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7500
+    },
+    "3510": {
+        "name": "Ferrari VGT",
+        "max_power_kw": 1016,
+        "max_power_rpm": 9000,
+        "max_torque_nm": 900,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 10000
+    },
+    "3512": {
+        "name": "Roadster NR-A (ND) '22",
+        "max_power_kw": 97,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 154,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8000
+    },
+    "3513": {
+        "name": "Silvia K's Type S (S14) '94",
+        "max_power_kw": 161,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 274,
+        "max_torque_rpm": 4400,
+        "redline_rpm": 7000
+    },
+    "3514": {
+        "name": "DS 21 Pallas '70",
+        "max_power_kw": 77,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 167,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 6500
+    },
+    "3518": {
+        "name": "Corvette C8 '20",
+        "max_power_kw": 368,
+        "max_power_rpm": 6400,
+        "max_torque_nm": 637,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7400
+    },
+    "3519": {
+        "name": "959 '87",
+        "max_power_kw": 330,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 500,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8000
+    },
+    "3520": {
+        "name": "400R '95",
+        "max_power_kw": 294,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 469,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7500
+    },
+    "3521": {
+        "name": "MAZDA3 '19",
+        "max_power_kw": 132,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 224,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7000
+    },
+    "3522": {
+        "name": "GAC Maverick",
+        "max_power_kw": 894,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 1220,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 8500
+    },
+    "3523": {
+        "name": "RS 5 Turbo DTM '19",
+        "max_power_kw": 450,
+        "max_power_rpm": 9000,
+        "max_torque_nm": 650,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 10000
+    },
+    "3524": {
+        "name": "R32 GT-R NISMO '90",
+        "max_power_kw": 228,
+        "max_power_rpm": 6800,
+        "max_torque_nm": 391,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7800
+    },
+    "3525": {
+        "name": "RA272 '65",
+        "max_power_kw": 170,
+        "max_power_rpm": 11500,
+        "max_torque_nm": 142,
+        "max_torque_rpm": 11500,
+        "redline_rpm": 12500
+    },
+    "3526": {
+        "name": "Garage RCR Civic",
+        "max_power_kw": 290,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 439,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 8500
+    },
+    "3528": {
+        "name": "SF23 Super Formula / Honda '23",
+        "max_power_kw": 466,
+        "max_power_rpm": 9000,
+        "max_torque_nm": 539,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 10000
+    },
+    "3529": {
+        "name": "SF23 Super Formula / Toyota '23",
+        "max_power_kw": 466,
+        "max_power_rpm": 9000,
+        "max_torque_nm": 539,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 10000
+    },
+    "3530": {
+        "name": "Giulia Sprint GT Veloce '67",
+        "max_power_kw": 78,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 139,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 7000
+    },
+    "3531": {
+        "name": "Mercedes-AMG GT3 '20",
+        "max_power_kw": 458,
+        "max_power_rpm": 6700,
+        "max_torque_nm": 720,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7700
+    },
+    "3532": {
+        "name": "Valkyrie '21",
+        "max_power_kw": 849,
+        "max_power_rpm": 10500,
+        "max_torque_nm": 922,
+        "max_torque_rpm": 7000,
+        "redline_rpm": 11500
+    },
+    "3533": {
+        "name": "MC20 '20",
+        "max_power_kw": 463,
+        "max_power_rpm": 7500,
+        "max_torque_nm": 731,
+        "max_torque_rpm": 4800,
+        "redline_rpm": 8500
+    },
+    "3534": {
+        "name": "Himedic '21",
+        "max_power_kw": 117,
+        "max_power_rpm": 5000,
+        "max_torque_nm": 243,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 6000
+    },
+    "3535": {
+        "name": "GR Corolla MORIZO Edition '22",
+        "max_power_kw": 223,
+        "max_power_rpm": 6400,
+        "max_torque_nm": 399,
+        "max_torque_rpm": 3200,
+        "redline_rpm": 7400
+    },
+    "3536": {
+        "name": "Civic Type R (FL5) '22",
+        "max_power_kw": 242,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 420,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 7500
+    },
+    "3537": {
+        "name": "MAZDA3 Gr.4",
+        "max_power_kw": 283,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 433,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 8000
+    },
+    "3538": {
+        "name": "Charger R/T 426 Hemi '68",
+        "max_power_kw": 317,
+        "max_power_rpm": 5000,
+        "max_torque_nm": 664,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 6000
+    },
+    "3539": {
+        "name": "911 GT3 RS (992) '22",
+        "max_power_kw": 386,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 466,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9500
+    },
+    "3541": {
+        "name": "BVLGARI Aluminium VGT",
+        "max_power_kw": 294,
+        "max_power_rpm": 9000,
+        "max_torque_nm": 378,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 10000
+    },
+    "3543": {
+        "name": "Genesis X Gran Berlinetta VGT Concept",
+        "max_power_kw": 648,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 1071,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 9000
+    },
+    "3544": {
+        "name": "Genesis X Gran Racer VGT Concept",
+        "max_power_kw": 648,
+        "max_power_rpm": 8000,
+        "max_torque_nm": 1071,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 9000
+    },
+    "3545": {
+        "name": "Jimny XC '18",
+        "max_power_kw": 47,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 96,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7000
+    },
+    "3547": {
+        "name": "R4 GTL '85",
+        "max_power_kw": 25,
+        "max_power_rpm": 4000,
+        "max_torque_nm": 74,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 5000
+    },
+    "3548": {
+        "name": "Urus '18",
+        "max_power_kw": 478,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 850,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 7000
+    },
+    "3549": {
+        "name": "240 SE Estate '93",
+        "max_power_kw": 81,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 158,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 7000
+    },
+    "3550": {
+        "name": "Impreza Rally Car '98",
+        "max_power_kw": 223,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 471,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 6500
+    },
+    "3551": {
+        "name": "M3 '97",
+        "max_power_kw": 236,
+        "max_power_rpm": 7400,
+        "max_torque_nm": 350,
+        "max_torque_rpm": 3300,
+        "redline_rpm": 8400
+    },
+    "3553": {
+        "name": "GT-R Premium edition T-spec '24",
+        "max_power_kw": 419,
+        "max_power_rpm": 6800,
+        "max_torque_nm": 637,
+        "max_torque_rpm": 3300,
+        "redline_rpm": 7800
+    },
+    "3554": {
+        "name": "Hiace Van DX '16",
+        "max_power_kw": 100,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 182,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 6500
+    },
+    "3555": {
+        "name": "Escort RS Cosworth '92",
+        "max_power_kw": 166,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 298,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7000
+    },
+    "3556": {
+        "name": "Unimog Type 411 '62",
+        "max_power_kw": 22,
+        "max_power_rpm": 2500,
+        "max_torque_nm": 101,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 3500
+    },
+    "3557": {
+        "name": "W 196 R '55",
+        "max_power_kw": 216,
+        "max_power_rpm": 8500,
+        "max_torque_nm": 246,
+        "max_torque_rpm": 6500,
+        "redline_rpm": 9500
+    },
+    "3558": {
+        "name": "911 Turbo S (992) '20",
+        "max_power_kw": 478,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 800,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 8000
+    },
+    "3559": {
+        "name": "Jimny Sierra JC '18",
+        "max_power_kw": 75,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 130,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 7000
+    },
+    "3562": {
+        "name": "F3500-A",
+        "max_power_kw": 576,
+        "max_power_rpm": 14000,
+        "max_torque_nm": 406,
+        "max_torque_rpm": 12000,
+        "redline_rpm": 15000
+    },
+    "3563": {
+        "name": "Civic Si Extra (EF) '87",
+        "max_power_kw": 95,
+        "max_power_rpm": 6800,
+        "max_torque_nm": 144,
+        "max_torque_rpm": 5700,
+        "redline_rpm": 7800
+    },
+    "3564": {
+        "name": "205 GTI '88",
+        "max_power_kw": 95,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 165,
+        "max_torque_rpm": 4800,
+        "redline_rpm": 7000
+    },
+    "3565": {
+        "name": "C-HR S '18",
+        "max_power_kw": 101,
+        "max_power_rpm": 5200,
+        "max_torque_nm": 142,
+        "max_torque_rpm": 3700,
+        "redline_rpm": 6200
+    },
+    "3566": {
+        "name": "CX-30 X Smart Edition '21",
+        "max_power_kw": 139,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 240,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 7000
+    },
+    "3567": {
+        "name": "Kangoo 1.4 '01",
+        "max_power_kw": 54,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 117,
+        "max_torque_rpm": 4500,
+        "redline_rpm": 6500
+    },
+    "3569": {
+        "name": "R34 GT-R Z-tune '05",
+        "max_power_kw": 368,
+        "max_power_rpm": 6800,
+        "max_torque_nm": 539,
+        "max_torque_rpm": 5200,
+        "redline_rpm": 7800
+    },
+    "3570": {
+        "name": "Corvette Z06 (C5) '01",
+        "max_power_kw": 286,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 523,
+        "max_torque_rpm": 5000,
+        "redline_rpm": 7000
+    },
+    "3571": {
+        "name": "Carry KC '12",
+        "max_power_kw": 35,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 62,
+        "max_torque_rpm": 4000,
+        "redline_rpm": 6500
+    },
+    "3573": {
+        "name": "BX 19 TRS '87",
+        "max_power_kw": 77,
+        "max_power_rpm": 5600,
+        "max_torque_nm": 162,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 6600
+    },
+    "3574": {
+        "name": "2008 Allure '21",
+        "max_power_kw": 96,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 230,
+        "max_torque_rpm": 2000,
+        "redline_rpm": 6500
+    },
+    "3575": {
+        "name": "Panda 30 CL '85",
+        "max_power_kw": 22,
+        "max_power_rpm": 5500,
+        "max_torque_nm": 40,
+        "max_torque_rpm": 3000,
+        "redline_rpm": 6500
+    },
+    "3576": {
+        "name": "N-ONE RS '22",
+        "max_power_kw": 47,
+        "max_power_rpm": 6000,
+        "max_torque_nm": 104,
+        "max_torque_rpm": 2600,
+        "redline_rpm": 7000
+    },
+    "3578": {
+        "name": "MAZDA SPIRIT RACING ROADSTER 12R '25",
+        "max_power_kw": 147,
+        "max_power_rpm": 7200,
+        "max_torque_nm": 216,
+        "max_torque_rpm": 4700,
+        "redline_rpm": 8200
+    },
+    "3583": {
+        "name": "RAV4 Adventure '20",
+        "max_power_kw": 125,
+        "max_power_rpm": 6600,
+        "max_torque_nm": 207,
+        "max_torque_rpm": 4800,
+        "redline_rpm": 7600
+    },
+    "3584": {
+        "name": "Land Cruiser FJ40V '74",
+        "max_power_kw": 95,
+        "max_power_rpm": 3600,
+        "max_torque_nm": 294,
+        "max_torque_rpm": 2200,
+        "redline_rpm": 4600
+    },
+    "3585": {
+        "name": "ELANTRA N '23",
+        "max_power_kw": 206,
+        "max_power_rpm": 5800,
+        "max_torque_nm": 392,
+        "max_torque_rpm": 3300,
+        "redline_rpm": 6800
+    },
+    "3587": {
+        "name": "296 GTB '22",
+        "max_power_kw": 610,
+        "max_power_rpm": 7900,
+        "max_torque_nm": 740,
+        "max_torque_rpm": 6000,
+        "redline_rpm": 8900
+    },
+    "3588": {
+        "name": "296 GT3 '23",
+        "max_power_kw": 447,
+        "max_power_rpm": 6800,
+        "max_torque_nm": 713,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 7800
+    },
+    "3589": {
+        "name": "F3500-B",
+        "max_power_kw": 536,
+        "max_power_rpm": 13500,
+        "max_torque_nm": 407,
+        "max_torque_rpm": 11000,
+        "redline_rpm": 14500
+    },
+    "3590": {
+        "name": "ELANTRA N TC '24",
+        "max_power_kw": 261,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 450,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 8000
+    },
+    "3592": {
+        "name": "Camaro 1969 Race-Mod",
+        "max_power_kw": 490,
+        "max_power_rpm": 6500,
+        "max_torque_nm": 845,
+        "max_torque_rpm": 3500,
+        "redline_rpm": 7500
+    },
+    "3600": {
+        "name": "911 GT3 R (992) '22",
+        "max_power_kw": 415,
+        "max_power_rpm": 9000,
+        "max_torque_nm": 500,
+        "max_torque_rpm": 7500,
+        "redline_rpm": 10000
+    },
+    "3601": {
+        "name": "Captur S Edition '21",
+        "max_power_kw": 103,
+        "max_power_rpm": 4500,
+        "max_torque_nm": 260,
+        "max_torque_rpm": 1700,
+        "redline_rpm": 5500
+    },
+    "3603": {
+        "name": "Twingo '93",
+        "max_power_kw": 40,
+        "max_power_rpm": 5300,
+        "max_torque_nm": 91,
+        "max_torque_rpm": 2800,
+        "redline_rpm": 6300
+    },
+    "3604": {
+        "name": "M Hybrid V8 '25",
+        "max_power_kw": 478,
+        "max_power_rpm": 7800,
+        "max_torque_nm": 617,
+        "max_torque_rpm": 6600,
+        "redline_rpm": 8800
+    },
+    "3605": {
+        "name": "499P '23",
+        "max_power_kw": 500,
+        "max_power_rpm": 7400,
+        "max_torque_nm": 789,
+        "max_torque_rpm": 5500,
+        "redline_rpm": 8400
+    },
+    "3606": {
+        "name": "9X8 '25",
+        "max_power_kw": 500,
+        "max_power_rpm": 8200,
+        "max_torque_nm": 673,
+        "max_torque_rpm": 6600,
+        "redline_rpm": 9200
+    },
+    "3607": {
+        "name": "963 '24",
+        "max_power_kw": 500,
+        "max_power_rpm": 8200,
+        "max_torque_nm": 672,
+        "max_torque_rpm": 6200,
+        "redline_rpm": 9200
+    },
+    "3608": {
+        "name": "911 Turbo S Safety Car (992)",
+        "max_power_kw": 478,
+        "max_power_rpm": 7000,
+        "max_torque_nm": 800,
+        "max_torque_rpm": 2500,
+        "redline_rpm": 8000
+    }
+}
