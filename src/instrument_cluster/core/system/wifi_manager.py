@@ -23,6 +23,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+import unicodedata
 from dataclasses import dataclass
 
 from ...logger import Logger
@@ -33,6 +34,10 @@ DEFAULT_INTERFACE = "wlan0"
 DEFAULT_CONF_PATH = "/etc/wpa_supplicant/wpa_supplicant-wlan0.conf"
 DEFAULT_SERVICE = "wpa_supplicant@wlan0.service"
 DEFAULT_COUNTRY = "DE"
+
+# wpa_supplicant's printf_encode() single-character escapes; everything else
+# non-printable arrives as \xHH byte escapes.
+_WPA_ESCAPES = {"n": 0x0A, "r": 0x0D, "t": 0x09, "e": 0x1B, "\\": 0x5C, '"': 0x22}
 
 
 def _resolve_bin(name: str, *fallbacks: str) -> str | None:
@@ -133,7 +138,43 @@ class WifiManager:
         return self._parse_scan_results(results)
 
     @staticmethod
-    def _parse_scan_results(text: str) -> list[Network]:
+    def _decode_ssid(raw: str) -> str:
+        """Decode wpa_supplicant's printf-escaped SSID into readable text.
+
+        ``wpa_cli`` escapes every non-ASCII byte as ``\\xHH`` (so "Qiu’s
+        Home" arrives as ``Qiu\\xe2\\x80\\x99s Home``), plus the single-char
+        escapes in ``_WPA_ESCAPES``. Rebuild the raw bytes, then decode as
+        UTF-8 — undecodable bytes become U+FFFD rather than failing, since
+        an AP may broadcast arbitrary bytes. Control characters are also
+        replaced with U+FFFD: an embedded NUL crashes pygame's renderer
+        outright, and SSIDs are untrusted over-the-air data.
+        """
+        out = bytearray()
+        i = 0
+        while i < len(raw):
+            ch = raw[i]
+            if ch == "\\" and i + 1 < len(raw):
+                nxt = raw[i + 1]
+                if nxt == "x" and i + 3 < len(raw):
+                    try:
+                        out.append(int(raw[i + 2 : i + 4], 16))
+                        i += 4
+                        continue
+                    except ValueError:
+                        pass
+                if nxt in _WPA_ESCAPES:
+                    out.append(_WPA_ESCAPES[nxt])
+                    i += 2
+                    continue
+            out.extend(ch.encode("utf-8"))
+            i += 1
+        decoded = out.decode("utf-8", errors="replace")
+        return "".join(
+            "�" if unicodedata.category(ch) == "Cc" else ch for ch in decoded
+        )
+
+    @classmethod
+    def _parse_scan_results(cls, text: str) -> list[Network]:
         """Parse ``wpa_cli scan_results`` output.
 
         Columns are tab-separated: bssid / frequency / signal / flags / ssid.
@@ -150,7 +191,7 @@ class WifiManager:
             except ValueError:
                 continue
             flags = parts[3]
-            ssid = parts[4].strip()
+            ssid = cls._decode_ssid(parts[4].strip())
             if not ssid:
                 continue
             secured = any(tag in flags for tag in ("WPA", "WEP", "PSK", "SAE"))
@@ -211,7 +252,10 @@ class WifiManager:
         )
 
     def current_ssid(self) -> str | None:
-        return self.status().get("ssid") or None
+        # ``wpa_cli status`` escapes the ssid the same way scan results are;
+        # decode so the connected-network checkmark matches the scan list.
+        raw = self.status().get("ssid")
+        return self._decode_ssid(raw) if raw else None
 
     # ------------------------------------------------------------------
     # connecting

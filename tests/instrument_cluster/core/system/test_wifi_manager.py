@@ -24,6 +24,34 @@ def test_parse_scan_results_security_flags():
     assert nets["OpenGuest"].secured is False
 
 
+def test_parse_scan_results_decodes_escaped_ssid():
+    # wpa_cli printf-escapes non-ASCII SSID bytes: ’ (U+2019) arrives as
+    # \xe2\x80\x99. The list must show the character, not the escapes.
+    out = (
+        "bssid / frequency / signal level / flags / ssid\n"
+        "00:11:22:33:44:55\t2412\t-50\t[WPA2-PSK-CCMP][ESS]\t"
+        "Qiu\\xe2\\x80\\x99s Home\n"
+    )
+    nets = WifiManager._parse_scan_results(out)
+    assert [n.ssid for n in nets] == ["Qiu’s Home"]
+
+
+def test_decode_ssid():
+    assert WifiManager._decode_ssid("plain ascii") == "plain ascii"
+    assert WifiManager._decode_ssid("Qiu\\xe2\\x80\\x99s Home") == "Qiu’s Home"
+    assert WifiManager._decode_ssid('a\\"b\\\\c') == 'a"b\\c'
+    # invalid UTF-8 byte degrades to U+FFFD instead of raising
+    assert WifiManager._decode_ssid("bad\\xffbyte") == "bad�byte"
+    # control characters are neutralized — an embedded NUL would crash
+    # pygame's text renderer, and SSIDs are untrusted broadcast data
+    assert WifiManager._decode_ssid("evil\\x00ap") == "evil�ap"
+    assert WifiManager._decode_ssid("two\\nlines") == "two�lines"
+    assert WifiManager._decode_ssid("ansi\\e[31m") == "ansi�[31m"
+    # trailing lone backslash and malformed \x pass through untouched
+    assert WifiManager._decode_ssid("tail\\") == "tail\\"
+    assert WifiManager._decode_ssid("no\\xZZhex") == "no\\xZZhex"
+
+
 def test_parse_status():
     status = WifiManager._parse_status(
         "bssid=00:11:22:33:44:55\nssid=FRITZ!Box 7590\nwpa_state=COMPLETED\nip_address=192.168.1.50\n"
