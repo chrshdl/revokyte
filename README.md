@@ -5,16 +5,16 @@
 # Revokyte
 
 [![Build Status](https://github.com/chrshdl/instrument-cluster-os/actions/workflows/ci.yml/badge.svg?event=push)](https://github.com/chrshdl/instrument-cluster-os/actions/workflows/ci.yml)
-[![Download Raspberry Pi 4 64 Image](https://img.shields.io/badge/download-pi4--64--image-c51d4a?logo=raspberry-pi&logoColor=white)](https://github.com/chrshdl/instrument-cluster-os/releases)
+[![Download Raspberry Pi Image](https://img.shields.io/badge/download-pi4--64%20%C2%B7%20pi5-c51d4a?logo=raspberry-pi&logoColor=white)](https://github.com/chrshdl/instrument-cluster-os/releases)
 [![Discord](https://img.shields.io/discord/1452332495683981478?label=chat&logo=discord&color=5865F2)](https://discord.gg/dEQJSuva7K)
 
 </div>
 
-Revokyte is an embedded sim racing instrument cluster built with Python and pygame. It receives live telemetry from **Gran Turismo 7** or **Assetto Corsa Competizione** over UDP and renders a real-time dashboard at 60 fps — designed for readability and reliability while racing.
+Revokyte is an embedded sim racing instrument cluster built with Python and pygame that is designed for readability and reliability while racing. It receives live telemetry from Gran Turismo 7 or Assetto Corsa Competizione over UDP and renders a real-time dashboard at 60 fps.
 
-Support for each game comes from a small, separately-released **feed program** that reads the game's telemetry and re-emits it as NDJSON to the cluster (GT7 via the [granturismo](https://github.com/chrshdl/granturismo) proxy; ACC via its native Broadcasting API). You pick a game in the settings and the device installs the matching feed — the cluster itself stays game-agnostic. ACC's Broadcasting API doesn't expose engine RPM, tyre temperatures, or fuel, so those gauges are inactive in ACC mode.
+Support for each game comes from a small, separately-released _feed program_ that reads the game's telemetry and re-emits it as NDJSON to the cluster (GT7 via the [granturismo](https://github.com/chrshdl/granturismo) proxy; ACC via its native Broadcasting API). You pick a game in the settings and the device installs the matching feed — the cluster itself stays game-agnostic. ACC's Broadcasting API doesn't expose engine RPM, tyre temperatures, or fuel, so those gauges are inactive in ACC mode.
 
-Runs on a Raspberry Pi 4 with a 720×1280 touch display, or on your desktop in demo mode (no console required).
+It runs on a Raspberry Pi 4 or 5 with a 720×1280 touch display, or on your desktop machine in demo mode.
 
 <div align="center">
 
@@ -36,7 +36,7 @@ Runs on a Raspberry Pi 4 with a 720×1280 touch display, or on your desktop in d
 - Best, previous, and predicted lap times
 - Automatic track identification from GT7 position data (ACC reports the track name directly)
 
-The delta widget follows professional motorsport dashboard conventions (MoTEC, AiM): green when ahead, red when behind, with trend dashes showing magnitude. A sample-and-hold filter (200 ms refresh) plus hysteresis (20 ms dead-band) keeps the digits stable and glanceable instead of flickering.
+The delta widget follows professional motorsport dashboard conventions: green when ahead, red when behind, with trend dashes showing magnitude. A sample-and-hold filter plus hysteresis keeps the digits stable.
 
 ## Quick start
 
@@ -178,13 +178,13 @@ Press F5 to start debugging.
 
 For a turnkey setup that boots straight into the dash, download the prebuilt Raspberry Pi image from the [instrument-cluster-os releases](https://github.com/chrshdl/instrument-cluster-os/releases) and flash it to an SD card (e.g. with Raspberry Pi Imager).
 
-[![Download Raspberry Pi 4 64 Image](https://img.shields.io/badge/download-pi4--64--image-c51d4a?logo=raspberry-pi&logoColor=white)](https://github.com/chrshdl/instrument-cluster-os/releases)
+[![Download Raspberry Pi Image](https://img.shields.io/badge/download-pi4--64%20%C2%B7%20pi5-c51d4a?logo=raspberry-pi&logoColor=white)](https://github.com/chrshdl/instrument-cluster-os/releases)
 
 ## Legal
 
 This project is created for educational and personal use and provided without warranty of any kind, express or implied. Use at your own risk.
 
-All trademarks, logos, and brand names are the property of their respective owners. *Gran Turismo*, *Gran Turismo 7*, *GT7*, and *PlayStation* are trademarks or registered trademarks of *Sony Interactive Entertainment Inc.* and *Polyphony Digital Inc.* This project is independent and not affiliated with or endorsed by them.
+All trademarks, logos, and brand names are the property of their respective owners. *Gran Turismo*, *Gran Turismo 7*, *GT7*, and *PlayStation* are trademarks or registered trademarks of *Sony Interactive Entertainment Inc.* and *Polyphony Digital Inc.* *Assetto Corsa Competizione* and *ACC* are trademarks or registered trademarks of *Kunos Simulazioni S.r.l.* This project is independent and not affiliated with or endorsed by any of them.
 
 ## License
 
