@@ -268,7 +268,9 @@ class WifiSetupView(View):
             rect=srect(WIFI_LIST_X, y, width, WIFI_ROW_HEIGHT),
             text=net.ssid,
             text_visible=True,
-            font=load_font(size=44, family=FontFamily.PIXEL_TYPE),
+            # SSIDs are arbitrary user text — NotoSans covers accents and
+            # non-Latin scripts the pixel font lacks.
+            font=load_font(size=40, family=FontFamily.NOTOSANS_LIGHT),
             antialias=True,
             events=ButtonEvents(
                 pressed=WIFI_NETWORK_ROW_PRESSED,
@@ -283,9 +285,9 @@ class WifiSetupView(View):
     def _other_button(self, y: float, width: int = WIFI_ROW_WIDTH) -> Button:
         return Button(
             rect=srect(WIFI_LIST_X, y, width, WIFI_ROW_HEIGHT),
-            text="Enter  network  manually  ...",
+            text="Enter network manually ...",
             text_visible=True,
-            font=load_font(size=44, family=FontFamily.PIXEL_TYPE),
+            font=load_font(size=40, family=FontFamily.NOTOSANS_LIGHT),
             antialias=True,
             events=ButtonEvents(
                 pressed=WIFI_OTHER_ROW_PRESSED,
@@ -336,10 +338,21 @@ class WifiSetupView(View):
         else:
             statics.append(
                 Label(
-                    text=f"Network:  {ssid}",
+                    text="Network",
                     font=label_font,
                     color=Color.WHITE.rgb(),
                     pos=spos(40, 118),
+                    center=False,
+                )
+            )
+            # SSID as a separate value label (NotoSans for glyph coverage),
+            # aligned where the manual-entry field sits.
+            statics.append(
+                Label(
+                    text=ssid or "",
+                    font=field_font,
+                    color=Color.WHITE.rgb(),
+                    pos=spos(360, 122),
                     center=False,
                 )
             )
@@ -569,6 +582,11 @@ class WifiSetupView(View):
         self._reset_scroll_state()
         self.phase = self.PHASE_CONNECTED
         self._connected_ssid = ssid
+        # Clear the "Connecting to ..." status — it would otherwise linger
+        # as a footer under the connected screen.
+        self.status_message = ""
+        self.status_is_error = False
+        self.hint_message = ""
         self._widgets = []
 
     # ------------------------------------------------------------------
@@ -681,12 +699,14 @@ class WifiSetupView(View):
         icon = icon_font.render("\ue86c", True, Color.LIGHT_GREEN.rgb())
         surface.blit(icon, icon.get_rect(center=(cx, cy - sy(50))))
 
-        text_font = load_font(size=48, family=FontFamily.PIXEL_TYPE)
+        text_font = load_font(size=44, family=FontFamily.NOTOSANS_LIGHT)
         text = text_font.render(self._connected_ssid, True, Color.WHITE.rgb())
         surface.blit(text, text.get_rect(center=(cx, cy + sy(90))))
 
     def _draw_centered_status(self, surface) -> None:
-        font = load_font(size=56, family=FontFamily.PIXEL_TYPE)
+        # NotoSans, not the pixel font: "Connecting to {ssid}" embeds
+        # arbitrary network names.
+        font = load_font(size=48, family=FontFamily.NOTOSANS_LIGHT)
         color = Color.LIGHT_RED.rgb() if self.status_is_error else Color.WHITE.rgb()
         text = font.render(self.status_message, True, color)
         rect = text.get_rect(center=(sx(SCREEN_WIDTH // 2), sy(SCREEN_HEIGHT // 2)))
