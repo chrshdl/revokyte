@@ -1,6 +1,16 @@
-# Instrument Cluster
+<div align="center">
 
-An embedded sim racing instrument cluster built with Python and pygame. It receives live telemetry from **Gran Turismo 7** or **Assetto Corsa Competizione** over UDP and renders a real-time dashboard at 60 fps — designed for readability and reliability while racing.
+<img src=".github/logo.svg" alt="Revokyte logo" width="96">
+
+# Revokyte
+
+[![Build Status](https://github.com/chrshdl/instrument-cluster-os/actions/workflows/ci.yml/badge.svg?event=push)](https://github.com/chrshdl/instrument-cluster-os/actions/workflows/ci.yml)
+[![Download Raspberry Pi 4 64 Image](https://img.shields.io/badge/download-pi4--64--image-c51d4a?logo=raspberry-pi&logoColor=white)](https://github.com/chrshdl/instrument-cluster-os/releases)
+[![Discord](https://img.shields.io/discord/1452332495683981478?label=chat&logo=discord&color=5865F2)](https://discord.gg/dEQJSuva7K)
+
+</div>
+
+Revokyte is an embedded sim racing instrument cluster built with Python and pygame. It receives live telemetry from **Gran Turismo 7** or **Assetto Corsa Competizione** over UDP and renders a real-time dashboard at 60 fps — designed for readability and reliability while racing.
 
 Support for each game comes from a small, separately-released **feed program** that reads the game's telemetry and re-emits it as NDJSON to the cluster (GT7 via the [granturismo](https://github.com/chrshdl/granturismo) proxy; ACC via its native Broadcasting API). You pick a game in the settings and the device installs the matching feed — the cluster itself stays game-agnostic. ACC's Broadcasting API doesn't expose engine RPM, tyre temperatures, or fuel, so those gauges are inactive in ACC mode.
 
@@ -9,18 +19,6 @@ Runs on a Raspberry Pi 4 with a 720×1280 touch display, or on your desktop in d
 <div align="center">
 
 [![INSTRUMENT CLUSTER IN ACTION](.github/screenshots/dashboard_pi_display2_1280x720.png)](https://www.youtube.com/watch?v=VLkjhCFHSfc)
-
-<h3>
-
-[Video: 1](https://www.youtube.com/watch?v=VLkjhCFHSfc), [2](https://youtube.com/shorts/_H9sxo7xVY8) <span> · </span> [Community](https://discord.gg/dEQJSuva7K)
-
-</h3>
-
-[![Build Status](https://github.com/chrshdl/instrument-cluster-os/actions/workflows/ci.yml/badge.svg?event=push)](https://github.com/chrshdl/instrument-cluster-os/actions/workflows/ci.yml)
-[![Download Raspberry Pi 4 64 Image](https://img.shields.io/badge/download-pi4--64--image-c51d4a?logo=raspberry-pi&logoColor=white)](https://github.com/chrshdl/instrument-cluster-os/releases)
-[![Discord](https://img.shields.io/discord/1452332495683981478?label=chat&logo=discord&color=5865F2)](https://discord.gg/dEQJSuva7K)
-
-Join the chat to share ideas and influence what gets built next.
 
 </div>
 
