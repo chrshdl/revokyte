@@ -6,10 +6,24 @@
 #
 # Each [file] is a path relative to src/instrument_cluster, e.g.:
 #   ./deploy_pi.sh ui/widgets/current_lap_time_widget.py ui/views/dashboard_view.py
-#
-# With no arguments, deploys the current_lap_time widget change.
 
 set -euo pipefail
+
+if [[ $# -eq 0 ]]; then
+  cat >&2 <<EOF
+Usage: ./deploy_pi.sh <file> [file ...]
+
+Deploy instrument_cluster source files to the Pi as bytecode-only (.pyc).
+Each <file> is a path relative to src/instrument_cluster, e.g.:
+
+  ./deploy_pi.sh ui/widgets/current_lap_time_widget.py ui/views/dashboard_view.py
+
+Environment:
+  PI_HOST  Pi ssh target (default: root@instrument-cluster.local)
+  PYTHON   Python 3.12 interpreter used to compile (default: .venv/bin/python)
+EOF
+  exit 1
+fi
 
 # The Pi's DHCP address changes with every image flash — the mDNS name is
 # the stable way to reach it.
@@ -26,13 +40,7 @@ if ! "$PYTHON" -c 'import sys; sys.exit(sys.version_info[:2] != (3, 12))' 2>/dev
   exit 1
 fi
 
-FILES=(
-  "ui/widgets/current_lap_time_widget.py"
-  "ui/views/dashboard_view.py"
-)
-if [[ $# -gt 0 ]]; then
-  FILES=("$@")
-fi
+FILES=("$@")
 
 TMPDIR="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR"' EXIT
