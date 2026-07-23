@@ -6,6 +6,7 @@ from bisect import bisect_right
 from pathlib import Path
 from typing import Optional, Tuple
 
+from ..logger import Logger
 from ..telemetry.models import TelemetryFrame
 
 
@@ -16,12 +17,15 @@ class UdpJsonlReader:
         port: int = 5600,
         bufsize: int = 4096,
     ):
+        self.logger = Logger(__class__.__name__).get()
         self.addr: Tuple[str, int] = (host, port)
         self.bufsize = bufsize
         self._sock: Optional[socket.socket] = None
         self._thread: Optional[threading.Thread] = None
         self._running = False
         self._latest: TelemetryFrame = TelemetryFrame()
+        self._dropped = 0
+        self._last_drop_log = 0.0
 
     def start(self) -> None:
         """Start listening for telemetry frames on the configured UDP socket."""
@@ -62,8 +66,18 @@ class UdpJsonlReader:
             try:
                 obj = json.loads(data.decode("utf-8"))
                 self._latest = TelemetryFrame.model_validate(obj)
-            except Exception:
-                pass
+            except Exception as e:
+                # One bad packet must not kill the reader, but total loss
+                # (e.g. a feed emitting nulls the schema rejects) must not
+                # be silent either — the dash would freeze with no trace.
+                self._dropped += 1
+                now = time.monotonic()
+                if now - self._last_drop_log >= 5.0:
+                    self._last_drop_log = now
+                    self.logger.warning(
+                        f"Dropped {self._dropped} invalid telemetry "
+                        f"packet(s) so far; last error: {e}"
+                    )
 
     def latest(self) -> TelemetryFrame:
         """
