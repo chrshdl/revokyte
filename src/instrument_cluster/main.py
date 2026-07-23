@@ -130,6 +130,15 @@ def run(conf: Config) -> None:
     finally:
         logger.info("Cleaning up resources...")
         extensions.stop()
+        # Capture any in-memory config changes that were never queued (e.g.
+        # quitting while a settings view is still open — shutdown doesn't
+        # unwind the state stack, so no exit() runs) and wait for the
+        # background writer to drain. Runs after extensions.stop() so
+        # extension stop hooks can still mutate config. A no-change persist
+        # is skipped by the writer, so this is free in the common case.
+        ConfigManager.persist()
+        if not ConfigManager.flush(timeout=2.0):
+            logger.warning("Config flush timed out; latest changes may not be on disk")
         if display is not None:
             display.close()
         pygame.quit()

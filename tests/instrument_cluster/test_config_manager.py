@@ -110,44 +110,118 @@ def test_unknown_keys_in_config_are_ignored(config_path):
     assert cfg.brightness == 80
 
 
-# --- persist() writes off the main thread ---
+# --- persist(): the single background writer ---
+#
+# NOTE: never monkeypatch threading.Thread in the config module — the
+# "config-writer" thread is created once for the process lifetime, so a
+# patched class would be baked in for every later test. Patch
+# _write_config_dict instead and use ConfigManager.flush() for determinism.
 
 
 @pytest.fixture
-def captured_thread(monkeypatch):
-    """Wraps threading.Thread so the test can join() the exact thread
-    persist() spawns, instead of guessing at timing or sweeping every
-    thread in the process."""
-    spawned = []
-    real_thread = threading.Thread
-
-    def _capture(*args, **kwargs):
-        t = real_thread(*args, **kwargs)
-        spawned.append(t)
-        return t
-
-    monkeypatch.setattr("instrument_cluster.config.threading.Thread", _capture)
-    return spawned
+def write_calls(monkeypatch):
+    """Records the writer's disk I/O instead of touching the filesystem."""
+    calls = []
+    monkeypatch.setattr(
+        "instrument_cluster.config._write_config_dict",
+        lambda config_dict, path: calls.append(config_dict),
+    )
+    return calls
 
 
-def test_persist_does_not_block_the_caller(config_path, captured_thread):
-    """The actual disk write must happen on a background thread — persist()
-    itself should return immediately regardless of write speed."""
+@pytest.fixture
+def gated_write(monkeypatch):
+    """Replaces the writer's disk I/O with a gate the test controls: records
+    each config dict and the writing thread at entry, sets `entered`, then
+    blocks until `release`. Released on teardown (and the wait is bounded)
+    so a failing test can't wedge the writer — and with it the flush inside
+    ConfigManager.reset()."""
+    calls = []
+    entered = threading.Event()
+    release = threading.Event()
+
+    def _gated(config_dict, path):
+        calls.append((config_dict, threading.current_thread()))
+        entered.set()
+        release.wait(timeout=5)
+
+    monkeypatch.setattr("instrument_cluster.config._write_config_dict", _gated)
+    yield calls, entered, release
+    release.set()
+
+
+def test_persist_does_not_block_the_caller(config_path, gated_write):
+    """The disk write must happen on the background writer thread —
+    persist() returns even while the write itself is stuck at the gate."""
+    calls, entered, release = gated_write
+    cfg = _load(config_path, {"brightness": 50})
+    cfg.brightness = 77
+
+    ConfigManager.persist()  # a synchronous write would deadlock here
+
+    assert entered.wait(timeout=2)
+    release.set()
+    assert ConfigManager.flush(timeout=2)
+
+    assert len(calls) == 1
+    written, thread = calls[0]
+    assert written["brightness"] == 77
+    assert thread is not threading.current_thread()
+    assert thread.name == "config-writer"
+
+
+def test_persist_writes_current_config_to_disk(config_path):
     cfg = _load(config_path, {"brightness": 50})
     cfg.brightness = 77
 
     ConfigManager.persist()
-
-    assert len(captured_thread) == 1
-    assert captured_thread[0] is not threading.current_thread()
-    captured_thread[0].join(timeout=2)
-
-
-def test_persist_writes_current_config_to_disk(config_path, captured_thread):
-    cfg = _load(config_path, {"brightness": 50})
-    cfg.brightness = 77
-
-    ConfigManager.persist()
-    captured_thread[0].join(timeout=2)
+    assert ConfigManager.flush(timeout=2)
 
     assert json.loads(config_path.read_text())["brightness"] == 77
+
+
+def test_redundant_persists_coalesce_into_the_latest_state(config_path, gated_write):
+    """persist() calls issued while a write is in flight collapse into a
+    single write of the newest snapshot — the middle value never lands."""
+    calls, entered, release = gated_write
+    cfg = _load(config_path, {"brightness": 50})
+
+    cfg.brightness = 60
+    ConfigManager.persist()
+    assert entered.wait(timeout=2)  # first write is now in flight, gated
+
+    cfg.brightness = 70
+    ConfigManager.persist()
+    cfg.brightness = 80
+    ConfigManager.persist()  # overwrites the pending 70 snapshot
+
+    release.set()
+    assert ConfigManager.flush(timeout=2)
+
+    assert [written["brightness"] for written, _ in calls] == [60, 80]
+
+
+def test_persist_of_unchanged_config_skips_the_write(config_path, write_calls):
+    _load(config_path, {"brightness": 50})
+
+    ConfigManager.persist()
+    assert ConfigManager.flush(timeout=2)
+
+    assert write_calls == []
+
+
+def test_flush_with_nothing_pending_returns_immediately():
+    assert ConfigManager.flush(timeout=0.1)
+
+
+def test_flush_times_out_while_a_write_is_stuck(config_path, gated_write):
+    calls, entered, release = gated_write
+    cfg = _load(config_path, {"brightness": 50})
+    cfg.brightness = 77
+    ConfigManager.persist()
+    assert entered.wait(timeout=2)
+
+    assert ConfigManager.flush(timeout=0.05) is False
+
+    release.set()
+    assert ConfigManager.flush(timeout=2) is True

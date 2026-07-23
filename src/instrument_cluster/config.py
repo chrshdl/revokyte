@@ -134,9 +134,16 @@ class ConfigManager:
         )
     )
     _config: Optional[Config] = None
-    # Serializes background writes so two overlapping persist() calls can't
-    # race each other's temp file.
-    _write_lock = threading.Lock()
+    # Guards the handoff state below. All runtime disk writes go through a
+    # single long-lived "config-writer" thread: persist() publishes the
+    # latest snapshot into _pending, the writer drains it.
+    _cond = threading.Condition()
+    _pending: Optional[tuple[dict, Path]] = None
+    _writing = False
+    _writer: Optional[threading.Thread] = None
+    # Last state known synced to disk, as (path, dict) — lets the writer
+    # skip no-op writes so callers can persist() unconditionally.
+    _last_written: Optional[tuple[Path, dict]] = None
 
     @classmethod
     def set_path(cls, path: Path) -> None:
@@ -146,6 +153,8 @@ class ConfigManager:
     def get_config(cls) -> Config:
         if cls._config is None:
             cls._config = Config.parse_config(cls.path)
+            with cls._cond:
+                cls._last_written = (cls.path, asdict(cls._config))
         return cls._config
 
     @classmethod
@@ -157,14 +166,14 @@ class ConfigManager:
             mode.value if isinstance(mode, TelemetryMode) else TelemetryMode(mode).value
         )
         if persist:
-            cfg.write_to_file(cls.path)
+            cls.persist()
 
     @classmethod
     def set_telemetry_feed(cls, feed_id: str, persist: bool = True) -> None:
         cfg = cls.get_config()
         cfg.telemetry_feed = str(feed_id)
         if persist:
-            cfg.write_to_file(cls.path)
+            cls.persist()
 
     @classmethod
     def set_diff_reference_mode(
@@ -177,32 +186,32 @@ class ConfigManager:
             else DiffReferenceMode(mode).value
         )
         if persist:
-            cfg.write_to_file(cls.path)
+            cls.persist()
 
     @classmethod
     def set_status_lights(cls, enabled: bool, persist: bool = True) -> None:
         cfg = cls.get_config()
         cfg.status_lights = bool(enabled)
         if persist:
-            cfg.write_to_file(cls.path)
+            cls.persist()
 
     @classmethod
     def set_dashboard_slot(cls, slot: int, persist: bool = True) -> None:
         cfg = cls.get_config()
         cfg.dashboard_slot = int(slot)
         if persist:
-            cfg.write_to_file(cls.path)
+            cls.persist()
 
     @classmethod
     def set_brightness_percent(cls, brightness: int, persist: bool = True) -> None:
         cfg = cls.get_config()
         cfg.brightness = int(brightness)
         if persist:
-            cfg.write_to_file(cls.path)
+            cls.persist()
 
     @classmethod
     def persist(cls) -> None:
-        """Write the current in-memory config to disk, off the main thread.
+        """Queue a write of the current in-memory config to disk.
 
         Pair with the setters' ``persist=False`` to apply a change live
         (e.g. so DeltaSignal reacts immediately) while batching the actual
@@ -210,23 +219,80 @@ class ConfigManager:
         e.g. once when the user leaves a settings view, rather than once
         per toggle. This app runs off an SD card, where writes wear out
         the storage faster than on typical disks — and can take long enough
-        to stall the UI thread if done synchronously, so the actual file
-        I/O runs in a background thread. The dict snapshot is taken now
-        (on the caller's thread) so later in-memory config changes can't
-        race the write.
+        to stall the UI thread if done synchronously, so the file I/O runs
+        on a single long-lived background thread. The dict snapshot is
+        taken now (on the caller's thread) so later in-memory config
+        changes can't race the write.
+
+        Safe to call from any thread, as often as convenient: calls issued
+        before the writer runs coalesce into one write of the latest state,
+        and a snapshot matching what's already on disk is skipped without
+        I/O. The write completes after this returns — write errors are
+        logged by the writer, not raised here; flush() blocks until queued
+        writes have drained (main.py does at shutdown).
         """
-        config_dict = asdict(cls.get_config())
-        path = cls.path
+        cfg = cls.get_config()  # may parse from disk; keep out of the lock
+        with cls._cond:
+            # Snapshot inside the lock so snapshot+publish is atomic — two
+            # racing persists can't publish an older snapshot over a newer.
+            cls._pending = (asdict(cfg), cls.path)
+            if cls._writer is None or not cls._writer.is_alive():
+                cls._writer = threading.Thread(
+                    target=cls._writer_loop, name="config-writer", daemon=True
+                )
+                cls._writer.start()
+            cls._cond.notify_all()
 
-        def _write():
-            with cls._write_lock:
-                _write_config_dict(config_dict, path)
+    @classmethod
+    def _writer_loop(cls) -> None:
+        while True:
+            try:
+                with cls._cond:
+                    while cls._pending is None:
+                        cls._cond.wait()
+                    snapshot, path = cls._pending
+                    cls._pending = None
+                    cls._writing = True
+                    last = cls._last_written
+                try:
+                    if (path, snapshot) != last:
+                        # Module-global lookup on purpose — tests monkeypatch
+                        # _write_config_dict to observe writes.
+                        _write_config_dict(snapshot, path)
+                    with cls._cond:
+                        cls._last_written = (path, snapshot)
+                except Exception:
+                    # _last_written stays put, so the next persist() of this
+                    # same state retries the write instead of skipping it.
+                    LOGGER.exception(f"Failed to write config to {path}")
+                finally:
+                    with cls._cond:
+                        cls._writing = False
+                        cls._cond.notify_all()
+            except Exception:
+                LOGGER.exception("Config writer loop error")
 
-        threading.Thread(target=_write, daemon=True).start()
+    @classmethod
+    def flush(cls, timeout: Optional[float] = None) -> bool:
+        """Block until every persist() issued before this call has drained
+        (written to disk, or skipped as a no-op). Persists issued while
+        waiting are not chased. Returns False only if ``timeout`` (seconds)
+        elapsed first — a failed write still counts as drained (the writer
+        logs it).
+        """
+        with cls._cond:
+            return cls._cond.wait_for(
+                lambda: cls._pending is None and not cls._writing, timeout
+            )
 
     @classmethod
     def reset(cls) -> None:
         """Clear the cached config instance. Intended for use in tests."""
+        if not cls.flush(timeout=2.0):
+            LOGGER.warning("Config writer did not drain before reset")
+        with cls._cond:
+            cls._pending = None
+            cls._last_written = None
         cls._config = None
 
     @classmethod
@@ -241,4 +307,4 @@ class ConfigManager:
         if ip_address in config.recent_connected:
             config.recent_connected.remove(ip_address)
         config.recent_connected.insert(0, ip_address)
-        config.write_to_file(cls.path)
+        cls.persist()

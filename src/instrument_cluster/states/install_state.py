@@ -152,8 +152,8 @@ class InstallState(State):
     def _finalize_success(self):
         """
         Handle successful install on the main thread.
-        Config is saved here; DashboardState.on_resume() will detect the change
-        and switch telemetry mode appropriately.
+        The config write is queued here; DashboardState.on_resume() will detect
+        the change and switch telemetry mode appropriately.
         """
         # Every feed streams NDJSON to localhost, so the runtime mode is always
         # UDP; telemetry_feed records *which* feed for the settings selection.

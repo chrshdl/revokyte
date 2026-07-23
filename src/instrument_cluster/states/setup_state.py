@@ -27,17 +27,6 @@ class SetupState(State):
         self.view = SetupView()
         self._backlight = Backlight()
 
-        # load brightness from config, we do not read the hardware here.
-        self.initial_brightness = ConfigManager.get_config().brightness
-        self.current_brightness = self.initial_brightness
-
-        # Track the values we started with so we only hit the SD card once,
-        # on exit, and only if something actually changed — not on every
-        # dropdown open/close/reselect.
-        self.initial_telemetry_mode = ConfigManager.get_config().telemetry_mode
-        self.initial_diff_reference_mode = ConfigManager.get_config().diff_reference_mode
-        self.initial_status_lights = ConfigManager.get_config().status_lights
-
     def background_color(self):
         # return the color defined in the view
         return self.view.background_color
@@ -49,15 +38,23 @@ class SetupState(State):
     def enter(self, screen):
         super().enter(screen)
 
+        # load brightness from config, we do not read the hardware here.
+        brightness = ConfigManager.get_config().brightness
         # ensure hardware matches our config (e.g. after a reboot)
         if self._backlight.available:
-            self._backlight.set_percent(self.current_brightness)
+            self._backlight.set_percent(brightness)
         # update UI
-        self.view.set_brightness_text(self.current_brightness)
+        self.view.set_brightness_text(brightness)
 
     def exit(self):
         # clean up view state
         self.view.close_dropdowns()
+        # All settings changes were applied in-memory (persist=False) as they
+        # happened; queue the single disk write here so every way of leaving
+        # the view — back button, change_state to another settings screen —
+        # flushes them. A no-change visit costs nothing: the writer skips
+        # snapshots identical to what's already on disk.
+        ConfigManager.persist()
         super().exit()
 
     def create_group(self):
@@ -126,28 +123,8 @@ class SetupState(State):
         return False
 
     def on_back_released(self):
-        # Only hit the SD card once, and only if something actually changed
-        # relative to what we started with — dropdown opens/closes/reselects
-        # and brightness nudges all stay in-memory until now.
-        cfg = ConfigManager.get_config()
-        changed = False
-
-        if self.current_brightness != self.initial_brightness:
-            self.logger.info(f"Saving new brightness: {self.current_brightness}%")
-            ConfigManager.set_brightness_percent(self.current_brightness, persist=False)
-            changed = True
-
-        if cfg.telemetry_mode != self.initial_telemetry_mode:
-            changed = True
-        if cfg.diff_reference_mode != self.initial_diff_reference_mode:
-            changed = True
-        if cfg.status_lights != self.initial_status_lights:
-            changed = True
-
-        if changed:
-            self.logger.info("Persisting setup changes to disk")
-            ConfigManager.persist()
-
+        # Any pending settings changes are flushed by exit(), which
+        # pop_state() invokes on us.
         self.state_manager.pop_state()
         return True
 
@@ -172,13 +149,14 @@ class SetupState(State):
         return True
 
     def adjust_brightness(self, delta_percent: int):
-        # Cclculate new transient value
-        new_val = max(10, min(100, self.current_brightness + delta_percent))
+        # UI floor is 10 (never let the user black out the panel), even
+        # though the config itself allows 0.
+        current = ConfigManager.get_config().brightness
+        new_val = max(10, min(100, current + delta_percent))
 
-        if new_val != self.current_brightness:
-            self.current_brightness = new_val
-
+        if new_val != current:
+            # Applied in-memory now, like the dropdowns/toggle above; the
+            # disk write is deferred to exit().
+            ConfigManager.set_brightness_percent(new_val, persist=False)
             self._backlight.set_percent(new_val)
             self.view.set_brightness_text(new_val)
-
-            # NOTE: We explicitly DO NOT save to ConfigManager here.
