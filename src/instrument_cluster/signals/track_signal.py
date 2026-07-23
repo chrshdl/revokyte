@@ -154,6 +154,13 @@ class TrackSignal:
         self.db_path = db_path or _BUNDLED_DB
         self._db: Dict = self._load_tracks()
 
+        # Per-direction gate table derived from the static DB, with the
+        # prefilter margin folded into the bounds and the end pad into the
+        # gate segment. _gates_crossed runs every unlocked frame over every
+        # track; scanning flat tuples instead of nested dicts is what keeps
+        # that affordable at 60 Hz.
+        self._gate_table = self._build_gate_table()
+
         # The active track, identified from the gate database. Once set we
         # hold the lock until a track/replay load clears it, so the readout
         # doesn't flicker.
@@ -387,26 +394,19 @@ class TrackSignal:
         else:
             self._pending = remaining
 
-    def _gates_crossed(
-        self, px: float, pz: float, x: float, z: float, dx: float
-    ) -> List[str]:
-        """All tracks whose start/finish gate the path segment (p → current)
-        crosses in the gate's recorded direction."""
-        if abs(dx) < _MIN_DX_M:
-            return []
-        direction = "PX" if dx > 0 else "NX"
-        out: List[str] = []
+    def _build_gate_table(self) -> Dict[str, list]:
+        """Flatten the DB into per-direction tuples of
+        (min_x, max_x, min_z, max_z, ax, az, bx, bz, track_id) —
+        margin-expanded bounds and end-padded gate endpoints."""
+        table: Dict[str, list] = {"PX": [], "NX": []}
+        m = _PREFILTER_MARGIN_M
         for t_id, data in self._db.items():
             gate = data.get("gate")
             bounds = data.get("bounds")
             if gate is None or bounds is None:
                 continue  # malformed entry — never auto-matched
-            if not (
-                _bounds_contains(bounds, px, pz, margin=_PREFILTER_MARGIN_M)
-                or _bounds_contains(bounds, x, z, margin=_PREFILTER_MARGIN_M)
-            ):
-                continue
-            if gate["direction"] != direction:
+            entries = table.get(gate.get("direction"))
+            if entries is None:
                 continue
             p1, p2 = gate["p1"], gate["p2"]
             ax, az, bx, bz = p1["x"], p1["z"], p2["x"], p2["z"]
@@ -415,6 +415,37 @@ class TrackSignal:
                 ux, uz = (bx - ax) / length, (bz - az) / length
                 ax, az = ax - ux * _GATE_END_PAD_M, az - uz * _GATE_END_PAD_M
                 bx, bz = bx + ux * _GATE_END_PAD_M, bz + uz * _GATE_END_PAD_M
+            entries.append(
+                (
+                    bounds["min_x"] - m,
+                    bounds["max_x"] + m,
+                    bounds["min_z"] - m,
+                    bounds["max_z"] + m,
+                    ax,
+                    az,
+                    bx,
+                    bz,
+                    t_id,
+                )
+            )
+        return table
+
+    def _gates_crossed(
+        self, px: float, pz: float, x: float, z: float, dx: float
+    ) -> List[str]:
+        """All tracks whose start/finish gate the path segment (p → current)
+        crosses in the gate's recorded direction."""
+        if abs(dx) < _MIN_DX_M:
+            return []
+        out: List[str] = []
+        for min_x, max_x, min_z, max_z, ax, az, bx, bz, t_id in self._gate_table[
+            "PX" if dx > 0 else "NX"
+        ]:
+            if not (
+                (min_x <= px <= max_x and min_z <= pz <= max_z)
+                or (min_x <= x <= max_x and min_z <= z <= max_z)
+            ):
+                continue
             if _segments_cross(px, pz, x, z, ax, az, bx, bz):
                 out.append(t_id)
         return out

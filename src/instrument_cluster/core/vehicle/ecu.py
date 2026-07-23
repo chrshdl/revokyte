@@ -262,9 +262,12 @@ class ShiftLightController:
 
         gear = frame.current_gear
 
-        # filter RPM to stop red bleeding
+        # filter RPM to stop red bleeding (median by sort — np.median's
+        # dispatch overhead costs ~0.15 ms per 60 Hz frame on the Pi)
         self._rpm_buffer.append(float(frame.engine_rpm))
-        rpm = np.median(self._rpm_buffer)
+        buf = sorted(self._rpm_buffer)
+        mid = len(buf) // 2
+        rpm = buf[mid] if len(buf) % 2 else 0.5 * (buf[mid - 1] + buf[mid])
 
         rev_alert = frame.flags.rev_limiter_alert_active
         tcs_active = frame.flags.tcs_active

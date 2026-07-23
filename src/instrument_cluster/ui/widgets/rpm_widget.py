@@ -60,6 +60,14 @@ class RpmWidget(Widget):
             size=label_size, family=FontFamily.D_DIN_EXP_BOLD
         )
 
+        # Cached ticks+labels layer and last-drawn segment rects: the scale
+        # only changes with the RPM configuration, so per value change only
+        # the segment rects are drawn over the cached surface (redrawing the
+        # full scale cost ~0.3 ms per 60 Hz frame on the Pi).
+        self._scale_key = None
+        self._scale_surface = None
+        self._last_segments = None
+
         # first draw
         self.set_value(0)
 
@@ -76,9 +84,9 @@ class RpmWidget(Widget):
 
         self.current_rpm = rpm
 
-        # Redraw everything below the header: bar, ticks, labels
-        self._draw_rpm_bar()
-        self.dirty = 1
+        # Redraw the bar over the cached scale; skip when no pixel moved.
+        if self._draw_rpm_bar():
+            self.dirty = 1
 
     def update(self, bus: VehicleBus, dt: float):
         frame: TelemetryFrame = bus.frame
@@ -143,18 +151,18 @@ class RpmWidget(Widget):
         self._major_step_rpm = self._tick_step_rpm * self._major_factor
         self._tick_count = math.ceil(self._max_rpm / self._tick_step_rpm)
 
-    def _draw_rpm_bar(self):
+    def _draw_rpm_bar(self) -> bool:
         """
         Draws:
           - horizontal segmented bar (normal / warning / redline)
           - ticks under the bar
           - "0" and max labels
-        onto self.image.
+        onto self.image. Ticks and labels depend only on the RPM
+        configuration and geometry, so they live in a cached scale surface;
+        a value change re-blits that surface and draws the (up to three)
+        segment rects on top. Returns True when pixels changed.
         """
         value_area = self._compute_value_area()
-
-        # Clear the value area
-        pygame.draw.rect(self.image, self.bg_color, value_area)
 
         # Layout inside value_area
         padding_x = 6
@@ -167,19 +175,29 @@ class RpmWidget(Widget):
         # Reserve some vertical space: bar + ticks + labels
         total_h = value_area.height
         bar_height = max(6, int(total_h * 0.4))
-        # ticks_height = 10
-        # labels_height = max(10, total_h - bar_height - ticks_height - padding_y * 2)
-
         bar_top = value_area.top + padding_y
-        # bar_rect = pygame.Rect(bar_left, bar_top, bar_width, bar_height)
 
         # Helper to convert rpm -> x coordinate
         def _rpm_to_x(rpm: int) -> int:
             t = 0.0 if self._max_rpm == 0 else (rpm / float(self._max_rpm))
             return bar_left + round(t * bar_width)
 
-        # Recompute tick spacing for current width
-        self._recompute_ticks(bar_width)
+        scale_key = (
+            self._max_rpm,
+            self._redline_rpm,
+            value_area.x,
+            value_area.y,
+            value_area.w,
+            value_area.h,
+        )
+        if scale_key != self._scale_key:
+            # Recompute tick spacing for current width
+            self._recompute_ticks(bar_width)
+            self._scale_surface = self._render_scale(
+                bar_left, bar_right, bar_top, bar_height, _rpm_to_x
+            )
+            self._scale_key = scale_key
+            self._last_segments = None
 
         # --- Segments ---
         rpm = self.current_rpm
@@ -189,46 +207,62 @@ class RpmWidget(Widget):
         )
         red_zone = max(0, rpm - self._redline_rpm)
 
+        segments = []
         # Normal/alert zone (placeholder green-ish)
         if alert_zone > 0:
-            pygame.draw.rect(
-                self.image,
-                Color.GREY.rgb(),  # you can swap this for a real green
-                pygame.Rect(
-                    bar_left,
-                    bar_top,
-                    _rpm_to_x(alert_zone) - bar_left,
-                    bar_height,
-                ),
+            segments.append(
+                (
+                    Color.GREY.rgb(),  # you can swap this for a real green
+                    (bar_left, bar_top, _rpm_to_x(alert_zone) - bar_left, bar_height),
+                )
             )
-
         # Yellow / pre-redline zone
         if yellow_zone > 0:
             start_x = _rpm_to_x(self._alert_min)
-            pygame.draw.rect(
-                self.image,
-                Color.GREY.rgb(),  # placeholder yellow
-                pygame.Rect(
-                    start_x,
-                    bar_top,
-                    _rpm_to_x(self._alert_min + yellow_zone) - start_x,
-                    bar_height,
-                ),
+            segments.append(
+                (
+                    Color.GREY.rgb(),  # placeholder yellow
+                    (
+                        start_x,
+                        bar_top,
+                        _rpm_to_x(self._alert_min + yellow_zone) - start_x,
+                        bar_height,
+                    ),
+                )
             )
-
         # Red limiter zone
         if red_zone > 0:
             start_x = _rpm_to_x(self._redline_rpm)
-            pygame.draw.rect(
-                self.image,
-                Color.LIGHT_RED.rgb(),
-                pygame.Rect(
-                    start_x,
-                    bar_top,
-                    _rpm_to_x(self._redline_rpm + red_zone) - start_x,
-                    bar_height,
-                ),
+            segments.append(
+                (
+                    Color.LIGHT_RED.rgb(),
+                    (
+                        start_x,
+                        bar_top,
+                        _rpm_to_x(self._redline_rpm + red_zone) - start_x,
+                        bar_height,
+                    ),
+                )
             )
+
+        # Keep a "value string" so Widget-style change detection still works
+        self._last_value_str = str(self.current_rpm)
+
+        if segments == self._last_segments:
+            # sub-pixel RPM change: nothing on screen moves
+            return False
+        self._last_segments = segments
+
+        self.image.blit(self._scale_surface, value_area.topleft, area=value_area)
+        for color, rect in segments:
+            pygame.draw.rect(self.image, color, pygame.Rect(rect))
+        return True
+
+    def _render_scale(self, bar_left, bar_right, bar_top, bar_height, _rpm_to_x):
+        """Background + ticks + labels for the current RPM configuration, at
+        widget-image coordinates (only the value area is ever blitted)."""
+        surf = pygame.Surface((self.w, self.h)).convert_alpha()
+        surf.fill(self.bg_color)
 
         # --- Ticks below bar ---
         ticks_y1 = bar_top + bar_height
@@ -246,7 +280,7 @@ class RpmWidget(Widget):
                 if tick_rpm >= self._redline_rpm
                 else Color.LIGHT_GREY.rgb()
             )
-            pygame.draw.line(self.image, tick_color, (tick_x, y1), (tick_x, y2), width)
+            pygame.draw.line(surf, tick_color, (tick_x, y1), (tick_x, y2), width)
 
         for i in range(0, minor_count, sparse_factor):
             tick_rpm = min(i * self._tick_step_rpm, self._max_rpm)
@@ -259,14 +293,11 @@ class RpmWidget(Widget):
         label_y = ticks_y1 + 6
 
         # 1) Left-most label: 0
-        zero_txt = "0"
-        zero_surf = self._label_font.render(
-            zero_txt, self.antialias, Color.LIGHT_GREY.rgb()
-        )
+        zero_surf = self._label_font.render("0", self.antialias, Color.LIGHT_GREY.rgb())
         zero_rect = zero_surf.get_rect()
         # left-aligned to bar start to avoid clipping
         zero_rect.midtop = (bar_left, label_y)
-        self.image.blit(zero_surf, zero_rect)
+        surf.blit(zero_surf, zero_rect)
 
         # 2) Intermediate major tick labels (exclude 0 and max)
         if self._major_step_rpm > 0:
@@ -281,23 +312,21 @@ class RpmWidget(Widget):
                     else Color.LIGHT_GREY.rgb()
                 )
 
-                surf = self._label_major_font.render(txt, self.antialias, color)
-                rect = surf.get_rect()
+                label_surf = self._label_major_font.render(txt, self.antialias, color)
+                rect = label_surf.get_rect()
                 # center under the tick
                 rect.midtop = (tick_x, label_y)
-                self.image.blit(surf, rect)
+                surf.blit(label_surf, rect)
 
                 tick_rpm += self._major_step_rpm
 
         # 3) Right-most label: max (in thousands)
-        max_txt = str(self._normalize(self._max_rpm))
         max_surf = self._label_font.render(
-            max_txt, self.antialias, Color.LIGHT_RED.rgb()
+            str(self._normalize(self._max_rpm)), self.antialias, Color.LIGHT_RED.rgb()
         )
         max_rect = max_surf.get_rect()
         # right-aligned to bar end to avoid clipping
         max_rect.midtop = (bar_right, label_y)
-        self.image.blit(max_surf, max_rect)
+        surf.blit(max_surf, max_rect)
 
-        # Keep a "value string" so Widget-style change detection still works
-        self._last_value_str = str(self.current_rpm)
+        return surf

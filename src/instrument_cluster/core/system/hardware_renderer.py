@@ -3,6 +3,12 @@ import math
 import struct
 
 import pygame
+import OpenGL
+
+# Skip PyOpenGL's glGetError round-trip after every call. Must be set before
+# OpenGL.GL is imported — the wrappers are built at import time.
+OpenGL.ERROR_CHECKING = False
+
 from OpenGL.GL import (
     # Constants
     GL_ARRAY_BUFFER,
