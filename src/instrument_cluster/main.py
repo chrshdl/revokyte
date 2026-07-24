@@ -8,9 +8,9 @@ from .config import Config, ConfigManager
 from .core.plugin_system.plugin_manager import PluginManager
 from .core.system.wifi_manager import WifiManager
 from .core.vehicle.vehicle_bus import VehicleBus
+from .extensions import runtime as extensions
 from .logger import Logger
 from .peripherals.display import Display
-from .extensions import runtime as extensions
 from .signals.signal_pipeline import SignalPipeline
 from .states.gate import entry_state
 from .states.state_manager import StateManager
@@ -103,7 +103,7 @@ def run(conf: Config) -> None:
         clock = pygame.time.Clock()
 
         while state_manager.is_running:
-            dt = clock.tick(60) / 1000
+            dt = clock.tick() / 1000
 
             vehicle_bus.tick(dt)
             vehicle_bus.merge_signals(extensions.update_signals())
