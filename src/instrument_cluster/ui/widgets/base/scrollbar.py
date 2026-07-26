@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import math
+
 import pygame
 
 from ....peripherals.display import active_profile
 from ...colors import Color
 from ...constants import SCREEN_WIDTH
 from ...utils import su, sx, sy
+
+# Gesture id for mouse-driven content drags; finger ids are ints, so a
+# sentinel object can never collide with one.
+_MOUSE_GESTURE = object()
 
 
 class Scrollbar:
@@ -34,12 +40,23 @@ class Scrollbar:
     MIN_THUMB_HEIGHT = 32
     TRACK_HIT_PAD = 20  # extra hit-test margin around the visual track
 
-    RUBBER_BAND_RESISTANCE = 5.0
+    RUBBER_BAND_RESISTANCE = 10.0
     FRICTION_DECAY = 3.5  # 1/s — higher stops momentum sooner
-    SPRING_STIFFNESS = 120  # 90.0  # 1/s^2 — pulls an out-of-bounds offset back
-    SPRING_DAMPING = 18.0  # 1/s
+    # Slightly underdamped pair: settles an out-of-bounds offset in ~400 ms
+    # (~half of the previous 120/18 tuning) with sub-pixel overshoot. Note
+    # the discrete integrator (vel *= 1 - damping*dt at 60 fps) makes large
+    # damping values crawl — don't raise damping without re-simulating.
+    SPRING_STIFFNESS = 300  # 1/s^2 — pulls an out-of-bounds offset back
+    SPRING_DAMPING = 22.0  # 1/s
     DRAG_THRESHOLD = 12  # design-px finger movement before a tap becomes a drag
     VELOCITY_EPSILON = 2.0  # design-px/s below which momentum is considered stopped
+    # With snapping enabled: once free momentum decays below this, the spring
+    # takes over and glides to the nearest snap point (design-px/s).
+    SNAP_VELOCITY = 250.0
+    # Release velocity cap (design-px/s). Touch timestamps can degenerate
+    # (two motion events in the same tick), producing absurd flings that
+    # ricochet between the bounds before the spring can catch them.
+    MAX_FLING_VELOCITY = 3000.0
 
     def __init__(
         self,
@@ -49,6 +66,7 @@ class Scrollbar:
         track_color=(15, 30, 60),
         thumb_color=None,
         track_margin_bottom: float = 0.0,
+        snap_interval: float = 0.0,
     ):
         self.viewport_top = viewport_top
         self.viewport_height = viewport_height
@@ -60,15 +78,25 @@ class Scrollbar:
         # Lets the track keep the same breathing room from the screen bottom
         # as viewport_top gives it from the chrome above.
         self.track_margin_bottom = track_margin_bottom
+        # > 0: after a release the offset comes to rest on a multiple of this
+        # (design px, typically the row pitch) so no row is left half-cut.
+        # The bounds always win over a snap point.
+        self.snap_interval = snap_interval
 
         self.offset = 0.0
         self._velocity = 0.0
+        # Latched snap destination for the current glide. Chosen ONCE when
+        # the spring phase engages — recomputing per frame would combine
+        # with the direction bias into an escalator (each crossed boundary
+        # re-targets the next one, and the spring chases it to the end).
+        self._snap_goal: float | None = None
 
         # thumb-drag: dragging the visible track/thumb directly
         self._thumb_dragging = False
         self._thumb_finger_id = None
 
-        # content-drag: tap-vs-drag disambiguated gesture over the row content
+        # content-drag: tap-vs-drag disambiguated gesture over the row
+        # content, driven by touch or mouse alike
         self._gesture_id = None
         self._gesture_start: tuple[float, float] | None = None
         self._gesture_dragging = False
@@ -120,29 +148,86 @@ class Scrollbar:
         return raw_offset
 
     # ------------------------------------------------------------------
-    # physics: momentum decay + spring-back, advanced once per frame
+    # physics: momentum decay + snap/spring-back, advanced once per frame
     # ------------------------------------------------------------------
+    def _snap_target(self) -> float | None:
+        """Snap point in the direction of travel, so a gliding list is never
+        pulled backwards; on a dead stop, the nearest one. The list end is a
+        rest point too, but it must not override the travel direction — only
+        the dead-stop case weighs it against the nearest multiple. None when
+        snapping is off."""
+        if self.snap_interval <= 0:
+            return None
+        q = self.offset / self.snap_interval
+        if self._velocity > self.VELOCITY_EPSILON:
+            # Heading for the end: past the last multiple, the end itself.
+            return min(math.ceil(q) * self.snap_interval, self.max_offset)
+        if self._velocity < -self.VELOCITY_EPSILON:
+            return max(math.floor(q) * self.snap_interval, 0.0)
+        target = max(0.0, min(self.max_offset, round(q) * self.snap_interval))
+        if abs(self.max_offset - self.offset) < abs(target - self.offset):
+            target = self.max_offset
+        return target
+
     def update(self, dt: float) -> None:
         if self._thumb_dragging or self._gesture_dragging or dt <= 0:
             return
-        if self._velocity == 0.0 and 0.0 <= self.offset <= self.max_offset:
-            return
 
         out_of_bounds = self.offset < 0 or self.offset > self.max_offset
+        target = None
         if out_of_bounds:
+            self._snap_goal = None
             target = 0.0 if self.offset < 0 else self.max_offset
-            accel = (target - self.offset) * self.SPRING_STIFFNESS
-            self._velocity += accel * dt
-            self._velocity *= max(0.0, 1 - self.SPRING_DAMPING * dt)
+        elif abs(self._velocity) < self.SNAP_VELOCITY:
+            if self._snap_goal is None:
+                self._snap_goal = self._snap_target()
+            target = self._snap_goal
         else:
+            self._snap_goal = None
+
+        if target is None:
+            # Free momentum: friction decay only.
+            if self._velocity == 0.0:
+                return
             self._velocity *= max(0.0, 1 - self.FRICTION_DECAY * dt)
             if abs(self._velocity) < self.VELOCITY_EPSILON:
                 self._velocity = 0.0
+            before = self.offset
+            self.offset += self._velocity * dt
+            # Momentum hitting a bound gets the same rubber-band absorption
+            # as a finger overpull — otherwise a hard flick shoots far past
+            # the end at full speed and rebounds a whole row back inward.
+            if self.offset > self.max_offset and before <= self.max_offset:
+                over = self.offset - self.max_offset
+                self.offset = self.max_offset + self._rubber_band(over)
+                self._velocity /= self.RUBBER_BAND_RESISTANCE
+            elif self.offset < 0.0 and before >= 0.0:
+                self.offset = self._rubber_band(self.offset)
+                self._velocity /= self.RUBBER_BAND_RESISTANCE
+            if self._velocity == 0.0:
+                self.offset = max(0.0, min(self.max_offset, self.offset))
+            return
 
+        if (
+            abs(self.offset - target) < 0.5
+            and abs(self._velocity) < self.VELOCITY_EPSILON
+        ):
+            self.offset = target
+            self._velocity = 0.0
+            self._snap_goal = None
+            return
+
+        accel = (target - self.offset) * self.SPRING_STIFFNESS
+        self._velocity += accel * dt
+        self._velocity *= max(0.0, 1 - self.SPRING_DAMPING * dt)
+        before = self.offset
         self.offset += self._velocity * dt
-
-        if not out_of_bounds and self._velocity == 0.0:
-            self.offset = max(0.0, min(self.max_offset, self.offset))
+        if out_of_bounds and (before - target) * (self.offset - target) <= 0:
+            # The rubber-band return reached the bound: capture it dead
+            # instead of letting residual speed bounce into the content.
+            self.offset = target
+            self._velocity = 0.0
+            self._snap_goal = None
 
     # ------------------------------------------------------------------
     # gesture handling
@@ -162,17 +247,21 @@ class Scrollbar:
             return False
 
         if event.type in (pygame.FINGERDOWN, pygame.MOUSEBUTTONDOWN):
+            if self._is_touch_synthesized_mouse(event):
+                # The real FINGER* stream drives the gesture; acting on the
+                # mouse events SDL synthesizes from it would double-start.
+                return False
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button != 1:
+                return False
             pos = active_profile().to_logical(event)
             if pos is None:
                 return False
             if self._track_hit_rect().collidepoint(pos):
                 self._begin_thumb_drag(event, pos)
                 return True
-            if event.type == pygame.FINGERDOWN and self.viewport_rect().collidepoint(
-                pos
-            ):
+            if self.viewport_rect().collidepoint(pos):
                 rows.handle_event(event)
-                self._gesture_id = event.finger_id
+                self._gesture_id = self._gesture_event_id(event)
                 self._gesture_start = pos
                 self._gesture_dragging = False
                 return True
@@ -190,6 +279,7 @@ class Scrollbar:
         self._thumb_dragging = True
         self._thumb_finger_id = getattr(event, "finger_id", 0)
         self._velocity = 0.0
+        self._snap_goal = None
         self._scrub_thumb_to(pos[1])
 
     def _scrub_thumb_to(self, y: float) -> None:
@@ -213,15 +303,27 @@ class Scrollbar:
             return True
         return False
 
+    @staticmethod
+    def _is_touch_synthesized_mouse(event) -> bool:
+        return getattr(event, "touch", False)
+
+    @staticmethod
+    def _gesture_event_id(event):
+        return getattr(event, "finger_id", _MOUSE_GESTURE)
+
     def _continue_content_drag(self, event, rows) -> bool:
-        if event.type != pygame.FINGERMOTION and event.type != pygame.FINGERUP:
+        is_motion = event.type in (pygame.FINGERMOTION, pygame.MOUSEMOTION)
+        is_release = event.type in (pygame.FINGERUP, pygame.MOUSEBUTTONUP)
+        if not (is_motion or is_release):
             return False
-        if event.finger_id != self._gesture_id:
+        if self._is_touch_synthesized_mouse(event):
+            return False
+        if self._gesture_event_id(event) != self._gesture_id:
             return False
 
         pos = active_profile().to_logical(event)
 
-        if event.type == pygame.FINGERMOTION:
+        if is_motion:
             if pos is None:
                 return True
             now = pygame.time.get_ticks() / 1000.0
@@ -230,13 +332,18 @@ class Scrollbar:
                 dy = pos[1] - self._gesture_start[1]
                 if max(abs(dx), abs(dy)) > su(self.DRAG_THRESHOLD):
                     self._gesture_dragging = True
+                    self._snap_goal = None
                     self._gesture_base_offset = self.offset
                     self._last_touch_y = pos[1]
                     self._last_touch_t = now
                     self._cancel_press(rows)
             if self._gesture_dragging:
                 dt = max(1e-3, now - self._last_touch_t)
-                self._velocity = -(pos[1] - self._last_touch_y) / dt
+                raw_velocity = -(pos[1] - self._last_touch_y) / dt
+                self._velocity = max(
+                    -self.MAX_FLING_VELOCITY,
+                    min(self.MAX_FLING_VELOCITY, raw_velocity),
+                )
                 self._last_touch_y = pos[1]
                 self._last_touch_t = now
 
@@ -244,7 +351,7 @@ class Scrollbar:
                 self.offset = self._clamp_elastic(self._gesture_base_offset + delta)
             return True
 
-        # FINGERUP
+        # release (FINGERUP / MOUSEBUTTONUP)
         if not self._gesture_dragging:
             rows.handle_event(event)  # confirmed tap: deliver the release
         self._gesture_id = None
@@ -253,17 +360,23 @@ class Scrollbar:
         return True
 
     def _cancel_press(self, rows) -> None:
-        """Send an out-of-bounds FINGERUP so any pressed row widget resets."""
-        cancel = pygame.event.Event(
-            pygame.FINGERUP,
-            finger_id=self._gesture_id,
-            touch_id=0,
-            x=-1.0,
-            y=-1.0,
-            dx=0.0,
-            dy=0.0,
-            pressure=0.0,
-        )
+        """Send an out-of-bounds release so any pressed row widget resets,
+        matching the modality that pressed it (Button tracks pointer ids)."""
+        if self._gesture_id is _MOUSE_GESTURE:
+            cancel = pygame.event.Event(
+                pygame.MOUSEBUTTONUP, pos=(-1, -1), button=1, touch=False
+            )
+        else:
+            cancel = pygame.event.Event(
+                pygame.FINGERUP,
+                finger_id=self._gesture_id,
+                touch_id=0,
+                x=-1.0,
+                y=-1.0,
+                dx=0.0,
+                dy=0.0,
+                pressure=0.0,
+            )
         rows.handle_event(cancel)
 
     # ------------------------------------------------------------------
