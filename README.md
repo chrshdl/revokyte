@@ -53,7 +53,7 @@ It runs on a Raspberry Pi 4 or 5 with a 720×1280 touch display — or as a [des
 
 ## Desktop app (Windows / macOS)
 
-Grab the latest build from [Releases](https://github.com/chrshdl/revokyte/releases): `Revokyte-<version>-windows-x64.exe` on Windows, or `Revokyte-<version>-macos-arm64.zip` (unzip → `Revokyte.app`) on Apple Silicon Macs.
+Grab the latest build from [Releases](https://github.com/chrshdl/revokyte/releases): `Revokyte-<version>-windows-x64.exe` on Windows, `Revokyte-<version>-macos-arm64.zip` (unzip → `Revokyte.app`) on Apple Silicon Macs, or `Revokyte-<version>-linux-x86_64.tar.gz` on Linux (`tar xzf`, then run `./Revokyte`; needs a glibc at least as new as the latest Ubuntu LTS).
 
 The builds are **unsigned**, so the first launch needs one extra click:
 

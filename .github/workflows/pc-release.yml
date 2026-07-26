@@ -28,6 +28,11 @@ jobs:
           - os: macos-latest
             suffix: macos-arm64
             ext: zip
+          # The binary requires the build image's glibc or newer; for an
+          # arm64 build add an ubuntu-*-arm entry with suffix linux-arm64.
+          - os: ubuntu-latest
+            suffix: linux-x86_64
+            ext: tar.gz
 
     runs-on: ${{ matrix.os }}
 
@@ -109,6 +114,12 @@ jobs:
       - name: Package (Windows)
         if: runner.os == 'Windows'
         run: Copy-Item dist/Revokyte.exe "dist/$env:ARTIFACT.exe"
+
+      # A tarball rather than the bare ELF: it survives the trip through
+      # GitHub with its executable bit intact.
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: tar -C dist -czf "dist/$ARTIFACT.tar.gz" Revokyte
 
       # Desktop sibling of the OS image's legal-info bundle: the binaries
       # aggregate GPL/LGPL/MIT/BSD components (this GPL app, LGPL pygame with
