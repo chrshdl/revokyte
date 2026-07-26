@@ -23,10 +23,12 @@ jobs:
           - os: windows-latest
             suffix: windows-x64
             ext: exe
-          # Apple Silicon. For an Intel build, add a macos-*-intel (or
-          # macos-13) entry with suffix macos-x86_64.
           - os: macos-latest
             suffix: macos-arm64
+            ext: zip
+          # Intel Macs; GitHub keeps this image supported through 2027.
+          - os: macos-15-intel
+            suffix: macos-x86_64
             ext: zip
           # The binary requires the build image's glibc or newer; for an
           # arm64 build add an ubuntu-*-arm entry with suffix linux-arm64.
