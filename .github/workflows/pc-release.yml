@@ -9,6 +9,11 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 
+# The default workflow token is read-only; attaching binaries to the tag's
+# release (which the bump-os flow may have already created) needs write.
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
