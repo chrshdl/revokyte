@@ -52,6 +52,10 @@ a = Analysis(
 
 pyz = PYZ(a.pure)
 
+# App icons rendered from .github/logo.svg — see icons/icon-square.svg for
+# the padded source and the regeneration commands.
+_ICONS = os.path.join(SPECPATH, "icons")
+
 exe = EXE(
     pyz,
     a.scripts,
@@ -62,13 +66,14 @@ exe = EXE(
     strip=False,
     upx=False,
     console=False,
+    icon=os.path.join(_ICONS, "Revokyte.ico") if sys.platform == "win32" else None,
 )
 
 if sys.platform == "darwin":
     app = BUNDLE(
         exe,
         name="Revokyte.app",
-        icon=None,
+        icon=os.path.join(_ICONS, "Revokyte.icns"),
         bundle_identifier="io.github.chrshdl.revokyte",
         info_plist={
             "NSHighResolutionCapable": True,
