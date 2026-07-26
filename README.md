@@ -58,7 +58,7 @@ Grab the latest build from [Releases](https://github.com/chrshdl/revokyte/releas
 The builds are **unsigned**, so the first launch needs one extra click:
 
 - **Windows** — SmartScreen shows *"Windows protected your PC"*: click **More info → Run anyway**. The first time you connect to a console, allow the app through the Windows Firewall prompt (it receives UDP telemetry from your PS5).
-- **macOS** — Gatekeeper blocks a double-click: **right-click the app → Open → Open** (needed once).
+- **macOS** — Gatekeeper shows *"Apple could not verify Revokyte is free of malware"*: click **Done** (not Move to Bin!), then open **System Settings → Privacy & Security**, scroll down to the Revokyte message and click **Open Anyway** (needed once). Terminal alternative: `xattr -dr com.apple.quarantine ~/Downloads/Revokyte.app`. On macOS 14 and older, right-click → Open works instead.
 
 Half the sim-racing tool ecosystem ships this way; the source these builds come from is right here.
 
