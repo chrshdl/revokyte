@@ -15,8 +15,10 @@ Supported panels:
   The logical surface is rotated 270 deg onto the panel via the GPU renderer.
 * **Waveshare 7" DSI** – 1024 x 600 landscape panel. The logical surface is
   scaled to fill the panel (no rotation).
-* **Dev** – a 1280 x 720 desktop window used during development; logical and
-  physical resolutions are identical so no scaling is required.
+* **Dev** – a resizable desktop window (also the PC app). The window opens at
+  1280 x 720 and pygame's SCALED mode stretches the logical surface to
+  whatever size the user drags it to (aspect preserved, input mapped back
+  automatically).
 """
 
 from __future__ import annotations
@@ -60,6 +62,9 @@ class DisplayProfile:
     rotation: int = 0  # degrees the logical surface is rotated for presentation
     renderer: str = "software"  # "gpu" | "software"
     logical_size: Tuple[int, int] = LOGICAL_SIZE
+    # Desktop windows only: let the user resize the window, with pygame's
+    # SCALED mode stretching the logical surface to fit.
+    resizable: bool = False
 
     @property
     def logical_width(self) -> int:
@@ -130,6 +135,7 @@ _PROFILES = {
         physical_size=LOGICAL_SIZE,
         rotation=0,
         renderer="software",
+        resizable=True,
     ),
 }
 
@@ -278,7 +284,10 @@ class Display:
             self.surface = pygame.Surface(profile.logical_size)
         elif profile.physical_size == profile.logical_size:
             # Software path, no scaling: the window *is* the logical surface.
-            self.surface = pygame.display.set_mode(profile.physical_size)
+            if profile.resizable:
+                self.surface = self._resizable_window(profile)
+            else:
+                self.surface = pygame.display.set_mode(profile.physical_size)
         else:
             # Software path with scaling: render off-screen, scale on present.
             self._screen = pygame.display.set_mode(profile.physical_size)
@@ -292,6 +301,28 @@ class Display:
             f"physical={profile.physical_size} rotation={profile.rotation} "
             f"renderer={profile.renderer}"
         )
+
+    @staticmethod
+    def _resizable_window(profile: DisplayProfile) -> pygame.Surface:
+        """Open a resizable desktop window at the logical resolution.
+
+        SCALED keeps the returned surface at the logical size while pygame
+        stretches it to the actual window (aspect preserved) and maps mouse
+        input back into logical coordinates — so callers never see the
+        window size. vsync paces the otherwise-uncapped main loop; both are
+        best-effort because some drivers (e.g. the dummy driver in tests)
+        support neither.
+        """
+        flags = pygame.SCALED | pygame.RESIZABLE
+        try:
+            return pygame.display.set_mode(profile.physical_size, flags, vsync=1)
+        except pygame.error:
+            pass
+        try:
+            return pygame.display.set_mode(profile.physical_size, flags)
+        except pygame.error:
+            logger.warning("Resizable window unavailable; using a fixed window.")
+            return pygame.display.set_mode(profile.physical_size)
 
     def close(self) -> None:
         """Clear this display's process-wide registration (call on teardown)."""

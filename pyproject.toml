@@ -19,6 +19,14 @@ dependencies = [
     "pyopengl>=3.1.10",
 ]
 
+[project.optional-dependencies]
+# Desktop (PC) build: read GT7 in-process instead of via the installed proxy.
+# Note: the PyPI project named "granturismo" is an unrelated package — this
+# must stay a git reference to chrshdl/granturismo.
+pc = [
+    "granturismo @ git+https://github.com/chrshdl/granturismo@v0.3.16",
+]
+
 [project.scripts]
 instrument-cluster = "instrument_cluster.main:main"
 
@@ -36,7 +44,10 @@ instrument_cluster = ["assets/**/*", "db/cars.json", "db/tracks.json", "db/NOTIC
 
 [dependency-groups]
 dev = [
+    # Same pin as the "pc" extra, so dev machines can run direct GT7 mode.
+    "granturismo @ git+https://github.com/chrshdl/granturismo@v0.3.16",
     "matplotlib>=3.11.0",
     "pytest>=9.0.1",
     "pytest-cov>=7.0.0",
+    "snakeviz>=2.2.2",
 ]

@@ -225,3 +225,29 @@ def test_flush_times_out_while_a_write_is_stuck(config_path, gated_write):
 
     release.set()
     assert ConfigManager.flush(timeout=2) is True
+
+
+# --- Direct telemetry mode ---
+
+
+def test_direct_mode_with_host_is_kept(config_path):
+    cfg = _load(
+        config_path,
+        {"telemetry_mode": "direct", "direct_host": "192.168.1.50"},
+    )
+    assert cfg.telemetry_mode == TelemetryMode.DIRECT.value
+    assert cfg.direct_host == "192.168.1.50"
+
+
+def test_direct_mode_without_host_demotes_to_demo(config_path):
+    cfg = _load(config_path, {"telemetry_mode": "direct"})
+    assert cfg.telemetry_mode == TelemetryMode.DEMO.value
+
+
+def test_set_direct_host_strips_and_persists(config_path):
+    _load(config_path, {})
+    ConfigManager.set_direct_host("  192.168.1.7  ")
+    assert ConfigManager.flush(timeout=2)
+
+    assert ConfigManager.get_config().direct_host == "192.168.1.7"
+    assert json.loads(config_path.read_text())["direct_host"] == "192.168.1.7"

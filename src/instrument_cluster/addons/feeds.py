@@ -11,7 +11,10 @@ emits ``TelemetryFrame`` NDJSON to ``udp://127.0.0.1:5600``, like granturismo).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable
+from typing import TYPE_CHECKING, Callable, Optional
+
+if TYPE_CHECKING:
+    from ..telemetry.reader_protocol import TelemetryReaderProtocol
 
 # Where every feed re-emits its NDJSON, and where the app's UdpJsonlReader
 # listens. Shared by all feeds — the app is always "read localhost NDJSON".
@@ -44,6 +47,10 @@ class FeedDescriptor:
     env_builder: Callable[[str], str]  # ip -> env-file body for the feed's proxy
     signing_pubkey_b64: str  # base64 raw Ed25519 key; every feed must declare one
     install_name: str = ""  # install subdir name; defaults to id when empty
+    # Desktop builds run a feed in-process instead of installing its proxy:
+    # ip -> TelemetryReaderProtocol. None = the feed only exists as an
+    # installable proxy program (and is not offered on desktop).
+    direct_reader: Optional[Callable[[str], "TelemetryReaderProtocol"]] = None
 
     @property
     def install_dir(self) -> str:
@@ -56,6 +63,14 @@ class FeedDescriptor:
 
 def _granturismo_env(ip: str) -> str:
     return f"GT_PS_IP={ip}\nGT_JSONL_OUTPUT={JSONL_OUTPUT}\n"
+
+
+def _granturismo_direct_reader(ip: str) -> "TelemetryReaderProtocol":
+    # Deferred import: granturismo is an optional dependency (the "pc"
+    # extra) that the appliance image doesn't ship.
+    from ..telemetry.gt7_direct import Gt7DirectReader
+
+    return Gt7DirectReader(ip)
 
 
 def _acc_env(ip: str) -> str:
@@ -72,6 +87,7 @@ FEEDS: list[FeedDescriptor] = [
         env_builder=_granturismo_env,
         # Signed with the granturismo repo's Ed25519 release key (GT_SIGNING_KEY secret)
         signing_pubkey_b64=GRANTURISMO_SIGNING_PUBKEY_B64,
+        direct_reader=_granturismo_direct_reader,
     ),
     FeedDescriptor(
         id="acc",
@@ -104,10 +120,15 @@ class TelemetryChoice:
     feed_id: str | None = None
 
 
-def telemetry_choices() -> list[TelemetryChoice]:
-    """Demo plus one entry per registered feed — the dropdown option list."""
+def telemetry_choices(direct_only: bool = False) -> list[TelemetryChoice]:
+    """Demo plus one entry per registered feed — the dropdown option list.
+
+    ``direct_only`` keeps only feeds with an in-process reader: desktop
+    builds have no proxy installer, so proxy-only feeds are not offered.
+    """
+    feeds = [f for f in FEEDS if f.direct_reader is not None] if direct_only else FEEDS
     return [TelemetryChoice("Demo", demo=True)] + [
-        TelemetryChoice(f.label, demo=False, feed_id=f.id) for f in FEEDS
+        TelemetryChoice(f.label, demo=False, feed_id=f.id) for f in feeds
     ]
 
 

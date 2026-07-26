@@ -60,3 +60,19 @@ def test_current_choice_udp_unknown_feed_falls_back_to_first_feed():
     chosen = current_choice(choices, "udp", "")
     assert not chosen.demo
     assert chosen.feed_id == FEEDS[0].id
+
+
+# --- Direct (in-process) readers ---
+
+
+def test_gt7_supports_direct_reading_acc_does_not():
+    assert feed_by_id("granturismo").direct_reader is not None
+    assert feed_by_id("acc").direct_reader is None
+
+
+def test_direct_only_choices_hide_proxy_only_feeds():
+    choices = telemetry_choices(direct_only=True)
+    assert choices[0].demo is True
+    feed_ids = [c.feed_id for c in choices if not c.demo]
+    assert "granturismo" in feed_ids
+    assert "acc" not in feed_ids

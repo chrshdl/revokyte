@@ -24,22 +24,45 @@ class SignalPipeline:
         self._last_mode = TelemetryMode(cfg.telemetry_mode)
 
         self.track = TrackSignal()
+        # DIRECT is live telemetry like UDP, just read in-process — it gets
+        # the real signal processors, not the demo ones.
         self._delta_map: dict = {
             TelemetryMode.DEMO: DemoDeltaSignal(),
             TelemetryMode.UDP: DeltaSignal(),
+            TelemetryMode.DIRECT: DeltaSignal(),
         }
         self.delta = self._delta_map[self._last_mode]
         self._fuel_map: dict = {
             TelemetryMode.DEMO: DemoFuelSignal(),
             TelemetryMode.UDP: FuelSignal(),
+            TelemetryMode.DIRECT: FuelSignal(),
         }
         self.fuel = self._fuel_map[self._last_mode]
         self.telemetry = TelemetrySource(
             mode=self._last_mode,
             host=cfg.udp_host,
             port=cfg.udp_port,
+            direct_reader_factory=self._make_direct_reader,
         )
+        self._last_direct_host = cfg.direct_host
         self._active = False
+
+    @staticmethod
+    def _make_direct_reader():
+        """Build the in-process reader for the configured feed (desktop
+        DIRECT mode). Reads live config so a rebuilt reader picks up the
+        current feed selection and console address."""
+        from ..addons.feeds import feed_by_id
+
+        cfg = ConfigManager.get_config()
+        descriptor = feed_by_id(cfg.telemetry_feed)
+        if descriptor is None or descriptor.direct_reader is None:
+            raise RuntimeError(
+                f"feed {cfg.telemetry_feed!r} has no in-process reader"
+            )
+        if not cfg.direct_host:
+            raise RuntimeError("no console IP configured for direct telemetry")
+        return descriptor.direct_reader(cfg.direct_host)
 
     def start(self) -> None:
         self.telemetry.start()
@@ -55,12 +78,21 @@ class SignalPipeline:
         cfg = ConfigManager.get_config()
         desired = TelemetryMode(cfg.telemetry_mode)
         if desired == self._last_mode:
+            # Same mode, but the direct reader's console address changed
+            # (user re-entered an IP): rebuild the reader against it.
+            if (
+                desired == TelemetryMode.DIRECT
+                and cfg.direct_host != self._last_direct_host
+            ):
+                self._last_direct_host = cfg.direct_host
+                self.telemetry.refresh_direct()
             return
         try:
             self.telemetry.switch_mode(desired)
             self.delta = self._delta_map[desired]
             self.fuel = self._fuel_map[desired]
             self._last_mode = desired
+            self._last_direct_host = cfg.direct_host
             self.logger.info(f"Telemetry mode switched to {desired.name}")
         except Exception as e:
             self.logger.error(f"Failed to switch telemetry mode: {e}")

@@ -3,9 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..config import ConfigManager
+from ..peripherals.display import is_raspberry_pi
 from ..states.install_state import InstallState
 from ..states.setup_state import SetupState
 from ..states.state import State
+from ..telemetry.mode import TelemetryMode
 from ..ui.events import (
     BUTTON_BACK_RELEASED,
     ENTER_IP_DEL_BUTTON_RELEASED,
@@ -82,6 +84,22 @@ class EnterIPState(State):
 
         if not self.is_valid_ipv4(ip):
             # Optional: Tell view to show error state?
+            return True
+
+        if (
+            self.descriptor is not None
+            and self.descriptor.direct_reader is not None
+            and not is_raspberry_pi()
+        ):
+            # Desktop: there is no proxy to install — the feed is read
+            # in-process. Config the mode and hand back to the dashboard,
+            # whose on_resume applies it (same hand-off as
+            # InstallState._finalize_success on the appliance).
+            ConfigManager.set_telemetry_mode(TelemetryMode.DIRECT, persist=False)
+            ConfigManager.set_telemetry_feed(self.descriptor.id, persist=False)
+            ConfigManager.set_direct_host(ip, persist=False)
+            ConfigManager.last_connected(ip)
+            self.state_manager.pop_state()
             return True
 
         self.state_manager.change_state(

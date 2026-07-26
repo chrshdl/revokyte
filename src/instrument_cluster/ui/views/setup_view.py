@@ -5,6 +5,7 @@ from pygame.sprite import LayeredDirty
 from ...addons.feeds import current_choice, telemetry_choices
 from ...config import ConfigManager
 from ...extensions import runtime as extensions
+from ...peripherals.display import is_raspberry_pi
 from ...telemetry.mode import DiffReferenceMode
 from ...ui.colors import Color
 from ...ui.constants import (
@@ -221,7 +222,9 @@ class SetupView(View):
         self.horizontal_line = Line()
 
         config = ConfigManager.get_config()
-        telemetry_options = telemetry_choices()
+        # Desktop builds have no proxy installer, so only feeds that can be
+        # read in-process (plus Demo) are offered off the appliance.
+        telemetry_options = telemetry_choices(direct_only=not is_raspberry_pi())
         self.telemetry_mode_dropdown = self._row_dropdown(
             options=telemetry_options,
             selected=current_choice(

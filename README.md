@@ -10,19 +10,34 @@
 
 </div>
 
-Revokyte is an embedded sim racing instrument cluster built with Python and pygame that is designed for readability and reliability while racing. It receives live telemetry from Gran Turismo 7 or Assetto Corsa Competizione over UDP and renders a real-time dashboard at 60 fps.
+## Why
+
+Sim racing is at its best in the moments you forget it's a simulation. Nothing breaks that spell faster than instruments you can't trust — numbers you have to squint at, a delta that flickers, a dashboard that stutters exactly when the lap is on the line.
+
+We believe every sim racer deserves what a real driver has: instruments worth betting a corner on. A dash you read in a half-second glance at full speed, that tells the truth, every lap. And we believe that experience should be **yours** — no account, no subscription, no data leaving your room. Open hardware, open source, owned outright.
+
+## How
+
+We build the way race engineers build, not the way app developers build:
+
+- **Readable at speed.** Every gauge is designed for the half-second glance: big, high-contrast, following professional motorsport dashboard conventions — green when ahead, red when behind, trend dashes showing magnitude.
+- **Stable by design.** A real-time 60 fps loop that never pauses for menus, and a sample-and-hold filter with hysteresis so the delta digits hold still long enough to actually read.
+- **Honest about data.** Track identification never guesses — it shows `---` until the evidence is conclusive. Gauges a game can't feed simply stay dark instead of pretending.
+- **Owned, not rented.** Fully offline, GPL-licensed, running on a Raspberry Pi you bought once. The core is game-agnostic, so no single title — and no vendor — can hold your dashboard hostage.
+
+## What
+
+The result is an embedded sim racing instrument cluster, built with Python and pygame. It receives live telemetry from Gran Turismo 7 or Assetto Corsa Competizione over UDP and renders a real-time dashboard at 60 fps.
 
 Support for each game comes from a small, separately-released _feed program_ that reads the game's telemetry and re-emits it as NDJSON to the cluster (GT7 via the [granturismo](https://github.com/chrshdl/granturismo) proxy; ACC via its native Broadcasting API). You pick a game in the settings and the device installs the matching feed — the cluster itself stays game-agnostic. ACC's Broadcasting API doesn't expose engine RPM, tyre temperatures, or fuel, so those gauges are inactive in ACC mode.
 
-It runs on a Raspberry Pi 4 or 5 with a 720×1280 touch display, or on your desktop machine in demo mode.
+It runs on a Raspberry Pi 4 or 5 with a 720×1280 touch display — or as a [desktop app](#desktop-app-windows--macos) on Windows and macOS, where GT7 telemetry is read straight from the console with no extra programs.
 
 <div align="center">
 
 [![INSTRUMENT CLUSTER IN ACTION](.github/screenshots/dashboard_pi_display2_1280x720.png)](https://www.youtube.com/watch?v=VLkjhCFHSfc)
 
 </div>
-
-## Features
 
 **Telemetry & gauges**
 
@@ -36,7 +51,18 @@ It runs on a Raspberry Pi 4 or 5 with a 720×1280 touch display, or on your desk
 - Best, previous, and predicted lap times
 - Automatic track identification from GT7 position data (ACC reports the track name directly)
 
-The delta widget follows professional motorsport dashboard conventions: green when ahead, red when behind, with trend dashes showing magnitude. A sample-and-hold filter plus hysteresis keeps the digits stable.
+## Desktop app (Windows / macOS)
+
+Grab the latest build from [Releases](https://github.com/chrshdl/revokyte/releases): `Revokyte-windows-x64.exe` on Windows, or `Revokyte-macos-arm64.zip` (unzip → `Revokyte.app`) on Apple Silicon Macs.
+
+The builds are **unsigned**, so the first launch needs one extra click:
+
+- **Windows** — SmartScreen shows *"Windows protected your PC"*: click **More info → Run anyway**. The first time you connect to a console, allow the app through the Windows Firewall prompt (it receives UDP telemetry from your PS5).
+- **macOS** — Gatekeeper blocks a double-click: **right-click the app → Open → Open** (needed once).
+
+Half the sim-racing tool ecosystem ships this way; the source these builds come from is right here.
+
+The app starts in demo mode. For live telemetry, tap **Setup**, choose **Gran Turismo 7**, and enter your PlayStation's IP — the app then decrypts the console's telemetry stream in-process; unlike the appliance there is no feed program to install. The window is resizable (the dash scales to fit, aspect preserved).
 
 ## Quick start
 
@@ -50,7 +76,7 @@ uv sync
 python -m instrument_cluster
 ```
 
-This launches in **demo mode**, replaying a recorded session — no PlayStation required. To use live telemetry, switch to UDP mode and point it at your console's IP from the settings UI (or `ConfigManager.set_telemetry_mode()`).
+This launches in **demo mode**, replaying a recorded session — no PlayStation required. For live telemetry, pick **Gran Turismo 7** in the settings UI and enter your console's IP (dev machines behave like the desktop app: the stream is read in-process via [granturismo](https://github.com/chrshdl/granturismo), installed by `uv sync`). On the appliance the same menu instead installs the game's feed program and listens for its NDJSON in UDP mode.
 
 Configuration lives at `~/.config/instrument-cluster/config.json` (override with the `IC_CONFIG_PATH` environment variable).
 
@@ -115,10 +141,10 @@ flowchart LR
 
 How the pieces fit together:
 
-- **`TelemetrySource`** wraps the active reader — `DemoReader` (replays a recorded session) or `UdpJsonlReader` (NDJSON on `127.0.0.1:5600`). The UDP reader is game-agnostic: it consumes whatever feed program is installed (`src/instrument_cluster/addons/feeds.py` lists them — the [granturismo](https://github.com/chrshdl/granturismo) proxy for GT7, an ACC Broadcasting feed for ACC), each of which emits the same `TelemetryFrame` schema. Readers run on a background thread; the loop pulls the newest frame each tick.
+- **`TelemetrySource`** wraps the active reader — `DemoReader` (replays a recorded session), `UdpJsonlReader` (NDJSON on `127.0.0.1:5600`), or, on desktop, a feed's in-process reader (`Gt7DirectReader` runs the granturismo `Feed` on a background thread and maps each packet to a `TelemetryFrame` — the proxy's data path without the separate process). The UDP reader is game-agnostic: it consumes whatever feed program is installed (`src/instrument_cluster/addons/feeds.py` lists them — the [granturismo](https://github.com/chrshdl/granturismo) proxy for GT7, an ACC Broadcasting feed for ACC), each of which emits the same `TelemetryFrame` schema. Readers run on a background thread; the loop pulls the newest frame each tick.
 - **Signal processors** (`signals/`) enrich the frame before the UI sees it. `TrackSignal`, `DeltaSignal`, and `TelemetrySource` are bundled in `SignalPipeline`, which runs in the main loop alongside the health monitor — so telemetry processing continues uninterrupted even when settings menus are open. Each processor returns a dict merged into `VehicleBus.signals`.
 - **`StateManager`** maintains a *stack* of UI states (dashboard, setup, IP entry, …). Pushing a state pauses the one below; popping resumes it. Rendering uses dirty-rect updates.
-- **`Display`** presents the fixed 1280×720 logical surface to the physical panel — GPU-rotated 270° on the Raspberry Pi Display 2, scaled on the Waveshare 7″, or 1:1 in the dev window.
+- **`Display`** presents the fixed 1280×720 logical surface to the physical panel — GPU-rotated 270° on the Raspberry Pi Display 2, scaled on the Waveshare 7″, or stretched into the resizable desktop window (pygame `SCALED`, aspect preserved).
 
 ### Adding another game
 

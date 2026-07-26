@@ -53,6 +53,10 @@ class Config:
     # is "udp". The app never branches on its value.
     telemetry_feed: str = field(default="")
     diff_reference_mode: str = field(default=DiffReferenceMode.FASTEST.value)
+    # Console/game-PC IP the in-process reader connects to when
+    # telemetry_mode is "direct" (desktop builds; the appliance runs the
+    # installed proxy program instead).
+    direct_host: str = field(default="")
     recent_connected: list[str] = field(default_factory=list)
     udp_host: str = field(default="127.0.0.1")
     udp_port: int = field(default=5600)
@@ -110,6 +114,14 @@ class Config:
         if self.telemetry_mode not in valid_telemetry_modes:
             LOGGER.warning(
                 "Invalid telemetry_mode %r — defaulting to demo.", self.telemetry_mode
+            )
+            self.telemetry_mode = TelemetryMode.DEMO.value
+
+        self.direct_host = str(self.direct_host or "")
+        if self.telemetry_mode == TelemetryMode.DIRECT.value and not self.direct_host:
+            LOGGER.warning(
+                "telemetry_mode is direct but no direct_host is set — "
+                "defaulting to demo."
             )
             self.telemetry_mode = TelemetryMode.DEMO.value
 
@@ -172,6 +184,13 @@ class ConfigManager:
     def set_telemetry_feed(cls, feed_id: str, persist: bool = True) -> None:
         cfg = cls.get_config()
         cfg.telemetry_feed = str(feed_id)
+        if persist:
+            cls.persist()
+
+    @classmethod
+    def set_direct_host(cls, host: str, persist: bool = True) -> None:
+        cfg = cls.get_config()
+        cfg.direct_host = str(host).strip()
         if persist:
             cls.persist()
 

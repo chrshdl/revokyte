@@ -36,6 +36,8 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+# ...but our desktop-build spec is hand-written and versioned.
+!packaging/pyinstaller/Revokyte.spec
 
 # Installer logs
 pip-log.txt
