@@ -1,10 +1,9 @@
 import math
 from enum import Enum, auto
-from typing import Union
 
 RGB = tuple[int, int, int]
 RGBA = tuple[int, int, int, int]
-ColorValues = Union[RGB, RGBA]
+ColorValues = RGB | RGBA
 
 
 class Color(Enum):

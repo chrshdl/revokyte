@@ -11,7 +11,7 @@ emits ``TelemetryFrame`` NDJSON to ``udp://127.0.0.1:5600``, like granturismo).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
     from ..telemetry.reader_protocol import TelemetryReaderProtocol
@@ -50,7 +50,7 @@ class FeedDescriptor:
     # Desktop builds run a feed in-process instead of installing its proxy:
     # ip -> TelemetryReaderProtocol. None = the feed only exists as an
     # installable proxy program (and is not offered on desktop).
-    direct_reader: Optional[Callable[[str], "TelemetryReaderProtocol"]] = None
+    direct_reader: Callable[[str], "TelemetryReaderProtocol"] | None = None
 
     @property
     def install_dir(self) -> str:

@@ -9,7 +9,6 @@ import tempfile
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from .artifact_verify import flatten_extract, sha256_file, verify_signature
 from .feeds import ACTIVE_LINK, FeedDescriptor
@@ -21,12 +20,12 @@ __all__ = ["InstallResult", "install_from_url", "resolve_latest_tarball_url",
 
 ENV_FILE = Path("/data/etc/instrument-cluster-proxy")
 WRAPPER_NAME = "proxy-wrapper.py"
-SYSTEMCTL: Optional[str] = shutil.which("systemctl")
+SYSTEMCTL: str | None = shutil.which("systemctl")
 
 ASSET_SUFFIX = ".tar.gz"
 
 
-def resolve_latest_tarball_url(descriptor: FeedDescriptor) -> Optional[str]:
+def resolve_latest_tarball_url(descriptor: FeedDescriptor) -> str | None:
     """Return the download URL of the feed's latest self-contained tarball.
 
     We always install the *latest* published release rather than a hardcoded
@@ -65,7 +64,7 @@ class InstallResult:
     message: str = ""
 
 
-def fetch_expected_sha256(sidecar_url: str) -> Optional[str]:
+def fetch_expected_sha256(sidecar_url: str) -> str | None:
     """Fetch the ``.sha256`` sidecar and return the bare hex digest, or None.
 
     The sidecar is in ``sha256sum`` format (``<hash>  <filename>``); a bare
@@ -79,7 +78,7 @@ def fetch_expected_sha256(sidecar_url: str) -> Optional[str]:
     return text.split()[0] if text else None
 
 
-def fetch_signature(sig_url: str) -> Optional[bytes]:
+def fetch_signature(sig_url: str) -> bytes | None:
     """Fetch the detached ``.sig`` sidecar (raw Ed25519 signature), or None."""
     try:
         with urllib.request.urlopen(sig_url, timeout=30) as response:
@@ -92,7 +91,7 @@ def install_from_url(
     url: str,
     descriptor: FeedDescriptor,
     ip: str,
-    sha256: Optional[str] = None,
+    sha256: str | None = None,
 ) -> InstallResult:
     if not ip:
         return InstallResult(False, "IP address missing")

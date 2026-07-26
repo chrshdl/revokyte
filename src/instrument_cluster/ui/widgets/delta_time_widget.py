@@ -1,5 +1,4 @@
 import math
-from typing import Optional
 
 import pygame
 
@@ -111,7 +110,7 @@ class DeltaTimeWidget(Widget):
             self._last_value_str = ""
             self._last_rendered_value = None
 
-    def set_value(self, value: Optional[float] = None):
+    def set_value(self, value: float | None = None):
         # Optimization: If value is effectively unchanged, skip logic. The
         # display only resolves centiseconds (`05.2f`) and the segment tracker
         # snaps to 0.1 s, so an absolute tolerance of half a centisecond skips
@@ -139,7 +138,7 @@ class DeltaTimeWidget(Widget):
             self.dirty = 1
             self._last_rendered_value = value
 
-    def _format_delta(self, value: Optional[float]):
+    def _format_delta(self, value: float | None):
         if value is None or not math.isfinite(value):
             return "", self.text_color
 

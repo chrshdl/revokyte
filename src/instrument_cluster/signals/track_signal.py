@@ -1,7 +1,7 @@
 import json
 import math
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 from ..telemetry.models import TelemetryFrame
 from ..ui.widgets.track_name_widget import TrackNameWidget
@@ -150,7 +150,7 @@ class TrackSignal:
     deterministically.
     """
 
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: Path | None = None):
         self.db_path = db_path or _BUNDLED_DB
         self._db: Dict = self._load_tracks()
 
@@ -164,34 +164,34 @@ class TrackSignal:
         # The active track, identified from the gate database. Once set we
         # hold the lock until a track/replay load clears it, so the readout
         # doesn't flicker.
-        self._current_track_id: Optional[str] = None
+        self._current_track_id: str | None = None
         self._locked: bool = False
 
         # Previous frame's position: source of the path segment used for
         # crossing detection.
-        self._prev_x: Optional[float] = None
-        self._prev_z: Optional[float] = None
+        self._prev_x: float | None = None
+        self._prev_z: float | None = None
 
         # Lap bookkeeping. _prev_lap persists across pending resets; a
         # decrease means a session restart and clears identification state.
-        self._prev_lap: Optional[int] = None
+        self._prev_lap: int | None = None
         self._frame_no: int = 0
 
         # Gate-sharing sibling group awaiting resolution (None = no pending
         # hypothesis). While set, the placeholder is published.
-        self._pending: Optional[List[str]] = None
+        self._pending: List[str] | None = None
 
         # Observed-position bounding box [min_x, max_x, min_z, max_z] since
         # the last lap tick; _obs_full marks that the window started at the
         # start/finish line (an anchored tick), i.e. that by the next tick it
         # spans one complete lap and is valid evidence for the box fit.
-        self._obs: Optional[List[float]] = None
+        self._obs: List[float] | None = None
         self._obs_full: bool = False
 
         # Tick/crossing pairing state: recent crossings (frame_no, ids) and
         # an unpaired tick's (frame_no, obs-snapshot) awaiting its crossing.
         self._recent_crossings: List[Tuple[int, List[str]]] = []
-        self._pending_tick: Optional[Tuple[int, Tuple[Optional[List[float]], bool]]] = (
+        self._pending_tick: Tuple[int, Tuple[List[float] | None, bool]] | None = (
             None
         )
 
@@ -276,8 +276,8 @@ class TrackSignal:
             self._grow_obs(x, z)
 
         # --- 2. anchor crossings with the lap counter ---
-        anchor: Optional[List[str]] = None
-        anchor_obs: Tuple[Optional[List[float]], bool] = (None, False)
+        anchor: List[str] | None = None
+        anchor_obs: Tuple[List[float] | None, bool] = (None, False)
         if lap is None:
             # No lap data in this mode: a crossing must anchor on its own.
             if crossed:
@@ -342,8 +342,8 @@ class TrackSignal:
     def _resolve(
         self,
         anchor: List[str],
-        anchor_obs: Tuple[Optional[List[float]], bool],
-    ) -> Optional[str]:
+        anchor_obs: Tuple[List[float] | None, bool],
+    ) -> str | None:
         """Turn an anchored line crossing into a lock, a pending hypothesis,
         or nothing (a foreign layout's line). Returns the track id to lock."""
         if self._pending is not None:

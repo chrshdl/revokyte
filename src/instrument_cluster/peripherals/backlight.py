@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 SYSFS_BACKLIGHT_ROOT = Path("/sys/class/backlight")
 
@@ -14,7 +13,7 @@ class Backlight:
     """
 
     def __init__(self) -> None:
-        self._brightness_path: Optional[Path] = None
+        self._brightness_path: Path | None = None
         self._max_brightness: int = 100
         self._available: bool = False
 

@@ -4,7 +4,6 @@ import threading
 from dataclasses import asdict, dataclass, field, fields
 from json import JSONDecodeError
 from pathlib import Path
-from typing import Optional
 
 from .logger import Logger
 from .telemetry.mode import DiffReferenceMode, TelemetryMode
@@ -145,17 +144,17 @@ class ConfigManager:
             Path.home() / ".config" / "instrument-cluster" / "config.json",
         )
     )
-    _config: Optional[Config] = None
+    _config: Config | None = None
     # Guards the handoff state below. All runtime disk writes go through a
     # single long-lived "config-writer" thread: persist() publishes the
     # latest snapshot into _pending, the writer drains it.
     _cond = threading.Condition()
-    _pending: Optional[tuple[dict, Path]] = None
+    _pending: tuple[dict, Path] | None = None
     _writing = False
-    _writer: Optional[threading.Thread] = None
+    _writer: threading.Thread | None = None
     # Last state known synced to disk, as (path, dict) — lets the writer
     # skip no-op writes so callers can persist() unconditionally.
-    _last_written: Optional[tuple[Path, dict]] = None
+    _last_written: tuple[Path, dict] | None = None
 
     @classmethod
     def set_path(cls, path: Path) -> None:
@@ -292,7 +291,7 @@ class ConfigManager:
                 LOGGER.exception("Config writer loop error")
 
     @classmethod
-    def flush(cls, timeout: Optional[float] = None) -> bool:
+    def flush(cls, timeout: float | None = None) -> bool:
         """Block until every persist() issued before this call has drained
         (written to disk, or skipped as a no-op). Persists issued while
         waiting are not chased. Returns False only if ``timeout`` (seconds)

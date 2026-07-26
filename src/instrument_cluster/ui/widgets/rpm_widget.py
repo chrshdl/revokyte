@@ -121,7 +121,7 @@ class RpmWidget(Widget):
         """
         Show RPM in thousands (9000 -> 9, 10250 -> 10, etc.).
         """
-        return int(round(value * 0.001))
+        return round(value * 0.001)
 
     def _compute_value_area(self) -> pygame.Rect:
         """

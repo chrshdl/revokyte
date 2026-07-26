@@ -23,7 +23,7 @@ import socket
 import threading
 import time
 from collections import deque
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 # Disable audio before pygame import
 os.environ["SDL_AUDIODRIVER"] = "dummy"
@@ -48,8 +48,8 @@ class HeadingTracker:
         self.min_step_m = min_step_m
         self.heading_rad = 0.0
         self.has_heading = False
-        self.prev_x: Optional[float] = None
-        self.prev_z: Optional[float] = None
+        self.prev_x: float | None = None
+        self.prev_z: float | None = None
 
     def update(self, x: float, z: float) -> float:
         """Updates internal state and returns the smoothed heading."""
@@ -96,7 +96,7 @@ class ViewportTransformer:
 
     def world_to_screen_overview(
         self, x: float, z: float, bounds: Tuple[float, float, float, float]
-    ) -> Optional[Tuple[int, int]]:
+    ) -> Tuple[int, int] | None:
         """Maps world coordinates to fit the entire track within the viewport."""
         minx, maxx, minz, maxz = bounds
         dx = maxx - minx
@@ -164,11 +164,11 @@ class DebugReceiver:
         self.host = host
         self.port = port
         self._running = False
-        self._thread: Optional[threading.Thread] = None
-        self._sock: Optional[socket.socket] = None
-        self._latest_state: Optional[Dict[str, Any]] = None
+        self._thread: threading.Thread | None = None
+        self._sock: socket.socket | None = None
+        self._latest_state: Dict[str, Any] | None = None
         self._packets_received = 0
-        self._last_packet_time: Optional[float] = None
+        self._last_packet_time: float | None = None
         self._lock = threading.Lock()
 
     def start(self) -> None:
@@ -215,7 +215,7 @@ class DebugReceiver:
         except Exception:
             pass
 
-    def get_debug_state(self) -> Optional[Dict[str, Any]]:
+    def get_debug_state(self) -> Dict[str, Any] | None:
         with self._lock:
             return self._latest_state
 
@@ -248,7 +248,7 @@ class MockCalculator:
         self._xs = a * np.cos(t)
         self._zs = b * np.sin(t)
 
-    def get_debug_state(self) -> Optional[Dict[str, Any]]:
+    def get_debug_state(self) -> Dict[str, Any] | None:
         num_pts = len(self._xs)
         t_norm = (self._time % self._lap_time_sec) / self._lap_time_sec
         idx = int(t_norm * num_pts) % num_pts
@@ -361,13 +361,13 @@ class DeltaViewer:
 
         # State
         self._trail: deque = deque(maxlen=trail_len)
-        self._cam_x: Optional[float] = None
-        self._cam_z: Optional[float] = None
+        self._cam_x: float | None = None
+        self._cam_z: float | None = None
 
         # Cache
         self._ref_version_seen: int = -1
-        self._static_track: Optional[pygame.Surface] = None
-        self._world_bounds: Optional[Tuple[float, float, float, float]] = None
+        self._static_track: pygame.Surface | None = None
+        self._world_bounds: Tuple[float, float, float, float] | None = None
         self._ref_pts_world: List[Tuple[float, float]] = []
 
         # Font
@@ -380,7 +380,7 @@ class DeltaViewer:
     def zoom_out(self):
         self.zoom = max(0.2, self.zoom / 1.2)
 
-    def update(self, dt: float) -> Optional[Dict[str, Any]]:
+    def update(self, dt: float) -> Dict[str, Any] | None:
         """Fetch latest state and update internal state. Returns debug state."""
         dbg = self.source.get_debug_state()
         if dbg is None:
@@ -441,7 +441,7 @@ class DeltaViewer:
             self._cam_x, self._cam_z = qx, qz
             self._trail.append((qx, qz))
 
-    def _project_point(self, x: float, z: float) -> Optional[Tuple[int, int]]:
+    def _project_point(self, x: float, z: float) -> Tuple[int, int] | None:
         if self.follow_car and self._cam_x is not None:
             return self.transformer.world_to_screen_follow(
                 x,
@@ -457,7 +457,7 @@ class DeltaViewer:
             return self.transformer.world_to_screen_overview(x, z, self._world_bounds)
         return None
 
-    def render(self, surface: pygame.Surface, dbg: Optional[Dict[str, Any]]):
+    def render(self, surface: pygame.Surface, dbg: Dict[str, Any] | None):
         """Render the scene to the given surface."""
         surface.fill(self.BLACK)
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Literal
 
 import pygame
 
@@ -29,14 +29,14 @@ class Toggle(AbstractButton):
         rect,
         events: ButtonEvents,
         checked: bool = False,
-        event_data: Optional[dict] = None,
+        event_data: dict | None = None,
         *,
         pill_align: Literal["left", "center", "right"] = "right",
         pill_pad: int = 20,
         on_color: tuple[int, int, int] = Color.BLUE.rgb(),
         off_color: tuple[int, int, int] = Color.DROPDOWN_LIGHT_GREY.rgb(),
         knob_color: tuple[int, int, int] = Color.WHITE.rgb(),
-        pressed_bg_color: Optional[tuple[int, int, int]] = Color.DARKER_GREY.rgb(),
+        pressed_bg_color: tuple[int, int, int] | None = Color.DARKER_GREY.rgb(),
     ):
         super().__init__(rect, events, event_data)
         self._checked = bool(checked)

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import Callable, Optional
+from typing import Callable
 
 from ..logger import Logger
 from .models import Bounds, Flags, TelemetryFrame, Vector, Wheel, Wheels
@@ -99,15 +99,15 @@ class Gt7DirectReader:
     def __init__(
         self,
         ps_ip: str,
-        feed_factory: Optional[Callable[[str], object]] = None,
+        feed_factory: Callable[[str], object] | None = None,
     ):
         self.logger = Logger(__class__.__name__).get()
         self._ps_ip = ps_ip
         self._feed_factory = feed_factory
         self._feed = None
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._running = False
-        self._latest: Optional[TelemetryFrame] = None
+        self._latest: TelemetryFrame | None = None
         self._dropped = 0
         self._last_drop_log = 0.0
 
@@ -168,7 +168,7 @@ class Gt7DirectReader:
                         f"packet(s) so far; last error: {e}"
                     )
 
-    def latest(self) -> Optional[TelemetryFrame]:
+    def latest(self) -> TelemetryFrame | None:
         return self._latest
 
     def stop(self) -> None:

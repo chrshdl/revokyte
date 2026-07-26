@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable
 
 import pygame
 from pygame.sprite import DirtySprite, LayeredDirty
@@ -196,9 +196,9 @@ class Dropdown(Button):
 
         self.open = False
         self._menu_layer = int(menu_layer)
-        self._group: Optional[LayeredDirty] = None
+        self._group: LayeredDirty | None = None
         self._menu_sprites: list[_DropdownOption] = []
-        self._scrim: Optional[DirtySprite] = None
+        self._scrim: DirtySprite | None = None
         self._base_layer: int | None = None
         self._open_header_layer: int = Dropdown.DROPDOWN_HEADER_OPEN_LAYER
 

@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Callable
 
 from ..logger import Logger
 from .mode import TelemetryMode
@@ -32,9 +32,7 @@ class TelemetrySource:
         mode: TelemetryMode | str | None = None,
         host: str = "127.0.0.1",
         port: int = 5600,
-        direct_reader_factory: Optional[
-            Callable[[], TelemetryReaderProtocol]
-        ] = None,
+        direct_reader_factory: Callable[[], TelemetryReaderProtocol] | None = None,
     ):
         if mode is None:
             mode = TelemetryMode.DEMO

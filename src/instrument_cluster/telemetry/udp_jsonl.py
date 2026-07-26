@@ -4,7 +4,7 @@ import threading
 import time
 from bisect import bisect_right
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Tuple
 
 from ..logger import Logger
 from ..telemetry.models import TelemetryFrame
@@ -20,8 +20,8 @@ class UdpJsonlReader:
         self.logger = Logger(__class__.__name__).get()
         self.addr: Tuple[str, int] = (host, port)
         self.bufsize = bufsize
-        self._sock: Optional[socket.socket] = None
-        self._thread: Optional[threading.Thread] = None
+        self._sock: socket.socket | None = None
+        self._thread: threading.Thread | None = None
         self._running = False
         self._latest: TelemetryFrame = TelemetryFrame()
         self._dropped = 0

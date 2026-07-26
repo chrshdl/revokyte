@@ -24,7 +24,7 @@ Supported panels:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Tuple
 
 import pygame
 
@@ -78,7 +78,7 @@ class DisplayProfile:
     def uses_hardware_renderer(self) -> bool:
         return self.renderer == "gpu"
 
-    def to_logical(self, event: pygame.event.Event) -> Optional[Tuple[int, int]]:
+    def to_logical(self, event: pygame.event.Event) -> Tuple[int, int] | None:
         """Map a mouse/touch event into logical (1280x720) coordinates.
 
         Touch events arrive normalized to ``[0, 1]`` over the physical panel;
@@ -154,8 +154,8 @@ class _DisplayState:
     """
 
     def __init__(self) -> None:
-        self.profile: Optional[DisplayProfile] = None
-        self.display: Optional["Display"] = None
+        self.profile: DisplayProfile | None = None
+        self.display: "Display" | None = None
 
 
 _state = _DisplayState()
@@ -180,7 +180,7 @@ def scale_uniform() -> float:
     return min(sx, sy)
 
 
-def active_display() -> Optional["Display"]:
+def active_display() -> "Display" | None:
     """Return the active Display, or None if the app isn't running."""
     return _state.display
 
@@ -202,7 +202,7 @@ def is_raspberry_pi_display_2() -> bool:
     return active_profile().name == RPI_DISPLAY_2
 
 
-def _detect_physical_size() -> Optional[Tuple[int, int]]:
+def _detect_physical_size() -> Tuple[int, int] | None:
     """Best-effort native panel resolution (requires pygame to be initialized)."""
     try:
         info = pygame.display.Info()
@@ -214,14 +214,14 @@ def _detect_physical_size() -> Optional[Tuple[int, int]]:
     return (w, h)
 
 
-def _match_by_resolution(size: Tuple[int, int]) -> Optional[DisplayProfile]:
+def _match_by_resolution(size: Tuple[int, int]) -> DisplayProfile | None:
     for profile in (_PROFILES[RPI_DISPLAY_2], _PROFILES[WAVESHARE_7]):
         if profile.physical_size == size:
             return profile
     return None
 
 
-def _resolve_profile(configured: Optional[str] = None) -> DisplayProfile:
+def _resolve_profile(configured: str | None = None) -> DisplayProfile:
     """Resolve which display profile to use.
 
     Resolution order:
@@ -265,11 +265,11 @@ class Display:
     surface) and then call :meth:`present` to push it to the panel.
     """
 
-    def __init__(self, configured: Optional[str] = None):
+    def __init__(self, configured: str | None = None):
         profile = _resolve_profile(configured)
         self.profile = profile
         self._gpu_renderer = None
-        self._scaled: Optional[pygame.Surface] = None
+        self._scaled: pygame.Surface | None = None
 
         if profile.uses_hardware_renderer:
             # GPU path: render into an off-screen logical surface; the renderer

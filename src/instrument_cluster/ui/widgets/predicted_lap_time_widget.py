@@ -1,4 +1,3 @@
-from typing import Optional
 
 from ...core.vehicle.vehicle_bus import VehicleBus
 from ...signals.signal_keys import SignalKey
@@ -42,7 +41,7 @@ class PredictedLapTimeWidget(Widget):
         self.visible = 1
         self.dirty = 2
 
-    def set_value(self, time: Optional[float] = None):
+    def set_value(self, time: float | None = None):
         time_str = self.format_mm_ss_hh(time) if time is not None else ""
 
         if time_str != self._last_value_str:

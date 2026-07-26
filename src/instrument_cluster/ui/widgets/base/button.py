@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Literal, Optional, Tuple
+from typing import Literal, Tuple
 
 import pygame
 from pygame.sprite import DirtySprite
@@ -38,7 +38,7 @@ class AbstractButton(DirtySprite):
         self,
         rect,
         events: ButtonEvents,
-        event_data: Optional[dict] = None,
+        event_data: dict | None = None,
         enabled: bool = True,
     ):
         super().__init__()
@@ -52,7 +52,7 @@ class AbstractButton(DirtySprite):
         # - None: no active press
         # - 0: mouse
         # - finger_id (int): touch finger id
-        self._active_pointer: Optional[int] = None
+        self._active_pointer: int | None = None
 
         self._pressed_time = 0.0
         self._long_fired = False
@@ -95,7 +95,7 @@ class AbstractButton(DirtySprite):
         return surf.get_size() if surf else (0, 0)
 
     @staticmethod
-    def _event_xy(event) -> Optional[tuple[int, int]]:
+    def _event_xy(event) -> tuple[int, int] | None:
         """
         Universal input scaler. Maps any mouse/touch input into the app's
         logical (1280x720) resolution using the active display profile, which
@@ -106,7 +106,7 @@ class AbstractButton(DirtySprite):
         return active_profile().to_logical(event)
 
     @staticmethod
-    def _pointer_id(event) -> Optional[int]:
+    def _pointer_id(event) -> int | None:
         """Map a pygame mouse/touch event to a pointer id."""
 
         if event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP):
@@ -255,30 +255,28 @@ class Button(AbstractButton):
         rect,
         text: str,
         events: ButtonEvents | None = None,
-        event_data: Optional[dict] = None,
+        event_data: dict | None = None,
         show_border: bool = True,
-        font: Optional[pygame.font.Font] = None,
-        text_color: Optional[tuple[int, int, int]] = None,
-        antialias: Optional[bool] = None,
+        font: pygame.font.Font | None = None,
+        text_color: tuple[int, int, int] | None = None,
+        antialias: bool | None = None,
         enabled: bool = True,
         *,
-        icon: Optional[str] = None,
-        icon_size: Optional[int] = 32,
-        icon_font: Optional[pygame.font.Font] = None,
-        icon_color: Optional[tuple[int, int, int]] = None,
+        icon: str | None = None,
+        icon_size: int | None = 32,
+        icon_font: pygame.font.Font | None = None,
+        icon_color: tuple[int, int, int] | None = None,
         icon_position: Literal["left", "right", "top", "bottom", "center"] = "left",
         icon_gap: int = 8,
         icon_offset_y: int = 0,
         text_visible: bool = True,
-        text_position: Optional[Literal["left", "right", "top", "bottom"]] = None,
-        text_gap: Optional[int] = None,
+        text_position: Literal["left", "right", "top", "bottom"] | None = None,
+        text_gap: int | None = None,
         content_align: Literal["center", "left", "right", "top", "bottom"] = "center",
         padding: Tuple[int, int, int, int] | Tuple[int, int] | int = 0,
-        icon_cell_width: Optional[int] = None,
-        bg_color: Optional[tuple[int, int, int]] = None,
-        pressed_gradient: Optional[
-            tuple[tuple[int, int, int], tuple[int, int, int]]
-        ] = (Color.DARK_BLUE.rgb(), Color.BLACK.rgb()),
+        icon_cell_width: int | None = None,
+        bg_color: tuple[int, int, int] | None = None,
+        pressed_gradient: tuple[tuple[int, int, int], tuple[int, int, int]] | None = (Color.DARK_BLUE.rgb(), Color.BLACK.rgb()),
         gradient_dir: Literal["vertical", "horizontal"] = "vertical",
         border_top_left_radius=None,
         border_top_right_radius=None,
@@ -331,19 +329,19 @@ class Button(AbstractButton):
 
         # ---- caches ----------------------------------------------------
         self._grad_cache_key = None
-        self._grad_cache_surf: Optional[pygame.Surface] = None
+        self._grad_cache_surf: pygame.Surface | None = None
 
         self._text_cache_key = None
-        self._text_surf: Optional[pygame.Surface] = None
+        self._text_surf: pygame.Surface | None = None
 
         self._icon_cache_key = None
-        self._icon_surf: Optional[pygame.Surface] = None
+        self._icon_surf: pygame.Surface | None = None
 
         self._layout_cache_key = None
         self._layout_cache = (None, None)  # (icon_pos, text_pos)
 
         self._compose_cache_key = None
-        self._compose_cache_surf: Optional[pygame.Surface] = None
+        self._compose_cache_surf: pygame.Surface | None = None
 
         self._last_size = self.rect.size
 
@@ -418,7 +416,7 @@ class Button(AbstractButton):
             self._invalidate_layout_and_composite()
         return self._text_surf
 
-    def _ensure_icon_surface(self) -> Optional[pygame.Surface]:
+    def _ensure_icon_surface(self) -> pygame.Surface | None:
         if not self.icon:
             if self._icon_cache_key is not None:
                 self._icon_cache_key = None
@@ -481,9 +479,9 @@ class Button(AbstractButton):
 
     def _ensure_layout(
         self,
-        text_surf: Optional[pygame.Surface],
-        icon_surf: Optional[pygame.Surface],
-    ) -> tuple[Optional[tuple[int, int]], Optional[tuple[int, int]]]:
+        text_surf: pygame.Surface | None,
+        icon_surf: pygame.Surface | None,
+    ) -> tuple[tuple[int, int] | None, tuple[int, int] | None]:
         """Compute (and cache) local positions (top-left) for icon/text."""
 
         w, h = self.rect.size
@@ -513,8 +511,8 @@ class Button(AbstractButton):
         if key == self._layout_cache_key:
             return self._layout_cache
 
-        icon_pos: Optional[tuple[int, int]] = None
-        text_pos: Optional[tuple[int, int]] = None
+        icon_pos: tuple[int, int] | None = None
+        text_pos: tuple[int, int] | None = None
 
         # --- Text-only -------------------------------------------------
         if icon_surf is None:
@@ -640,10 +638,10 @@ class Button(AbstractButton):
 
     def _ensure_composed(
         self,
-        text_surf: Optional[pygame.Surface],
-        icon_surf: Optional[pygame.Surface],
-        icon_pos: Optional[tuple[int, int]],
-        text_pos: Optional[tuple[int, int]],
+        text_surf: pygame.Surface | None,
+        icon_surf: pygame.Surface | None,
+        icon_pos: tuple[int, int] | None,
+        text_pos: tuple[int, int] | None,
     ) -> pygame.Surface:
         w, h = self.rect.size
         border_color = self._compute_border_color()

@@ -12,7 +12,7 @@ import json
 import socket
 import threading
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import numpy as np
 
@@ -47,12 +47,12 @@ class DebugSender:
         self.interval = interval
 
         self._running = False
-        self._thread: Optional[threading.Thread] = None
-        self._sock: Optional[socket.socket] = None
+        self._thread: threading.Thread | None = None
+        self._sock: socket.socket | None = None
 
         # Stats
         self._packets_sent = 0
-        self._last_error: Optional[str] = None
+        self._last_error: str | None = None
 
     def start(self) -> None:
         """Start the debug sender background thread."""
@@ -118,7 +118,7 @@ class DebugSender:
         except Exception as e:
             self._last_error = str(e)
 
-    def _serialize_debug_state(self, state: Dict[str, Any]) -> Optional[bytes]:
+    def _serialize_debug_state(self, state: Dict[str, Any]) -> bytes | None:
         """
         Serialize debug state to JSON bytes, converting numpy arrays to lists.
 
