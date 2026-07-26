@@ -46,6 +46,25 @@ class SignalPipeline:
         )
         self._last_direct_host = cfg.direct_host
         self._active = False
+        # Set by a source switch; consumed by the next update(), which is
+        # where the bus is in hand (main loop).
+        self._pending_reset = False
+
+    def _begin_session(self, mode: TelemetryMode) -> None:
+        """Fresh enrichment state for a new telemetry source/session.
+
+        A different source (or a different console at the same mode) is a
+        different session: the live processors and the track lock restart
+        from scratch, and the next update() clears the bus so the old
+        source's last values never linger on the gauges.
+        """
+        if mode != TelemetryMode.DEMO:
+            self._delta_map[mode] = DeltaSignal()
+            self._fuel_map[mode] = FuelSignal()
+        self.track = TrackSignal()
+        self.delta = self._delta_map[mode]
+        self.fuel = self._fuel_map[mode]
+        self._pending_reset = True
 
     @staticmethod
     def _make_direct_reader():
@@ -86,11 +105,11 @@ class SignalPipeline:
             ):
                 self._last_direct_host = cfg.direct_host
                 self.telemetry.refresh_direct()
+                self._begin_session(desired)
             return
         try:
             self.telemetry.switch_mode(desired)
-            self.delta = self._delta_map[desired]
-            self.fuel = self._fuel_map[desired]
+            self._begin_session(desired)
             self._last_mode = desired
             self._last_direct_host = cfg.direct_host
             self.logger.info(f"Telemetry mode switched to {desired.name}")
@@ -100,6 +119,10 @@ class SignalPipeline:
     def update(self, bus, dt: float) -> None:
         if not self._active:
             return
+
+        if self._pending_reset:
+            self._pending_reset = False
+            bus.reset_telemetry()
 
         try:
             raw = self.telemetry.latest()

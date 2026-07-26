@@ -34,6 +34,18 @@ class VehicleBus:
         with self._frame_lock:
             self.frame = new_frame
 
+    def reset_telemetry(self) -> None:
+        """Return telemetry state to boot defaults (telemetry source
+        switch): a default frame and no computed signals, so every gauge
+        shows its placeholder until the new source delivers. A default
+        frame rather than None — plugins skip updating on a None frame
+        (sdk.py), which would freeze the old source's last render on
+        screen instead of clearing it."""
+        with self._frame_lock:
+            self.frame = TelemetryFrame()
+        with self._signals_lock:
+            self.signals.clear()
+
     def merge_signals(self, updates: dict) -> None:
         with self._signals_lock:
             self.signals.update(updates)
