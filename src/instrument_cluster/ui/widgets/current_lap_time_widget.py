@@ -4,6 +4,11 @@ from ..constants import LAP_DEFAULT_VALUE
 from ..utils import FontFamily
 from ..widgets import Widget
 
+# The lap clock ticks in milliseconds, so its raw value changes on every
+# frame — hundredths at 60 Hz are unreadable anyway, so the *rendered*
+# text refreshes at 10 Hz (the same idea as DeltaSignal's stable display).
+_DISPLAY_REFRESH_S = 0.1
+
 
 class CurrentLapTimeWidget(Widget):
     """
@@ -35,6 +40,8 @@ class CurrentLapTimeWidget(Widget):
             value_color=value_color,
         )
 
+        # Starts elapsed so the first live value paints without delay.
+        self._refresh_elapsed = _DISPLAY_REFRESH_S
         self.set_value(LAP_DEFAULT_VALUE)
         self.visible = 1
 
@@ -54,6 +61,8 @@ class CurrentLapTimeWidget(Widget):
         return f"{m:02d}:{s:02d}.{hh:02d}"
 
     def reset(self) -> None:
+        # Re-arm so the first live value after a reset paints immediately.
+        self._refresh_elapsed = _DISPLAY_REFRESH_S
         self.set_value(LAP_DEFAULT_VALUE)
 
     def update(self, bus: VehicleBus, dt: float):
@@ -68,6 +77,11 @@ class CurrentLapTimeWidget(Widget):
         if frame.current_lap_time is None:
             self.reset()
             return
+
+        self._refresh_elapsed += dt
+        if self._refresh_elapsed < _DISPLAY_REFRESH_S:
+            return
+        self._refresh_elapsed = 0.0
 
         current_lap_time = float(frame.current_lap_time * 1e-3)
         self.set_value(current_lap_time)

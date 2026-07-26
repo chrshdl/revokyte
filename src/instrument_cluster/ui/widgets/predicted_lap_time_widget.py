@@ -41,6 +41,13 @@ class PredictedLapTimeWidget(Widget):
         self.visible = 1
 
     def set_value(self, time: float | None = None):
+        # The input is already rate-limited (delta_diff_stable refreshes at
+        # 200 ms), so skipping unchanged raw values removes the per-frame
+        # formatting entirely.
+        if time == self._last_raw_value and self._last_value_str is not None:
+            return
+        self._last_raw_value = time
+
         time_str = self.format_mm_ss_hh(time) if time is not None else ""
 
         if time_str != self._last_value_str:
