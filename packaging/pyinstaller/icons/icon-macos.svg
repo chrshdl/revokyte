@@ -1,0 +1,20 @@
+<!-- macOS icon artwork per Apple's icon-grid template: a black rounded
+     rect at 824/1024 of the canvas (corner radius 185/1024) with
+     transparent margins, mark centered at ~66% of the shape. Full-bleed
+     artwork gets treated as legacy by macOS 26 and shrunk onto a system
+     plate — the margins are what make the system render it full size.
+     Regenerate (icns only; the .ico uses icon-square.svg):
+       magick -background none -size 1024x1024 icon-macos.svg icon-1024.png
+       mkdir Revokyte.iconset
+       for s in 16 32 128 256 512; do
+         magick icon-1024.png -resize ${s}x${s} Revokyte.iconset/icon_${s}x${s}.png
+         magick icon-1024.png -resize $((s*2))x$((s*2)) Revokyte.iconset/icon_${s}x${s}@2x.png
+       done
+       iconutil -c icns Revokyte.iconset -o Revokyte.icns
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <rect x="12.5" y="12.5" width="103" height="103" rx="23.1" fill="#000000"/>
+  <g transform="translate(39.2 30) scale(0.545)">
+    <path fill="#3dd1d8" fill-rule="evenodd" d="M2.3 3 H89 L76.5 17 H54.3 V80 L12.5 121.7 H7 L2.3 117 Z M18 17 H38.2 V76 L18 96.2 Z"/>
+  </g>
+</svg>
