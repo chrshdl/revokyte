@@ -103,7 +103,7 @@ def run(conf: Config) -> None:
         clock = pygame.time.Clock()
 
         while state_manager.is_running:
-            dt = clock.tick() / 1000
+            dt = clock.tick(60) / 1000
 
             vehicle_bus.tick(dt)
             vehicle_bus.merge_signals(extensions.update_signals())
