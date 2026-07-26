@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List, Tuple
 
 from ..core.vehicle.car_profiler import CarLibrary
 from ..core.vehicle.ecu import ShiftLightController
@@ -27,15 +26,13 @@ class ShiftLights:
         self.colors = [
             Color.GREEN.rgb(),
             Color.GREEN.rgb(),
-            Color.GREEN.rgb(),
-            Color.GREEN.rgb(),
-            # Color.ORANGE.rgb(),
-            # Color.RED.rgb(),
+            Color.ORANGE.rgb(),
+            Color.RED.rgb(),
         ]
 
         # cache to track the current color of every pixel
         # prevents sending data to hardware when nothing has changed
-        self._render_cache: List[Tuple[int, int, int]] = [
+        self._render_cache: list[tuple[int, int, int]] = [
             Color.BLACK.rgb()
         ] * self.ledbar.NUM_PIXELS
 
@@ -56,8 +53,8 @@ class ShiftLights:
 
         if is_alert:
             if any(lights):
-                blue = Color.BLUE.rgb()
-                target_state = [blue] * self.ledbar.NUM_PIXELS
+                red = Color.RED.rgb()
+                target_state = [red] * self.ledbar.NUM_PIXELS
         else:
             on_count = sum(lights) // 2
 

@@ -1,22 +1,23 @@
 from collections import deque
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
 from ...telemetry.models import TelemetryFrame
 
 # EngineModel torque curve shape
-_TORQUE_LOW_BLEND_BASE: float = 0.8    # fraction of max torque at rpm=0
-_TORQUE_LOW_BLEND_SLOPE: float = 0.2   # additional fraction gained linearly to peak-torque rpm
-_OVER_REV_TORQUE_DROP: float = 0.25   # fraction of peak-power torque lost by redline
+_TORQUE_LOW_BLEND_BASE: float = 0.8  # fraction of max torque at rpm=0
+_TORQUE_LOW_BLEND_SLOPE: float = (
+    0.2  # additional fraction gained linearly to peak-torque rpm
+)
+_OVER_REV_TORQUE_DROP: float = 0.25  # fraction of peak-power torque lost by redline
 
 # ShiftLightController gear-scale factors (window width multipliers per gear)
-_GEAR_SCALE_1: float = 1.15   # gear 1 gets more lead time
-_GEAR_SCALE_2: float = 1.05   # gear 2 gets slightly more lead time
+_GEAR_SCALE_1: float = 1.15  # gear 1 gets more lead time
+_GEAR_SCALE_2: float = 1.05  # gear 2 gets slightly more lead time
 _GEAR_SCALE_HIGH: float = 0.90  # gears >= 5 get a tighter window
 
 # Default progressive shift-light activation fractions (fraction of RPM window)
-_DEFAULT_SHIFT_FRACTIONS: List[float] = [0.00, 0.35, 0.60, 0.75]
+_DEFAULT_SHIFT_FRACTIONS: list[float] = [0.00, 0.35, 0.60, 0.75]
 
 # Schmitt-trigger hysteresis to prevent RPM flicker around thresholds
 _HYSTERESIS_RPM: float = 60.0
@@ -59,7 +60,9 @@ class EngineModel:
 
         # if below peak torque do linear ramp up
         if rpm < self.max_torque_rpm:
-            blend = _TORQUE_LOW_BLEND_BASE + _TORQUE_LOW_BLEND_SLOPE * (rpm / self.max_torque_rpm)
+            blend = _TORQUE_LOW_BLEND_BASE + _TORQUE_LOW_BLEND_SLOPE * (
+                rpm / self.max_torque_rpm
+            )
             return self.max_torque_nm * blend
 
         # ensure we are moving from max_torque down to torque_at_power_peak
@@ -84,7 +87,7 @@ class EngineModel:
 
 
 class ShiftPointCalculator:
-    def __init__(self, engine: EngineModel, gear_ratios: List[float]):
+    def __init__(self, engine: EngineModel, gear_ratios: list[float]):
         self.engine = engine
         self.ratios = gear_ratios
         self.optimal_shift_rpms = {}
@@ -152,7 +155,7 @@ class ShiftLightController:
         max_torque_nm=600,
         max_torque_rpm=6500,
         redline_rpm=9000,
-        shiftlight_fractions: Optional[List[float]] = None,
+        shiftlight_fractions: list[float] | None = None,
         filter_window: int = 3,
         target_corridor: float = 1600.0,
     ):
@@ -190,11 +193,11 @@ class ShiftLightController:
         self._last_gear = 0
 
         # cache
-        self._thresholds_by_gear: Dict[int, List[float]] = {}
-        self._shift_rpm_by_gear: Dict[int, float] = {}
+        self._thresholds_by_gear: dict[int, list[float]] = {}
+        self._shift_rpm_by_gear: dict[int, float] = {}
 
     def _clamp(self, x: float, lo: float, hi: float) -> float:
-        return lo if x < lo else hi if x > hi else x
+        return lo if x < lo else min(x, hi)
 
     def _gear_scale(self, gear: int) -> float:
         if gear == 1:
@@ -213,7 +216,7 @@ class ShiftLightController:
         base = self.target_corridor * self._gear_scale(gear)
         return self._clamp(base, self.window_rpm_min, self.window_rpm_max)
 
-    def _compute_thresholds(self, gear: int, shift_rpm: float) -> List[float]:
+    def _compute_thresholds(self, gear: int, shift_rpm: float) -> list[float]:
         window = self._compute_window_rpm(gear)
         start_rpm = shift_rpm - window
         # thresholds are increasing RPM points
@@ -235,7 +238,7 @@ class ShiftLightController:
             self._blink_on = not self._blink_on
         return self._blink_on
 
-    def _update_pair_count(self, rpm: float, thresholds: List[float]) -> int:
+    def _update_pair_count(self, rpm: float, thresholds: list[float]) -> int:
         """
         Schmitt-trigger state machine that maps
         RPM to pair_count with hysteresis.
@@ -257,8 +260,10 @@ class ShiftLightController:
 
     def calculate_lights(
         self, frame: TelemetryFrame, dt: float | None = None
-    ) -> Tuple[List[bool], bool, bool, bool]:
-        dt = _DEFAULT_DT_S if (dt is None or dt <= 0.0) else self._clamp(dt, 0.001, 0.05)
+    ) -> tuple[list[bool], bool, bool, bool]:
+        dt = (
+            _DEFAULT_DT_S if (dt is None or dt <= 0.0) else self._clamp(dt, 0.001, 0.05)
+        )
 
         gear = frame.current_gear
 
@@ -294,9 +299,9 @@ class ShiftLightController:
         # ShiftPointCalculator every single frame.
         if frame.gear_ratios:
             ratios_changed = False
-            if self.last_gear_ratios is None:
-                ratios_changed = True
-            elif len(frame.gear_ratios) != len(self.last_gear_ratios):
+            if self.last_gear_ratios is None or len(frame.gear_ratios) != len(
+                self.last_gear_ratios
+            ):
                 ratios_changed = True
             else:
                 # only update if a ratio differs by more than 0.001
