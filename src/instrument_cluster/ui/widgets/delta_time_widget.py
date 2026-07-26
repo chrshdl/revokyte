@@ -71,7 +71,6 @@ class DeltaTimeWidget(Widget):
 
         self.set_value()
         self.visible = 1
-        self.dirty = 2
 
     def reset(self) -> None:
         """Reset UI state."""

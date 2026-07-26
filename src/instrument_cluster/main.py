@@ -118,6 +118,14 @@ def run(conf: Config) -> None:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     state_manager.is_running = False
+                elif event.type in (
+                    pygame.WINDOWEXPOSED,
+                    pygame.WINDOWRESTORED,
+                    pygame.WINDOWSIZECHANGED,
+                ):
+                    # The OS invalidated our pixels; one-shot dirty sprites
+                    # won't repaint on their own.
+                    state_manager.request_full_paint()
                 window_manager.handle_event(event)
 
             window_manager.update(dt)

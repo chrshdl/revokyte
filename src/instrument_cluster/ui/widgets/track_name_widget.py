@@ -46,7 +46,6 @@ class TrackNameWidget(Widget):
 
         self.set_value(TrackNameWidget._DEFAULT_TRACK_TEXT)
         self.visible = 1
-        self.dirty = 2
 
     def set_value(self, name: str | None = None):
         if name == self._last_raw_value and self._last_value_str is not None:

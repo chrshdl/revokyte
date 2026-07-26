@@ -49,7 +49,6 @@ class FuelLapsWidget(Widget):
         self._last_color = None
         self.set_value(None)
         self.visible = 1
-        self.dirty = 2
 
     def set_value(self, value: float | None):
         if value == self._last_raw_value and self._last_value_str is not None:

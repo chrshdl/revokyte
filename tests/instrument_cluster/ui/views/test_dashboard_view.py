@@ -102,3 +102,42 @@ def test_plugin_layer_draws_between_chrome_and_setup_button(config_path):
     view.full_paint(surface, background)
 
     assert surface.get_at((1, 1))[:3] == (255, 0, 0)
+
+
+def _pixels(surface, rect):
+    return pygame.image.tobytes(surface.subsurface(rect).copy(), "RGB")
+
+
+def test_setup_button_survives_a_background_overwrite(config_path):
+    """One-shot dirty flags must never lose the Setup button.
+
+    The historical failure mode (which the old always-dirty default papered
+    over): a background blit lands after the button's only repaint, and a
+    static sprite then has nothing to ever re-dirty it. The recovery
+    contract is full_paint(), which every screen handover goes through.
+    """
+    _write_config(config_path, status_lights=False)
+    surface = pygame.Surface((1280, 720))
+    background = pygame.Surface((1280, 720))
+    background.fill((0, 0, 0))
+
+    view = DashboardView()
+    btn_rect = view.setup_button.rect
+    bg_bytes = _pixels(background, btn_rect)
+
+    # A fresh view's very first draw paints everything (initial dirty=1,
+    # and LayeredDirty's first draw is a full repaint regardless).
+    view.draw(surface, background)
+    assert _pixels(surface, btn_rect) != bg_bytes
+
+    # Steady state: a second draw consumes any remaining dirty flags.
+    view.draw(surface, background)
+
+    # The race: background overwrites the frame; a plain draw with nothing
+    # dirty leaves the button lost.
+    surface.blit(background, (0, 0))
+    view.draw(surface, background)
+
+    # full_paint re-dirties every sprite and must bring the button back.
+    view.full_paint(surface, background)
+    assert _pixels(surface, btn_rect) != bg_bytes

@@ -100,7 +100,13 @@ class Widget(DirtySprite, ABC):
         self._render_border_and_header()
         self._base_image = self.image.copy()
         self.visible = 1
-        self.dirty = 2
+        # One-shot repaint (LayeredDirty resets it to 0 after drawing), then
+        # repaint only on set_value change. Every screen handover — state
+        # push/pop, overlay disappearing, page slide, window expose/resize —
+        # goes through full_paint()/request_full_paint(), which re-dirties
+        # every sprite, so a static widget can't be lost to a background
+        # overwrite the way the always-dirty era worked around.
+        self.dirty = 1
 
     def _render_border_and_header(self):
         self._fill_background()

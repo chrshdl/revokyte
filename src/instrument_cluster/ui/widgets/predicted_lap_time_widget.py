@@ -39,7 +39,6 @@ class PredictedLapTimeWidget(Widget):
 
         self.set_value(LAP_DEFAULT_VALUE)
         self.visible = 1
-        self.dirty = 2
 
     def set_value(self, time: float | None = None):
         time_str = self.format_mm_ss_hh(time) if time is not None else ""
