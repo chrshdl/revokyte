@@ -55,13 +55,24 @@ jobs:
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "ARTIFACT=Revokyte-$VERSION-${{ matrix.suffix }}" >> "$GITHUB_ENV"
 
+      # A dedicated venv, so the legal-info manifest below reflects exactly
+      # the app's environment — the runner's system python carries pipx &
+      # friends that never end up in the binary. APP_PY is a native
+      # forward-slash path that works in bash and as a subprocess target on
+      # both platforms.
       - name: Install
+        shell: bash
         run: |
-          python -m pip install --upgrade pip
-          pip install ".[pc]" pyinstaller
+          python -m venv appenv
+          BIN="$PWD/appenv/bin"; [ -d "$BIN" ] || BIN="$PWD/appenv/Scripts"
+          APP_PY=$("$BIN/python" -c 'import sys; print(sys.executable.replace("\\", "/"))')
+          "$APP_PY" -m pip install --upgrade pip
+          "$APP_PY" -m pip install ".[pc]" pyinstaller
+          echo "APP_PY=$APP_PY" >> "$GITHUB_ENV"
 
       - name: Build
-        run: pyinstaller --noconfirm packaging/pyinstaller/Revokyte.spec
+        shell: bash
+        run: '"$APP_PY" -m PyInstaller --noconfirm packaging/pyinstaller/Revokyte.spec'
 
       # macOS 26 shrinks legacy .icns icons onto a gray compatibility plate;
       # only the new Icon Composer format (Assets.car + CFBundleIconName)
@@ -109,18 +120,17 @@ jobs:
       - name: Collect legal info (license manifest + texts)
         shell: bash
         run: |
-          PYBIN=$(python -c 'import sys; print(sys.executable)')
           OUT=build/legal-info
           IGNORE="pip setuptools wheel pyinstaller pyinstaller-hooks-contrib altgraph macholib pefile pywin32-ctypes"
           mkdir -p "$OUT/licenses"
-          pipx run pip-licenses --python "$PYBIN" \
+          pipx run pip-licenses --python "$APP_PY" \
             --format=csv --with-urls --ignore-packages $IGNORE \
             > "$OUT/manifest.csv"
-          pipx run pip-licenses --python "$PYBIN" \
+          pipx run pip-licenses --python "$APP_PY" \
             --format=plain-vertical --with-license-file --no-license-path \
             --ignore-packages $IGNORE \
             > "$OUT/licenses/python-packages.txt"
-          python -m pip freeze > "$OUT/requirements-frozen.txt"
+          "$APP_PY" -m pip freeze > "$OUT/requirements-frozen.txt"
           cp LICENSE "$OUT/"
           cp -R LICENSES "$OUT/licenses/app"
           cp src/instrument_cluster/db/NOTICE.md "$OUT/licenses/track-db-NOTICE.md"
