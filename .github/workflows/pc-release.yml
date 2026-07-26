@@ -63,6 +63,34 @@ jobs:
       - name: Build
         run: pyinstaller --noconfirm packaging/pyinstaller/Revokyte.spec
 
+      # macOS 26 shrinks legacy .icns icons onto a gray compatibility plate;
+      # only the new Icon Composer format (Assets.car + CFBundleIconName)
+      # renders full-bleed. Compile the checked-in Revokyte.icon with the
+      # runner's Xcode and inject it next to the legacy icns (which older
+      # macOS keeps using), then re-seal the ad-hoc signature.
+      - name: Liquid Glass icon (macOS 26+)
+        if: runner.os == 'macOS'
+        run: |
+          XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          mkdir -p build/liquid-icon
+          if xcrun actool packaging/pyinstaller/icons/Revokyte.icon \
+              --compile build/liquid-icon \
+              --output-format human-readable-text --notices --warnings --errors \
+              --output-partial-info-plist build/liquid-icon/partial.plist \
+              --app-icon Revokyte --include-all-app-icons \
+              --enable-on-demand-resources NO --development-region en \
+              --target-device mac --minimum-deployment-target 26.0 \
+              --platform macosx; then
+            cp build/liquid-icon/Assets.car dist/Revokyte.app/Contents/Resources/
+            /usr/libexec/PlistBuddy -c "Add :CFBundleIconName string Revokyte" \
+              dist/Revokyte.app/Contents/Info.plist
+            codesign --force --deep -s - dist/Revokyte.app
+            echo "Liquid Glass icon embedded ($XCODE)."
+          else
+            echo "::warning::actool could not compile Revokyte.icon; shipping legacy icns only"
+          fi
+
       - name: Package (macOS)
         if: runner.os == 'macOS'
         run: ditto -c -k --keepParent dist/Revokyte.app "dist/$ARTIFACT.zip"
