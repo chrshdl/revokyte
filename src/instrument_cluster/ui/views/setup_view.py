@@ -267,14 +267,20 @@ class SetupView(View):
         )
         # One ListItem per grid slot, top to bottom. Extensions may
         # contribute extra rows; with none installed the list below
-        # is all there is.
-        row_contents = [
-            ("\ue51e", "Telemetry Mode", self.telemetry_mode_dropdown),
-            ("\ue518", "Brightness", self.brightness_widget),
+        # is all there is. Brightness (panel backlight) and Network
+        # (appliance Wi-Fi setup) only exist on the Pi \u2014 in a desktop
+        # window the OS owns both; the widgets above are still built so
+        # SetupState can address them unconditionally.
+        on_pi = is_raspberry_pi()
+        row_contents = [("\ue51e", "Telemetry Mode", self.telemetry_mode_dropdown)]
+        if on_pi:
+            row_contents.append(("\ue518", "Brightness", self.brightness_widget))
+        row_contents += [
             ("\ue425", "Reference Lap", self.diff_reference_mode_dropdown),
             ("\ue0f0", "Status Lights", self.status_lights_toggle),
-            ("\ue63e", "Network", self.wifi_button),
         ]
+        if on_pi:
+            row_contents.append(("\ue63e", "Network", self.wifi_button))
         for entry in extensions.setup_entries:
             text = (
                 entry.button_text()

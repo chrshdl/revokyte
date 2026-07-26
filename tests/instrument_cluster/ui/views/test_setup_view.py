@@ -12,7 +12,26 @@ from instrument_cluster.ui.widgets.base.list_item import ListItem
 
 
 @pytest.fixture
-def view(tmp_path):
+def view(tmp_path, monkeypatch):
+    """Appliance-layout view: the full row set, including the Pi-only
+    Brightness and Network rows."""
+    monkeypatch.setattr(
+        "instrument_cluster.ui.views.setup_view.is_raspberry_pi", lambda: True
+    )
+    original_path = ConfigManager.path
+    ConfigManager.set_path(tmp_path / "config.json")
+    try:
+        yield SetupView()
+    finally:
+        ConfigManager.set_path(original_path)
+
+
+@pytest.fixture
+def desktop_view(tmp_path, monkeypatch):
+    """Desktop-layout view: no backlight, no appliance Wi-Fi."""
+    monkeypatch.setattr(
+        "instrument_cluster.ui.views.setup_view.is_raspberry_pi", lambda: False
+    )
     original_path = ConfigManager.path
     ConfigManager.set_path(tmp_path / "config.json")
     try:
@@ -164,3 +183,22 @@ def test_all_row_sprites_are_in_the_rows_layer(view):
     for row in view.rows:
         for sprite in row.sprites():
             assert sprite in layer_sprites
+
+
+def test_desktop_view_hides_appliance_only_rows(desktop_view):
+    assert len(desktop_view.rows.rows) == 3
+    texts = {
+        s.text
+        for s in desktop_view.rows_layer.sprites()
+        if hasattr(s, "text") and isinstance(s.text, str)
+    }
+    assert "Brightness" not in texts
+    assert "Network" not in texts
+    assert {"Telemetry Mode", "Reference Lap", "Status Lights"} <= texts
+
+
+def test_desktop_set_brightness_text_is_harmless(desktop_view):
+    # SetupState.enter calls this unconditionally; with the row hidden it
+    # must not raise.
+    desktop_view.set_brightness_text(70)
+    assert desktop_view.brightness_widget.percent_label.text == "70 %"
