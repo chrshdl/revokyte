@@ -99,10 +99,62 @@ jobs:
         if: runner.os == 'Windows'
         run: Copy-Item dist/Revokyte.exe "dist/$env:ARTIFACT.exe"
 
+      # Desktop sibling of the OS image's legal-info bundle: the binaries
+      # aggregate GPL/LGPL/MIT/BSD components (this GPL app, LGPL pygame with
+      # its vendored SDL libraries, Python, numpy, ...) whose licenses require
+      # shipping the license texts and pointing at corresponding sources.
+      # Build-host tools (PyInstaller & friends) never ship inside the binary,
+      # so they stay out of the manifest. The app's own corresponding source
+      # is the python-instrument-cluster-<tag>.tar.gz asset on the release.
+      - name: Collect legal info (license manifest + texts)
+        shell: bash
+        run: |
+          PYBIN=$(python -c 'import sys; print(sys.executable)')
+          OUT=build/legal-info
+          IGNORE="pip setuptools wheel pyinstaller pyinstaller-hooks-contrib altgraph macholib pefile pywin32-ctypes"
+          mkdir -p "$OUT/licenses"
+          pipx run pip-licenses --python "$PYBIN" \
+            --format=csv --with-urls --ignore-packages $IGNORE \
+            > "$OUT/manifest.csv"
+          pipx run pip-licenses --python "$PYBIN" \
+            --format=plain-vertical --with-license-file --no-license-path \
+            --ignore-packages $IGNORE \
+            > "$OUT/licenses/python-packages.txt"
+          python -m pip freeze > "$OUT/requirements-frozen.txt"
+          cp LICENSE "$OUT/"
+          cp -R LICENSES "$OUT/licenses/app"
+          cp src/instrument_cluster/db/NOTICE.md "$OUT/licenses/track-db-NOTICE.md"
+          cat > "$OUT/README" << EOF
+          Third-party notices for the Revokyte desktop build ($ARTIFACT).
+
+          manifest.csv                  every Python package bundled in the
+                                        binary, with version, license, URL
+          licenses/python-packages.txt  the packages' full license texts
+          licenses/app/                 this application's own license (GPL-3.0)
+          licenses/track-db-NOTICE.md   provenance of the bundled track database
+          requirements-frozen.txt       the exact build environment
+
+          Corresponding sources: this application's source is attached to the
+          same GitHub release (python-instrument-cluster-*.tar.gz) and lives at
+          https://github.com/chrshdl/revokyte. Python package sources are the
+          sdists on https://pypi.org for the pinned versions in manifest.csv;
+          granturismo's is https://github.com/chrshdl/granturismo. The Python
+          runtime (PSF-2.0) is from https://python.org. The PyInstaller
+          bootloader embedded in the executable is GPL-with-exception,
+          https://github.com/pyinstaller/pyinstaller. pygame wheels vendor
+          SDL2 and friends (zlib/FTL/libpng licenses) — see
+          https://github.com/pygame/pygame for their texts. Bundled fonts keep
+          their license files in the source tree under
+          src/instrument_cluster/assets/fonts/.
+          EOF
+          tar -C build -czf "dist/legal-info-$VERSION-${{ matrix.suffix }}.tar.gz" legal-info
+
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ env.ARTIFACT }}
-          path: dist/${{ env.ARTIFACT }}.${{ matrix.ext }}
+          path: |
+            dist/${{ env.ARTIFACT }}.${{ matrix.ext }}
+            dist/legal-info-${{ env.VERSION }}-${{ matrix.suffix }}.tar.gz
           if-no-files-found: error
 
       # Creates the release for the tag if it doesn't exist yet, otherwise
@@ -111,4 +163,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v3
         with:
-          files: dist/${{ env.ARTIFACT }}.${{ matrix.ext }}
+          files: |
+            dist/${{ env.ARTIFACT }}.${{ matrix.ext }}
+            dist/legal-info-${{ env.VERSION }}-${{ matrix.suffix }}.tar.gz

@@ -218,6 +218,8 @@ All application code is licensed under the **GNU General Public License v3.0 or 
 
 The track database `src/instrument_cluster/db/tracks.json` is derived from community-collected GPL-3.0 data and is distributed under the same license as the code; see [`src/instrument_cluster/db/NOTICE.md`](src/instrument_cluster/db/NOTICE.md) for its provenance. The vendored delta calculator (`core/delta_calculator/`) is the author's own work from the separate delta-calculator repository, relicensed here under the same terms.
 
+Desktop releases additionally ship a `legal-info-<version>-<platform>.tar.gz` next to each binary — the license manifest and full license texts for everything bundled inside it, mirroring the legal-info bundle the OS image releases ship.
+
 **Proprietary add-ons are not part of this repository**: they are developed separately and ship in their own OS image. This codebase only contains the generic plugin and extension interfaces they plug into.
 
 Contributions are accepted under a CLA — see [`CONTRIBUTING.md`](CONTRIBUTING.md).
