@@ -1,5 +1,8 @@
-<!-- .github/logo.svg centered on a square canvas (81% height) — the source
-     for the app icons. Regenerate with ImageMagick + iconutil:
+<!-- .github/logo.svg centered on a full-bleed black square (mark at 72%
+     height) — the source for the app icons. The black background is
+     deliberate: macOS auto-masks icons into a squircle and was plating the
+     transparent version onto light gray, washing out the cyan. Regenerate
+     with ImageMagick + iconutil:
        magick -background none -size 1024x1024 icon-square.svg icon-1024.png
        mkdir Revokyte.iconset
        for s in 16 32 128 256 512; do
@@ -10,7 +13,8 @@
        magick icon-1024.png -define icon:auto-resize=256,128,64,48,32,24,16 Revokyte.ico
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <g transform="translate(26.15 12) scale(0.832)">
+  <rect width="128" height="128" fill="#000000"/>
+  <g transform="translate(30.5 17.9) scale(0.7373)">
     <path fill="#3dd1d8" fill-rule="evenodd" d="M2.3 3 H89 L76.5 17 H54.3 V80 L12.5 121.7 H7 L2.3 117 Z M18 17 H38.2 V76 L18 96.2 Z"/>
   </g>
 </svg>
