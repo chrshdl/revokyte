@@ -197,8 +197,10 @@ class SetupView(View):
 
     def _init_ui_elements(self):
         self.title_label = Label(
-            text="System  settings",
-            font=load_font(size=HEADER_TITLE_FONT_SIZE, family=FontFamily.PIXEL_TYPE),
+            text="System settings",
+            font=load_font(
+                size=HEADER_TITLE_FONT_SIZE, family=FontFamily.NOTOSANS_LIGHT
+            ),
             color=Color.WHITE.rgb(),
             pos=spos(*HEADER_TITLE_TOPLEFT),
             center=False,

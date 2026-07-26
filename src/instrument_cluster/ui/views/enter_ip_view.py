@@ -1,4 +1,4 @@
-from typing import Iterable
+from collections.abc import Iterable
 
 from pygame.sprite import LayeredDirty
 
@@ -39,20 +39,24 @@ from .base import View
 
 
 class EnterIPView(View):
-    def __init__(self, recent_connected: list[str] = None, title: str = None):
+    def __init__(
+        self, recent_connected: list[str] | None = None, title: str | None = None
+    ):
         self.ui_layer = LayeredDirty()
         self.button_group = ButtonGroup()
 
         self.background_color = Color.BLACK.rgb()
 
-        self._title = title or "Enter  Playstation  IP"
+        self._title = title or "Enter Playstation IP"
         self._init_ui_elements(recent_connected or [])
 
     def _init_ui_elements(self, recent_connected):
         # 1. Static Elements
         self.title_label = Label(
             text=self._title,
-            font=load_font(size=HEADER_TITLE_FONT_SIZE, family=FontFamily.PIXEL_TYPE),
+            font=load_font(
+                size=HEADER_TITLE_FONT_SIZE, family=FontFamily.NOTOSANS_LIGHT
+            ),
             color=Color.WHITE.rgb(),
             pos=spos(*HEADER_TITLE_TOPLEFT),
             center=False,

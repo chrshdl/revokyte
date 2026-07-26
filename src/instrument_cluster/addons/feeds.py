@@ -103,7 +103,7 @@ FEEDS: list[FeedDescriptor] = [
         label="Assetto Corsa Competizione",
         github_repo="chrshdl/assettocorsa",
         asset_prefix="acc-selfcontained-",
-        ip_prompt_title="Enter Game IP",
+        ip_prompt_title="Enter Computer IP",
         env_builder=_acc_env,
         install_name="assettocorsa",
         # Signed with the assettocorsa repo's own Ed25519 release key (ACC_SIGNING_KEY secret)

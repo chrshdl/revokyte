@@ -49,8 +49,8 @@ class WifiSetupState(State):
         state_manager: StateManager | None = None,
         manager: WifiManager | None = None,
         entry: str = ENTRY_BOOT,
-        plugin_manager: "PluginManager | None" = None,
-        pipeline: "SignalPipeline | None" = None,
+        plugin_manager: PluginManager | None = None,
+        pipeline: SignalPipeline | None = None,
     ):
         super().__init__(state_manager)
         self.logger = Logger(__class__.__name__).get()

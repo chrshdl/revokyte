@@ -40,7 +40,7 @@ class WifiConnectingState(State):
 
         self.view = WifiSetupView(show_back=False, show_skip=False)
         self.view.show_status(
-            "Reconnecting  to  Wi-Fi , please  wait . . .", show_header=True
+            "Reconnecting to Wi-Fi, please wait ...", show_header=True
         )
 
         self._elapsed: float = 0.0

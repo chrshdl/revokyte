@@ -28,11 +28,12 @@ class InstallView(View):
 
     def _init_ui_elements(self):
         self.title_label = Label(
-            text="Install  UDP  Telemetry?",
-            font=load_font(size=HEADER_TITLE_FONT_SIZE, family=FontFamily.PIXEL_TYPE),
+            text="Install UDP Telemetry?",
+            font=load_font(
+                size=HEADER_TITLE_FONT_SIZE, family=FontFamily.NOTOSANS_LIGHT
+            ),
             color=Color.WHITE.rgb(),
             pos=spos(*HEADER_TITLE_TOPLEFT),
-            antialias=False,
             center=False,
         )
         self.horizontal_line = Line()

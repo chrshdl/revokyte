@@ -76,8 +76,10 @@ class WifiSetupView(View):
 
         self._line = Line()
         self._title = Label(
-            text="Connect  to  Wi-Fi",
-            font=load_font(size=HEADER_TITLE_FONT_SIZE, family=FontFamily.PIXEL_TYPE),
+            text="Connect to Wi-Fi",
+            font=load_font(
+                size=HEADER_TITLE_FONT_SIZE, family=FontFamily.NOTOSANS_LIGHT
+            ),
             color=Color.WHITE.rgb(),
             pos=spos(*HEADER_TITLE_TOPLEFT),
             center=False,
@@ -413,9 +415,12 @@ class WifiSetupView(View):
     def handle_event(self, event) -> bool:
         # The network list gets first crack in the scan phase: its tap/drag
         # gesture machinery may consume the event entirely.
-        if self.phase == self.PHASE_SCAN and self.network_list in self._widgets:
-            if self.network_list.handle_event(event):
-                return False
+        if (
+            self.phase == self.PHASE_SCAN
+            and self.network_list in self._widgets
+            and self.network_list.handle_event(event)
+        ):
+            return False
 
         for widget in self._widgets:
             if widget is self.network_list:
