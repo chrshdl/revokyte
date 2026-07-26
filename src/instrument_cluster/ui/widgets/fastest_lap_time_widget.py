@@ -1,5 +1,3 @@
-from typing import Optional
-
 from ...core.vehicle.vehicle_bus import VehicleBus
 from ...telemetry.models import TelemetryFrame
 from ..constants import LAP_DEFAULT_VALUE
@@ -41,7 +39,11 @@ class FastestLapTimeWidget(Widget):
         self.visible = 1
         self.dirty = 2
 
-    def set_value(self, time: Optional[float] = None):
+    def set_value(self, time: float | None = None):
+        if time == self._last_raw_value and self._last_value_str is not None:
+            return
+        self._last_raw_value = time
+
         time_str = self.format_mm_ss_hh(time) if time is not None else ""
 
         if time_str != self._last_value_str:

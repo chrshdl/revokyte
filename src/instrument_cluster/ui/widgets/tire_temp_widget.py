@@ -43,6 +43,10 @@ class TireTempWidget(Widget):
         self.set_value(-1)
 
     def set_value(self, value: int):
+        if value == self._last_raw_value and self._last_value_str is not None:
+            return
+        self._last_raw_value = value
+
         temp_str = str(value)
 
         if temp_str != self._last_value_str:

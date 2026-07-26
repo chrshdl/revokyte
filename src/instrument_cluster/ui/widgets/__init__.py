@@ -86,6 +86,11 @@ class Widget(DirtySprite, ABC):
         self.rect = self.image.get_rect(topleft=(tlx, tly))
 
         self._last_value_str = None
+        # Raw input of the last set_value call. Widgets whose value changes
+        # rarely compare against it to skip re-formatting entirely; a None
+        # _last_value_str (initial state, or invalidated after set_header)
+        # overrides the skip so the value is repainted onto the fresh base.
+        self._last_raw_value = None
         self.digit_gap = -2
 
         # cache for digits keyed by

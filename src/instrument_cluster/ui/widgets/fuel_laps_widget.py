@@ -52,6 +52,10 @@ class FuelLapsWidget(Widget):
         self.dirty = 2
 
     def set_value(self, value: float | None):
+        if value == self._last_raw_value and self._last_value_str is not None:
+            return
+        self._last_raw_value = value
+
         value_str = self._format(value)
         color = self._warning_color(value)
 

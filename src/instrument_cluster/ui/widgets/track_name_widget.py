@@ -1,5 +1,3 @@
-from typing import Optional
-
 import pygame
 
 from ...core.vehicle.vehicle_bus import VehicleBus
@@ -50,7 +48,11 @@ class TrackNameWidget(Widget):
         self.visible = 1
         self.dirty = 2
 
-    def set_value(self, name: Optional[str] = None):
+    def set_value(self, name: str | None = None):
+        if name == self._last_raw_value and self._last_value_str is not None:
+            return
+        self._last_raw_value = name
+
         text = (name or "").strip() or TrackNameWidget._DEFAULT_TRACK_TEXT
 
         if text != self._last_value_str:
