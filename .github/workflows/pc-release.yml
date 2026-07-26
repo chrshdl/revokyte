@@ -21,11 +21,13 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            artifact: Revokyte-windows-x64
+            suffix: windows-x64
+            ext: exe
           # Apple Silicon. For an Intel build, add a macos-*-intel (or
-          # macos-13) entry with artifact Revokyte-macos-x86_64.
+          # macos-13) entry with suffix macos-x86_64.
           - os: macos-latest
-            artifact: Revokyte-macos-arm64
+            suffix: macos-arm64
+            ext: zip
 
     runs-on: ${{ matrix.os }}
 
@@ -39,6 +41,20 @@ jobs:
         with:
           python-version: "3.12"
 
+      # Artifact names carry the human version: the tag without its leading
+      # "v" (e.g. Revokyte-0.2.0-windows-x64.exe), or git-describe output on
+      # manual (workflow_dispatch) runs.
+      - name: Determine version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="$(git describe --tags --always | sed 's/^v//')"
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "ARTIFACT=Revokyte-$VERSION-${{ matrix.suffix }}" >> "$GITHUB_ENV"
+
       - name: Install
         run: |
           python -m pip install --upgrade pip
@@ -49,18 +65,16 @@ jobs:
 
       - name: Package (macOS)
         if: runner.os == 'macOS'
-        run: ditto -c -k --keepParent dist/Revokyte.app "dist/${{ matrix.artifact }}.zip"
+        run: ditto -c -k --keepParent dist/Revokyte.app "dist/$ARTIFACT.zip"
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
-        run: Copy-Item dist/Revokyte.exe "dist/${{ matrix.artifact }}.exe"
+        run: Copy-Item dist/Revokyte.exe "dist/$env:ARTIFACT.exe"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: |
-            dist/${{ matrix.artifact }}.zip
-            dist/${{ matrix.artifact }}.exe
+          name: ${{ env.ARTIFACT }}
+          path: dist/${{ env.ARTIFACT }}.${{ matrix.ext }}
           if-no-files-found: error
 
       # Creates the release for the tag if it doesn't exist yet, otherwise
@@ -69,6 +83,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            dist/${{ matrix.artifact }}.zip
-            dist/${{ matrix.artifact }}.exe
+          files: dist/${{ env.ARTIFACT }}.${{ matrix.ext }}
