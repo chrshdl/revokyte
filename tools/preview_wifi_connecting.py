@@ -18,13 +18,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-import pygame  # noqa: E402
+import pygame
 
-from instrument_cluster.peripherals.display import Display  # noqa: E402
-from instrument_cluster.ui.views.wifi_setup_view import WifiSetupView  # noqa: E402
+from instrument_cluster.peripherals.display import Display
+from instrument_cluster.ui.views.wifi_setup_view import WifiSetupView
 
 # The text WifiConnectingState actually shows (states/wifi_connecting_state.py).
-DEFAULT_TEXT = "Reconnecting to Wi-Fi, please wait ..."
+DEFAULT_TEXT = "Please wait ..."
 
 
 def main() -> None:
@@ -57,7 +57,8 @@ def main() -> None:
         dt = clock.tick(60) / 1000
         for event in pygame.event.get():
             if event.type == pygame.QUIT or (
-                event.type == pygame.KEYDOWN and event.key in (pygame.K_ESCAPE, pygame.K_q)
+                event.type == pygame.KEYDOWN
+                and event.key in (pygame.K_ESCAPE, pygame.K_q)
             ):
                 running = False
         view.update(dt)

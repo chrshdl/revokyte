@@ -28,14 +28,17 @@ from ..constants import (
     HEADER_TITLE_TOPLEFT,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
+    WIFI_KEY_GAP,
+    WIFI_KEY_W,
+    WIFI_SPECIAL_W,
 )
 from ..events import (
     BUTTON_BACK_PRESSED,
     BUTTON_BACK_RELEASED,
+    WIFI_BACKSPACE_PRESSED,
+    WIFI_BACKSPACE_RELEASED,
     WIFI_RESCAN_PRESSED,
     WIFI_RESCAN_RELEASED,
-    WIFI_REVEAL_PRESSED,
-    WIFI_REVEAL_RELEASED,
     WIFI_SKIP_PRESSED,
     WIFI_SKIP_RELEASED,
 )
@@ -47,12 +50,21 @@ from ..widgets.base.textfield import TextField
 from ..widgets.wifi import WifiKeyboard, WifiNetworkList
 from .base import View
 
+# Password-row geometry: field plus delete key span exactly the keyboard's
+# width (the ten-key rows are centered on the screen).
+_KB_LEFT = (SCREEN_WIDTH - (10 * WIFI_KEY_W + 9 * WIFI_KEY_GAP)) / 2
+_PW_ROW_Y = 188
+_PW_ROW_H = 84
+_DEL_X = SCREEN_WIDTH - _KB_LEFT - WIFI_SPECIAL_W
+
 
 class WifiSetupView(View):
     PHASE_SCAN = "scan"
     PHASE_PASSWORD = "password"
     PHASE_STATUS = "status"
     PHASE_CONNECTED = "connected"
+
+    _DEFAULT_TITLE = "Connect to Wi-Fi"
 
     def __init__(self, show_back: bool = True, show_skip: bool = False):
         self.background_color = Color.BLACK.rgb()
@@ -76,7 +88,7 @@ class WifiSetupView(View):
 
         self._line = Line()
         self._title = Label(
-            text="Connect to Wi-Fi",
+            text=self._DEFAULT_TITLE,
             font=load_font(
                 size=HEADER_TITLE_FONT_SIZE, family=FontFamily.NOTOSANS_LIGHT
             ),
@@ -109,6 +121,9 @@ class WifiSetupView(View):
             icon_position="center",
         )
 
+    def _set_title(self, text: str) -> None:
+        self._title.set_text(text)
+
     def _header_widgets(self) -> list:
         widgets: list = [self._title]
         if self.show_back:
@@ -120,6 +135,7 @@ class WifiSetupView(View):
     # ------------------------------------------------------------------
     def show_scanning(self) -> None:
         self.phase = self.PHASE_SCAN
+        self._set_title(self._DEFAULT_TITLE)
         self.network_list.clear()
         self.status_message = "Scanning  for  networks ..."
         self.status_is_error = False
@@ -128,6 +144,7 @@ class WifiSetupView(View):
 
     def show_networks(self, networks: list[Network], current_ssid: str = "") -> None:
         self.phase = self.PHASE_SCAN
+        self._set_title(self._DEFAULT_TITLE)
         self.network_list.set_networks(networks, current_ssid)
         self.status_message = "" if networks else "No  networks  found.  Try  rescan."
         self.status_is_error = False
@@ -195,78 +212,85 @@ class WifiSetupView(View):
         self.keyboard.reset()
 
         label_font = load_font(size=40, family=FontFamily.PIXEL_TYPE)
-        field_font = load_font(size=36, family=FontFamily.NOTOSANS_REGULAR)
 
         self.ssid_field = None
         self.password_field = None
 
         statics: list = [self._title, self._back_button]
-        statics.append(
-            Label(
-                text="Network",
-                font=label_font,
-                color=Color.WHITE.rgb(),
-                pos=spos(40, 118),
-                center=False,
-            )
-        )
 
         if manual:
+            self._set_title(self._DEFAULT_TITLE)
+            statics.append(
+                Label(
+                    text="Network",
+                    font=label_font,
+                    color=Color.WHITE.rgb(),
+                    pos=spos(40, 118),
+                    center=False,
+                )
+            )
+            # SSIDs are arbitrary user text — NotoSans covers accents and
+            # non-Latin scripts the pixel font lacks.
             self.ssid_field = TextField(
                 text="",
-                font=field_font,
+                font=load_font(size=36, family=FontFamily.NOTOSANS_REGULAR),
                 color=Color.WHITE.rgb(),
                 pos=spos(360, 110),
                 width=sx(560),
                 height=sy(64),
             )
-        else:
-            # SSID as a separate value label (NotoSans for glyph coverage),
-            # aligned where the manual-entry field sits.
             statics.append(
                 Label(
-                    text=ssid or "",
-                    font=field_font,
+                    text="Password",
+                    font=label_font,
                     color=Color.WHITE.rgb(),
-                    pos=spos(360, 122),
+                    pos=spos(40, 206),
                     center=False,
                 )
             )
+            pw_left = 360
+        else:
+            # The picked network is named in the header, so the password row
+            # is the only field chrome on screen.
+            self._set_title(f"Enter Password for  {ssid or ''}")
+            pw_left = _KB_LEFT
 
-        statics.append(
-            Label(
-                text="Password",
-                font=label_font,
-                color=Color.WHITE.rgb(),
-                pos=spos(40, 196),
-                center=False,
-            )
-        )
         self.password_field = TextField(
             text="",
-            font=field_font,
+            font=load_font(size=44, family=FontFamily.NOTOSANS_REGULAR),
             color=Color.WHITE.rgb(),
-            pos=spos(360, 188),
-            width=sx(500),
-            height=sy(64),
+            pos=spos(pw_left, _PW_ROW_Y),
+            # Same breathing room to the delete key as between character keys.
+            width=sx(_DEL_X - WIFI_KEY_GAP - pw_left),
+            height=sy(_PW_ROW_H),
             mask=True,
         )
-        self._eye_button = Button(
-            rect=srect(872, 188, 64, 64),
-            text="",
+        # Delete sits flush against the field, EnterIPView-style; the
+        # password-reveal eye lives on the keyboard where backspace was.
+        self._del_button = Button(
+            rect=srect(_DEL_X, _PW_ROW_Y, WIFI_SPECIAL_W, _PW_ROW_H),
+            text="<",
             text_visible=False,
             font=label_font,
             antialias=True,
             events=ButtonEvents(
-                pressed=WIFI_REVEAL_PRESSED,
-                released=WIFI_REVEAL_RELEASED,
+                pressed=WIFI_BACKSPACE_PRESSED,
+                released=WIFI_BACKSPACE_RELEASED,
             ),
-            icon="",  # visibility
-            icon_size=40,
+            icon="\ue14a",
+            icon_size=46,
             icon_position="center",
             icon_color=Color.WHITE.rgb(),
+            # Invisible text carries the color the pressed border derives
+            # from (see Button._compute_border_color) \u2014 same trick as
+            # EnterIPView's delete button.
+            text_color=Color.LIGHT_RED.rgb(),
+            pressed_gradient=(Color.RPM_DARK_RED.rgb(), Color.BLACK.rgb()),
+            border_top_left_radius=4,
+            border_top_right_radius=4,
+            border_bottom_left_radius=4,
+            border_bottom_right_radius=4,
         )
-
         self._static_password = statics
         self._set_focus(self.ssid_field if manual else self.password_field)
         self._rebuild_password_widgets()
@@ -274,10 +298,7 @@ class WifiSetupView(View):
     def _rebuild_password_widgets(self) -> None:
         fields = [f for f in (self.ssid_field, self.password_field) if f is not None]
         self._widgets = (
-            self._static_password
-            + fields
-            + [self._eye_button]
-            + self.keyboard.build()
+            self._static_password + fields + [self._del_button] + self.keyboard.build()
         )
 
     def toggle_shift(self) -> None:
@@ -321,6 +342,7 @@ class WifiSetupView(View):
         self, message: str, error: bool = False, show_header: bool = False
     ) -> None:
         self.phase = self.PHASE_STATUS
+        self._set_title(self._DEFAULT_TITLE)
         self.status_message = message
         self.status_is_error = error
         self._widgets = self._header_widgets() if (error or show_header) else []
@@ -328,6 +350,7 @@ class WifiSetupView(View):
     def show_connected(self, ssid: str) -> None:
         self.network_list.reset()
         self.phase = self.PHASE_CONNECTED
+        self._set_title(self._DEFAULT_TITLE)
         self._connected_ssid = ssid
         # Clear the "Connecting to ..." status — it would otherwise linger
         # as a footer under the connected screen.

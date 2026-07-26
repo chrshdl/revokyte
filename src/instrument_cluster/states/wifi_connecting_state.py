@@ -39,9 +39,7 @@ class WifiConnectingState(State):
         self.pipeline = pipeline
 
         self.view = WifiSetupView(show_back=False, show_skip=False)
-        self.view.show_status(
-            "Reconnecting to Wi-Fi, please wait ...", show_header=True
-        )
+        self.view.show_status("Please wait ...", show_header=True)
 
         self._elapsed: float = 0.0
         self._poll_timer: float = 0.0

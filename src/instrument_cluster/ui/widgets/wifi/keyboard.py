@@ -8,6 +8,7 @@ actually changed so the caller knows a rebuild is needed.
 
 from __future__ import annotations
 
+from ...colors import Color
 from ...constants import (
     WIFI_KEY_GAP,
     WIFI_KEY_H,
@@ -18,18 +19,17 @@ from ...constants import (
     WIFI_SPECIAL_W,
 )
 from ...events import (
-    WIFI_BACKSPACE_PRESSED,
-    WIFI_BACKSPACE_RELEASED,
     WIFI_CONNECT_PRESSED,
     WIFI_CONNECT_RELEASED,
     WIFI_KEY_PRESSED,
     WIFI_KEY_RELEASED,
     WIFI_MODE_PRESSED,
     WIFI_MODE_RELEASED,
+    WIFI_REVEAL_PRESSED,
+    WIFI_REVEAL_RELEASED,
     WIFI_SHIFT_PRESSED,
     WIFI_SHIFT_RELEASED,
 )
-from ...colors import Color
 from ...utils import FontFamily, load_font, srect
 from ..base.button import Button, ButtonEvents
 
@@ -74,7 +74,8 @@ class WifiKeyboard:
                 )
             )
 
-        # Third row: shift + chars + backspace.
+        # Third row: shift + chars + password-reveal (backspace moved
+        # up beside the password field).
         y2 = WIFI_KEYBOARD_TOP + 2 * WIFI_KEY_ROW_STEP
         chars = rows[2]
         block_w = len(chars) * WIFI_KEY_W + (len(chars) - 1) * WIFI_KEY_GAP
@@ -100,9 +101,9 @@ class WifiKeyboard:
                 x,
                 y2,
                 WIFI_SPECIAL_W,
-                "",  # backspace
-                WIFI_BACKSPACE_PRESSED,
-                WIFI_BACKSPACE_RELEASED,
+                "",  # visibility (password reveal)
+                WIFI_REVEAL_PRESSED,
+                WIFI_REVEAL_RELEASED,
             )
         )
 
@@ -116,7 +117,7 @@ class WifiKeyboard:
             Button(
                 rect=srect(x, y3, WIFI_SPECIAL_W, WIFI_KEY_H),
                 text="ABC" if self.symbols else "123",
-                font=load_font(size=40, family=FontFamily.PIXEL_TYPE),
+                font=load_font(size=28, family=FontFamily.NOTOSANS_REGULAR),
                 antialias=True,
                 events=ButtonEvents(
                     pressed=WIFI_MODE_PRESSED, released=WIFI_MODE_RELEASED
@@ -129,7 +130,7 @@ class WifiKeyboard:
             Button(
                 rect=srect(x, y3, WIFI_SPACE_W, WIFI_KEY_H),
                 text="space",
-                font=load_font(size=36, family=FontFamily.PIXEL_TYPE),
+                font=load_font(size=28, family=FontFamily.NOTOSANS_REGULAR),
                 antialias=True,
                 events=ButtonEvents(
                     pressed=WIFI_KEY_PRESSED, released=WIFI_KEY_RELEASED
@@ -143,7 +144,7 @@ class WifiKeyboard:
             Button(
                 rect=srect(x, y3, WIFI_SPECIAL_W, WIFI_KEY_H),
                 text="OK",
-                font=load_font(size=44, family=FontFamily.PIXEL_TYPE),
+                font=load_font(size=40, family=FontFamily.NOTOSANS_REGULAR),
                 antialias=True,
                 events=ButtonEvents(
                     pressed=WIFI_CONNECT_PRESSED, released=WIFI_CONNECT_RELEASED
@@ -176,12 +177,14 @@ class WifiKeyboard:
         )
 
     @staticmethod
-    def _special_button(x, y, w, icon, pressed_evt, released_evt, active=False) -> Button:
+    def _special_button(
+        x, y, w, icon, pressed_evt, released_evt, active=False
+    ) -> Button:
         return Button(
             rect=srect(x, y, w, WIFI_KEY_H),
             text="",
             text_visible=False,
-            font=load_font(size=40, family=FontFamily.PIXEL_TYPE),
+            font=load_font(size=40, family=FontFamily.NOTOSANS_REGULAR),
             antialias=True,
             events=ButtonEvents(pressed=pressed_evt, released=released_evt),
             icon=icon,
