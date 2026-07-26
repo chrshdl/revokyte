@@ -3,6 +3,7 @@
 from instrument_cluster.addons.feeds import (
     FEEDS,
     JSONL_OUTPUT,
+    FeedDescriptor,
     current_choice,
     feed_by_id,
     telemetry_choices,
@@ -65,14 +66,35 @@ def test_current_choice_udp_unknown_feed_falls_back_to_first_feed():
 # --- Direct (in-process) readers ---
 
 
-def test_gt7_supports_direct_reading_acc_does_not():
+def test_both_feeds_support_direct_reading():
     assert feed_by_id("granturismo").direct_reader is not None
-    assert feed_by_id("acc").direct_reader is None
+    assert feed_by_id("acc").direct_reader is not None
 
 
-def test_direct_only_choices_hide_proxy_only_feeds():
+def test_direct_choices_offer_both_feeds():
     choices = telemetry_choices(direct_only=True)
     assert choices[0].demo is True
     feed_ids = [c.feed_id for c in choices if not c.demo]
     assert "granturismo" in feed_ids
-    assert "acc" not in feed_ids
+    assert "acc" in feed_ids
+
+
+def test_direct_only_choices_hide_proxy_only_feeds(monkeypatch):
+    from instrument_cluster.addons import feeds as feeds_module
+
+    proxy_only = FeedDescriptor(
+        id="proxyonly",
+        label="Proxy Only",
+        github_repo="chrshdl/proxyonly",
+        asset_prefix="proxyonly-",
+        ip_prompt_title="Enter IP",
+        env_builder=lambda ip: "",
+        signing_pubkey_b64="",
+    )
+    monkeypatch.setattr(feeds_module, "FEEDS", [*feeds_module.FEEDS, proxy_only])
+
+    feed_ids = [
+        c.feed_id for c in feeds_module.telemetry_choices(direct_only=True) if not c.demo
+    ]
+    assert "proxyonly" not in feed_ids
+    assert feed_ids  # the direct-capable feeds are still offered

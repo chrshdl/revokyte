@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import Callable
+from collections.abc import Callable
 
 from ..logger import Logger
 from .models import Bounds, Flags, TelemetryFrame, Vector, Wheel, Wheels

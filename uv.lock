@@ -3,6 +3,11 @@ revision = 3
 requires-python = ">=3.12"
 
 [[package]]
+name = "acc-telemetry"
+version = "0.1.0"
+source = { git = "https://github.com/chrshdl/assettocorsa?rev=v0.1.0#aba7fc35a10ff2979d8bd1bc30be9f0c31feddd8" }
+
+[[package]]
 name = "annotated-types"
 version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -347,11 +352,13 @@ dependencies = [
 
 [package.optional-dependencies]
 pc = [
+    { name = "acc-telemetry" },
     { name = "granturismo" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "acc-telemetry" },
     { name = "granturismo" },
     { name = "matplotlib" },
     { name = "pytest" },
@@ -361,6 +368,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "acc-telemetry", marker = "extra == 'pc'", git = "https://github.com/chrshdl/assettocorsa?rev=v0.1.0" },
     { name = "cryptography", specifier = ">=44.0.0" },
     { name = "granturismo", marker = "extra == 'pc'", git = "https://github.com/chrshdl/granturismo?rev=v0.3.16" },
     { name = "numpy", specifier = ">=2.4.2" },
@@ -372,6 +380,7 @@ provides-extras = ["pc"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "acc-telemetry", git = "https://github.com/chrshdl/assettocorsa?rev=v0.1.0" },
     { name = "granturismo", git = "https://github.com/chrshdl/granturismo?rev=v0.3.16" },
     { name = "matplotlib", specifier = ">=3.11.0" },
     { name = "pytest", specifier = ">=9.0.1" },

@@ -20,11 +20,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Desktop (PC) build: read GT7 in-process instead of via the installed proxy.
-# Note: the PyPI project named "granturismo" is an unrelated package — this
-# must stay a git reference to chrshdl/granturismo.
+# Desktop (PC) build: read GT7/ACC in-process instead of via the installed
+# proxy. Note: the PyPI project named "granturismo" is an unrelated package —
+# this must stay a git reference to chrshdl/granturismo.
 pc = [
     "granturismo @ git+https://github.com/chrshdl/granturismo@v0.3.16",
+    "acc-telemetry @ git+https://github.com/chrshdl/assettocorsa@v0.1.0",
 ]
 
 [project.scripts]
@@ -44,8 +45,9 @@ instrument_cluster = ["assets/**/*", "db/cars.json", "db/tracks.json", "db/NOTIC
 
 [dependency-groups]
 dev = [
-    # Same pin as the "pc" extra, so dev machines can run direct GT7 mode.
+    # Same pins as the "pc" extra, so dev machines can run direct GT7/ACC mode.
     "granturismo @ git+https://github.com/chrshdl/granturismo@v0.3.16",
+    "acc-telemetry @ git+https://github.com/chrshdl/assettocorsa@v0.1.0",
     "matplotlib>=3.11.0",
     "pytest>=9.0.1",
     "pytest-cov>=7.0.0",

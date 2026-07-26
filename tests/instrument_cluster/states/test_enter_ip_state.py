@@ -71,14 +71,34 @@ def test_appliance_gt7_ok_still_routes_to_the_installer(monkeypatch):
     assert ConfigManager.get_config().telemetry_mode != TelemetryMode.DIRECT.value
 
 
-def test_desktop_proxy_only_feed_still_routes_to_the_installer(monkeypatch):
-    """A feed with no in-process reader keeps the install flow even off the
-    appliance (it isn't offered in the desktop dropdown, but the state must
-    not misroute it)."""
+def test_desktop_acc_ok_configures_direct_mode(monkeypatch):
     monkeypatch.setattr(
         "instrument_cluster.states.enter_ip_state.is_raspberry_pi", lambda: False
     )
     manager, state = _make_state(feed_by_id("acc"))
+    state.view.textfield.set_text("192.168.1.20")
+
+    assert state.on_ok_released() is True
+
+    cfg = ConfigManager.get_config()
+    assert cfg.telemetry_mode == TelemetryMode.DIRECT.value
+    assert cfg.telemetry_feed == "acc"
+    assert cfg.direct_host == "192.168.1.20"
+    assert manager.popped is True
+    assert manager.changed_to is None
+
+
+def test_desktop_proxy_only_feed_still_routes_to_the_installer(monkeypatch):
+    """A feed with no in-process reader keeps the install flow even off the
+    appliance (it isn't offered in the desktop dropdown, but the state must
+    not misroute it)."""
+    from dataclasses import replace
+
+    monkeypatch.setattr(
+        "instrument_cluster.states.enter_ip_state.is_raspberry_pi", lambda: False
+    )
+    proxy_only = replace(feed_by_id("acc"), direct_reader=None)
+    manager, state = _make_state(proxy_only)
     state.view.textfield.set_text("192.168.1.20")
 
     assert state.on_ok_released() is True

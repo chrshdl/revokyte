@@ -10,8 +10,9 @@ emits ``TelemetryFrame`` NDJSON to ``udp://127.0.0.1:5600``, like granturismo).
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..telemetry.reader_protocol import TelemetryReaderProtocol
@@ -50,7 +51,7 @@ class FeedDescriptor:
     # Desktop builds run a feed in-process instead of installing its proxy:
     # ip -> TelemetryReaderProtocol. None = the feed only exists as an
     # installable proxy program (and is not offered on desktop).
-    direct_reader: Callable[[str], "TelemetryReaderProtocol"] | None = None
+    direct_reader: Callable[[str], TelemetryReaderProtocol] | None = None
 
     @property
     def install_dir(self) -> str:
@@ -65,7 +66,7 @@ def _granturismo_env(ip: str) -> str:
     return f"GT_PS_IP={ip}\nGT_JSONL_OUTPUT={JSONL_OUTPUT}\n"
 
 
-def _granturismo_direct_reader(ip: str) -> "TelemetryReaderProtocol":
+def _granturismo_direct_reader(ip: str) -> TelemetryReaderProtocol:
     # Deferred import: granturismo is an optional dependency (the "pc"
     # extra) that the appliance image doesn't ship.
     from ..telemetry.gt7_direct import Gt7DirectReader
@@ -75,6 +76,14 @@ def _granturismo_direct_reader(ip: str) -> "TelemetryReaderProtocol":
 
 def _acc_env(ip: str) -> str:
     return f"ACC_PC_IP={ip}\nACC_UDP_PORT=9000\nACC_JSONL_OUTPUT={JSONL_OUTPUT}\n"
+
+
+def _acc_direct_reader(ip: str) -> TelemetryReaderProtocol:
+    # Deferred import: acc-telemetry is an optional dependency (the "pc"
+    # extra) that the appliance image doesn't ship.
+    from ..telemetry.acc_direct import AccDirectReader
+
+    return AccDirectReader(ip)
 
 
 FEEDS: list[FeedDescriptor] = [
@@ -94,11 +103,12 @@ FEEDS: list[FeedDescriptor] = [
         label="Assetto Corsa Competizione",
         github_repo="chrshdl/assettocorsa",
         asset_prefix="acc-selfcontained-",
-        ip_prompt_title="Enter Game PC IP",
+        ip_prompt_title="Enter Game IP",
         env_builder=_acc_env,
         install_name="assettocorsa",
         # Signed with the assettocorsa repo's own Ed25519 release key (ACC_SIGNING_KEY secret)
         signing_pubkey_b64=ACC_SIGNING_PUBKEY_B64,
+        direct_reader=_acc_direct_reader,
     ),
 ]
 
