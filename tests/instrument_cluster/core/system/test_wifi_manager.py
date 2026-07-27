@@ -361,3 +361,18 @@ def test_diagnostics_survives_missing_tools(monkeypatch):
     )
     report = mgr.diagnostics()  # must not raise
     assert "journalctl" in report
+
+
+def test_identity_files_reports_missing_machine_id(monkeypatch, tmp_path):
+    """The DUID/IAID inputs are what ENOENT'd on the appliance; the report
+    must name which one is absent rather than just failing."""
+    mgr = WifiManager()
+    monkeypatch.setattr(
+        "os.stat", lambda p: (_ for _ in ()).throw(FileNotFoundError(2, "No such file"))
+    )
+    monkeypatch.setattr(
+        "builtins.open", lambda *a, **k: (_ for _ in ()).throw(OSError(2, "No such file"))
+    )
+    report = mgr._identity_files()
+    assert "/etc/machine-id" in report
+    assert "No such file" in report

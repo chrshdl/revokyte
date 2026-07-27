@@ -373,6 +373,34 @@ class WifiManager:
         parts = out.stdout.split()
         return f"{parts[-2]}/{parts[-1]}" if len(parts) >= 5 else ""
 
+    def _identity_files(self) -> str:
+        """State of the files networkd needs to build a DHCP client id.
+
+        An empty or absent machine-id, or a missing udev database entry for
+        the interface, makes the DUID/IAID unavailable and the DHCPv4
+        client fails to start with ENOENT.
+        """
+        lines = []
+        paths = [
+            "/etc/machine-id",
+            "/run/machine-id",
+            f"/sys/class/net/{self.interface}/ifindex",
+        ]
+        for path in paths:
+            try:
+                size = os.stat(path).st_size
+                lines.append(f"{path}: {size} bytes")
+            except OSError as e:
+                lines.append(f"{path}: {e.strerror}")
+        try:
+            with open(f"/sys/class/net/{self.interface}/ifindex") as f:
+                index = f.read().strip()
+            udev = f"/run/udev/data/n{index}"
+            lines.append(f"{udev}: {'present' if os.path.exists(udev) else 'MISSING'}")
+        except OSError as e:
+            lines.append(f"udev db entry: unavailable ({e.strerror})")
+        return "\n".join(lines)
+
     def diagnostics(self) -> str:
         """networkd's own account of the link, for the debug log.
 
@@ -381,7 +409,7 @@ class WifiManager:
         copy the relevant part into our log, where it can be read off the
         boot partition. Best-effort; returns whatever could be collected.
         """
-        out = []
+        out = [f"--- DHCP client identity inputs ---\n{self._identity_files()}"]
         commands = [
             ["journalctl", "-u", "systemd-networkd", "-n", "60", "--no-pager"],
             ["journalctl", "-u", f"wpa_supplicant@{self.interface}", "-n", "30",
