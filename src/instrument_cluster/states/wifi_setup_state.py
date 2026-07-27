@@ -95,6 +95,7 @@ class WifiSetupState(State):
         # networkd's link state when a connect fails, shown alongside the hint
         self._connect_detail: str = ""
         self._connecting = False
+        self._connect_gen = 0
 
         self._connected_timer: float = 0.0
 
@@ -151,26 +152,41 @@ class WifiSetupState(State):
 
     def _start_connect(self, ssid: str, psk: str | None):
         if self._connecting:
+            # An attempt is already running (it can take up to a minute).
+            # Re-assert the status instead of returning silently: a press
+            # that appears to do nothing reads as a broken button.
+            self.view.show_status(f"Connecting  to  {ssid} ...", show_header=True)
             return
         self._connecting = True
         self._connect_result = None
-        self.view.show_status(f"Connecting  to  {ssid} ...")
+        # Identifies this attempt. Backing out of the wait bumps it, so a
+        # worker the user has walked away from cannot later hijack the view.
+        self._connect_gen += 1
+        generation = self._connect_gen
+        self.view.show_status(f"Connecting  to  {ssid} ...", show_header=True)
 
         def worker():
             # Three distinct failure modes so the hint can say what actually
             # went wrong — release images have no SSH, so the screen is the
             # only diagnostic port and "check password" must not be a
             # catch-all for infrastructure failures.
+            def publish(result: str, detail: str = "") -> None:
+                if generation != self._connect_gen:
+                    self.logger.info(f"Abandoned connect finished: {result} {detail}")
+                    return
+                self._connect_detail = detail
+                self._connect_result = result
+
             try:
                 self.manager.connect(ssid, psk)
             except Exception as e:
                 self.logger.error(f"Connect worker failed: {e}")
-                self._connect_result = _CONNECT_SETUP_FAILED
+                publish(_CONNECT_SETUP_FAILED)
                 self._connecting = False
                 return
             try:
                 if not self.manager.wait_for_association(timeout=30.0):
-                    self._connect_result = _CONNECT_AUTH_FAILED
+                    publish(_CONNECT_AUTH_FAILED)
                     return
                 # Association happens long after boot here, so networkd may
                 # still be waiting on its own retry schedule — kick it.
@@ -179,10 +195,9 @@ class WifiSetupState(State):
                     self.logger.info(
                         f"Wi-Fi lease acquired: {self.manager.ipv4_address()}"
                     )
-                    self._connect_result = _CONNECT_OK
+                    publish(_CONNECT_OK)
                 else:
-                    self._connect_result = _CONNECT_NO_DHCP
-                    self._connect_detail = self.manager.link_state()
+                    publish(_CONNECT_NO_DHCP, self.manager.link_state())
             finally:
                 self._connecting = False
 
@@ -352,6 +367,15 @@ class WifiSetupState(State):
 
     def _on_back(self) -> bool:
         phase = self.view.phase
+        if phase == self.view.PHASE_STATUS and self._connecting:
+            # Walking away from a connect that is still running: let the
+            # worker finish in peace, but disown its result so it cannot
+            # drag the user back to the password screen minutes later.
+            self._connect_gen += 1
+            self.logger.info("Connect abandoned by the user")
+            self.view.show_networks(self._networks)
+            return True
+
         if phase == self.view.PHASE_PASSWORD or (
             phase == self.view.PHASE_STATUS and self.view.status_is_error
         ):
