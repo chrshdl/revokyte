@@ -106,12 +106,20 @@ def test_network_bars_buckets():
     assert Network("a", True, -95).bars == 0
 
 
-def test_build_config_modern_offers_wpa3_transition():
-    conf = WifiManager._build_config("MyNet", "s3cr3tpass", "DE", modern=True)
-    assert "key_mgmt=WPA-PSK WPA-PSK-SHA256 SAE" in conf
-    assert "ieee80211w=1" in conf
-    # SAE needs the raw passphrase; the hashed psk stays for the PSK path.
+def test_build_config_sae_is_wpa3_only_with_required_pmf():
+    conf = WifiManager._build_config("MyNet", "s3cr3tpass", "DE", sae=True)
+    assert "key_mgmt=SAE" in conf
+    assert "ieee80211w=2" in conf  # WPA3 mandates PMF
+    # SAE authenticates with the raw passphrase, not the hash.
     assert 'sae_password="s3cr3tpass"' in conf
+    assert "psk=" not in conf
+
+
+def test_build_config_default_stays_plain_wpa_psk():
+    conf = WifiManager._build_config("MyNet", "s3cr3tpass", "DE", sae=False)
+    assert "key_mgmt=WPA-PSK\n" in conf
+    assert "sae_password" not in conf
+    assert "ieee80211w" not in conf
     import hashlib
     expected = hashlib.pbkdf2_hmac(
         "sha1", b"s3cr3tpass", b"MyNet", 4096, 32
@@ -119,17 +127,59 @@ def test_build_config_modern_offers_wpa3_transition():
     assert f"psk={expected}" in conf
 
 
-def test_build_config_legacy_stays_plain_wpa_psk():
-    conf = WifiManager._build_config("MyNet", "s3cr3tpass", "DE", modern=False)
-    assert "key_mgmt=WPA-PSK\n" in conf
-    assert "sae_password" not in conf
-    assert "ieee80211w" not in conf
-
-
-def test_build_config_open_network_ignores_modern():
-    conf = WifiManager._build_config("OpenGuest", None, "DE", modern=True)
+def test_build_config_open_network_ignores_sae():
+    conf = WifiManager._build_config("OpenGuest", None, "DE", sae=True)
     assert "key_mgmt=NONE" in conf
     assert "sae_password" not in conf
+
+
+# --- AKM selection: SAE only where the AP leaves no alternative ---
+
+_TRANSITION = "aa:bb:cc:dd:ee:ff\t5180\t-48\t[WPA2-PSK+SAE-CCMP][ESS][MFPC]\tMyNet\n"
+_WPA3_ONLY = "aa:bb:cc:dd:ee:ff\t5180\t-48\t[WPA2-SAE-CCMP][ESS][MFPR][MFPC]\tMyNet\n"
+_WPA2_ONLY = "aa:bb:cc:dd:ee:ff\t5180\t-48\t[WPA2-PSK-CCMP][ESS]\tMyNet\n"
+
+
+def _manager_seeing(monkeypatch, scan_line):
+    mgr = WifiManager()
+    mgr._supports_sae_cached = True
+    monkeypatch.setattr(
+        mgr, "_wpa_cli", lambda *a, **k: "bssid\tfreq\tsignal\tflags\tssid\n" + scan_line
+    )
+    return mgr
+
+
+def test_transition_ap_keeps_wpa_psk(monkeypatch):
+    """The AP offers both: take WPA-PSK. SAE drags in PMF, and on this
+    hardware that combination associates without passing traffic."""
+    mgr = _manager_seeing(monkeypatch, _TRANSITION)
+    assert mgr._use_sae("MyNet", "s3cr3tpass") is False
+
+
+def test_wpa3_only_ap_uses_sae(monkeypatch):
+    mgr = _manager_seeing(monkeypatch, _WPA3_ONLY)
+    assert mgr._use_sae("MyNet", "s3cr3tpass") is True
+
+
+def test_wpa2_only_ap_uses_wpa_psk(monkeypatch):
+    mgr = _manager_seeing(monkeypatch, _WPA2_ONLY)
+    assert mgr._use_sae("MyNet", "s3cr3tpass") is False
+
+
+def test_unknown_ssid_falls_back_to_wpa_psk(monkeypatch):
+    mgr = _manager_seeing(monkeypatch, _WPA3_ONLY)
+    assert mgr._use_sae("SomeOtherNet", "s3cr3tpass") is False
+
+
+def test_open_network_never_uses_sae(monkeypatch):
+    mgr = _manager_seeing(monkeypatch, _WPA3_ONLY)
+    assert mgr._use_sae("MyNet", None) is False
+
+
+def test_wpa3_only_ap_without_supplicant_support_stays_psk(monkeypatch):
+    mgr = _manager_seeing(monkeypatch, _WPA3_ONLY)
+    mgr._supports_sae_cached = False
+    assert mgr._use_sae("MyNet", "s3cr3tpass") is False
 
 
 def test_supports_sae_parses_capability(monkeypatch):

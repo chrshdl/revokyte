@@ -231,6 +231,50 @@ class WifiManager:
                 status[key.strip()] = value.strip()
         return status
 
+    def _scan_flags_for(self, ssid: str) -> str:
+        """Raw flag field of the strongest BSS advertising ``ssid``.
+
+        Empty when the SSID isn't in the current scan results (or the call
+        fails), which callers must treat as "unknown" rather than "absent".
+        """
+        try:
+            text = self._wpa_cli("scan_results")
+        except (subprocess.SubprocessError, OSError):
+            return ""
+        best_signal: int | None = None
+        flags = ""
+        for line in text.splitlines():
+            parts = line.split("\t")
+            if len(parts) < 5 or parts[0].lower().startswith("bssid"):
+                continue
+            if self._decode_ssid(parts[4].strip()) != ssid:
+                continue
+            try:
+                signal = int(parts[2])
+            except ValueError:
+                continue
+            if best_signal is None or signal > best_signal:
+                best_signal, flags = signal, parts[3]
+        return flags
+
+    def _use_sae(self, ssid: str, psk: str | None) -> bool:
+        """Whether to authenticate with SAE rather than plain WPA-PSK.
+
+        Only for access points that offer *no* PSK AKM, i.e. WPA3-only
+        networks. On a WPA2+WPA3 transition AP both are on offer and we
+        deliberately take WPA-PSK: SAE brings PMF with it, and the Broadcom
+        radio in the Raspberry Pi can report a completed association whose
+        data path never works — the AP shows the client as not connected and
+        DHCP goes unanswered. WPA-PSK is the configuration that has always
+        worked on this hardware, so it stays the default wherever the AP
+        still accepts it. Unknown flags (SSID not in the scan results) also
+        fall back to WPA-PSK, the widely-compatible choice.
+        """
+        if not psk or not self.supports_sae():
+            return False
+        flags = self._scan_flags_for(ssid)
+        return "SAE" in flags and "PSK" not in flags
+
     def supports_sae(self) -> bool:
         """True when the running wpa_supplicant was built with WPA3/SAE.
 
@@ -384,7 +428,7 @@ class WifiManager:
         write the config or restart the service; association success must be
         confirmed separately via :meth:`wait_for_connection`.
         """
-        self._write_config(ssid, psk, modern=bool(psk) and self.supports_sae())
+        self._write_config(ssid, psk, sae=self._use_sae(ssid, psk))
         # Prefer wpa_cli reconfigure over a full service restart: reconfigure
         # reloads the config in-place while preserving wpa_supplicant's BSSID
         # blacklist. A full restart resets that state, so on routers with
@@ -429,8 +473,8 @@ class WifiManager:
             time.sleep(poll)
         return self.is_connected()
 
-    def _write_config(self, ssid: str, psk: str | None, modern: bool = False) -> None:
-        content = self._build_config(ssid, psk, self.country, modern=modern)
+    def _write_config(self, ssid: str, psk: str | None, sae: bool = False) -> None:
+        content = self._build_config(ssid, psk, self.country, sae=sae)
         directory = os.path.dirname(self.conf_path) or "."
         os.makedirs(directory, exist_ok=True)
         # Atomic replace so a crash mid-write can't leave a truncated config
@@ -469,18 +513,16 @@ class WifiManager:
 
     @classmethod
     def _build_config(
-        cls, ssid: str, psk: str | None, country: str, modern: bool = False
+        cls, ssid: str, psk: str | None, country: str, sae: bool = False
     ) -> str:
         """Render the wpa_supplicant config for one network.
 
-        ``modern`` (only when the supplicant supports SAE, see
-        :meth:`supports_sae`) additionally offers WPA3: routers in
-        WPA2+WPA3 transition mode with "PMF required" reject a plain
-        WPA-PSK/no-PMF client — which the UI can only report as a wrong
-        password. SAE authenticates with the raw passphrase by protocol
-        design, so ``sae_password`` must be plaintext; the hashed ``psk=``
-        stays for the WPA-PSK path and the file is chmod 0600 on /data.
-        ``ieee80211w=1`` makes PMF optional-capable for both.
+        ``sae`` is reserved for WPA3-only access points (see
+        :meth:`_use_sae`) and brings the PMF that WPA3 mandates. SAE
+        authenticates with the raw passphrase by protocol design, so
+        ``sae_password`` is written in the clear — the file is chmod 0600 on
+        /data. Everything else, including WPA2+WPA3 transition networks,
+        gets the plain hashed-PSK block that has always worked here.
         """
         lines = [
             "ctrl_interface=/run/wpa_supplicant",
@@ -493,11 +535,10 @@ class WifiManager:
             "network={",
             f'    ssid="{cls._escape(ssid)}"',
         ]
-        if psk and modern:
-            lines.append(f"    psk={cls._hash_psk(ssid, psk)}")
+        if psk and sae:
             lines.append(f'    sae_password="{cls._escape(psk)}"')
-            lines.append("    key_mgmt=WPA-PSK WPA-PSK-SHA256 SAE")
-            lines.append("    ieee80211w=1")
+            lines.append("    key_mgmt=SAE")
+            lines.append("    ieee80211w=2")  # PMF required, per WPA3
         elif psk:
             lines.append(f"    psk={cls._hash_psk(ssid, psk)}")
             lines.append("    key_mgmt=WPA-PSK")
