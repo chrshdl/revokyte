@@ -15,8 +15,18 @@ from .feeds import ACTIVE_LINK, FeedDescriptor
 
 # Re-exported for callers/tests that reach them via this module.
 _flatten_extract = flatten_extract
-__all__ = ["InstallResult", "install_from_url", "resolve_latest_tarball_url",
-           "verify_signature"]
+__all__ = ["FeedUnreachable", "InstallResult", "install_from_url",
+           "resolve_latest_tarball_url", "verify_signature"]
+
+
+class FeedUnreachable(Exception):
+    """The release API could not be reached at all (no network, DNS, TLS).
+
+    Separate from "no matching asset in the release" so the UI can tell the
+    user their device is offline instead of claiming the feed has no
+    release — the two need completely different fixes, and on a release
+    image with no SSH the on-screen message is the only diagnosis available.
+    """
 
 ENV_FILE = Path("/data/etc/instrument-cluster-proxy")
 WRAPPER_NAME = "proxy-wrapper.py"
@@ -31,9 +41,10 @@ def resolve_latest_tarball_url(descriptor: FeedDescriptor) -> str | None:
     We always install the *latest* published release rather than a hardcoded
     version: the device asks the descriptor's GitHub Releases API which release
     is newest and picks its ``<asset_prefix><ver>.tar.gz`` asset (the .sha256 and
-    .sig sidecars, verified in install_from_url, sit next to it). Returns None if
-    the API is unreachable or no matching asset is found, so callers fail closed
-    instead of installing something unexpected.
+    .sig sidecars, verified in install_from_url, sit next to it). Returns None
+    when the release carries no matching asset, so callers fail closed instead
+    of installing something unexpected, and raises :class:`FeedUnreachable`
+    when the API could not be reached at all.
     """
     api_url = f"https://api.github.com/repos/{descriptor.github_repo}/releases/latest"
     req = urllib.request.Request(
@@ -46,8 +57,8 @@ def resolve_latest_tarball_url(descriptor: FeedDescriptor) -> str | None:
     try:
         with urllib.request.urlopen(req, timeout=30) as response:
             data = json.load(response)
-    except Exception:
-        return None
+    except Exception as e:
+        raise FeedUnreachable(str(e) or e.__class__.__name__) from e
 
     for asset in data.get("assets", []):
         name = asset.get("name", "")

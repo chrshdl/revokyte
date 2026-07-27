@@ -5,6 +5,7 @@ import io
 import json
 from dataclasses import replace
 
+import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from instrument_cluster.addons import installer
@@ -64,12 +65,16 @@ def test_resolve_returns_none_when_no_matching_asset(monkeypatch):
     assert installer.resolve_latest_tarball_url(feed_by_id("acc")) is None
 
 
-def test_resolve_fails_closed_on_network_error(monkeypatch):
+def test_resolve_raises_feed_unreachable_on_network_error(monkeypatch):
+    """Still fails closed (nothing gets installed), but distinguishably: an
+    offline device must not be told the feed has no release."""
+
     def _boom(*a, **k):
         raise OSError("network down")
 
     monkeypatch.setattr(installer.urllib.request, "urlopen", _boom)
-    assert installer.resolve_latest_tarball_url(feed_by_id("acc")) is None
+    with pytest.raises(installer.FeedUnreachable, match="network down"):
+        installer.resolve_latest_tarball_url(feed_by_id("acc"))
 
 
 def test_verify_signature_uses_descriptor_pubkey():
@@ -93,3 +98,14 @@ def test_descriptor_can_override_signing_key():
     data = b"acc-bundle"
     sig = key.sign(data)
     assert installer.verify_signature(data, sig, acc.signing_pubkey_b64) is True
+
+
+def test_resolve_still_returns_none_when_release_lacks_the_asset(monkeypatch):
+    """A reachable API with no matching asset is NOT a network failure."""
+    payload = json.dumps({"assets": [{"name": "something-else.zip"}]}).encode()
+    monkeypatch.setattr(
+        installer.urllib.request,
+        "urlopen",
+        lambda *a, **k: _FakeResponse(payload),
+    )
+    assert installer.resolve_latest_tarball_url(feed_by_id("granturismo")) is None

@@ -4,11 +4,13 @@ import threading
 from typing import TYPE_CHECKING
 
 from ..addons.installer import (
+    FeedUnreachable,
     InstallResult,
     install_from_url,
     resolve_latest_tarball_url,
 )
 from ..config import ConfigManager
+from ..logger import Logger
 from ..telemetry.mode import TelemetryMode
 from ..states.setup_state import SetupState
 from ..states.state import State
@@ -25,6 +27,26 @@ if TYPE_CHECKING:
     from ..states.state_manager import StateManager
 
 
+def _network_detail() -> str:
+    """The device's IP, or networkd's link state when it has none.
+
+    Best-effort and never fatal: this only decorates an error message.
+    """
+    try:
+        from ..core.system.wifi_manager import WifiManager
+
+        manager = WifiManager()
+        if not manager.available:
+            return ""
+        address = manager.ipv4_address()
+        if address:
+            return f"({address})"
+        state = manager.link_state()
+        return f"(no IP, link: {state})" if state else "(no IP address)"
+    except Exception:
+        return ""
+
+
 class InstallState(State):
     """
     Downloads and installs a telemetry feed's self-contained tarball, as
@@ -38,6 +60,7 @@ class InstallState(State):
         ip: str = "",
     ):
         super().__init__(state_manager)
+        self.logger = Logger(__class__.__name__).get()
 
         self.descriptor = descriptor
         self.ip = (ip or "").strip()
@@ -116,7 +139,15 @@ class InstallState(State):
             self.view.set_error("IP not set. Enter it first.")
             return
 
-        url = resolve_latest_tarball_url(self.descriptor)
+        try:
+            url = resolve_latest_tarball_url(self.descriptor)
+        except FeedUnreachable as e:
+            # Being offline is by far the likeliest cause and needs a
+            # completely different fix than a missing release, so say so —
+            # and name the link state, since a release image has no SSH.
+            self.logger.error(f"Feed release lookup failed: {e}")
+            self.view.set_error(f"No network connection. {_network_detail()}".strip())
+            return
         if not url:
             self.view.set_error(
                 f"Could not find the latest {self.descriptor.label} release."
