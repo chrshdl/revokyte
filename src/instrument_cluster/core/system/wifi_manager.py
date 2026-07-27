@@ -360,10 +360,10 @@ class WifiManager:
     def diagnostics(self) -> str:
         """networkd's own account of the link, for the debug log.
 
-        Its reasoning lives in the journal, which is volatile and
-        unreachable on a release image (no SSH) — so when a lease fails,
-        copy the relevant part into our log, where it can be read off the
-        boot partition. Best-effort; returns whatever could be collected.
+        Its reasoning lives in the journal, which is volatile — so when a
+        lease fails, copy the relevant part into our own log rather than
+        leaving it to expire. Best-effort; returns whatever could be
+        collected.
         """
         out = [f"--- DHCP client identity inputs ---\n{self._identity_files()}"]
         commands = [
