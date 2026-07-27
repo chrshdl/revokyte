@@ -9,6 +9,15 @@ import OpenGL
 # OpenGL.GL is imported — the wrappers are built at import time.
 OpenGL.ERROR_CHECKING = False
 
+# These are the desktop GL bindings by name only: the appliance ships a
+# GLES-only Mesa, and PYOPENGL_PLATFORM=egl (set in the service unit) makes
+# PyOpenGL resolve them against libGLESv2 instead — which is why its log
+# reports libGL.so.0 as missing and then loads libGLESv2.so. Anything added
+# below must therefore stay inside the subset GLES2 shares with desktop GL:
+# immediate mode, glPolygonMode, geometry shaders and friends would import
+# cleanly, run on a dev machine, and fail only on the device. Importing
+# OpenGL.GLES2 explicitly would catch that at import time, but it does not
+# exist on macOS, so the check could never run where the code is written.
 from OpenGL.GL import (
     # Constants
     GL_ARRAY_BUFFER,
