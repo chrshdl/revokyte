@@ -49,7 +49,10 @@ class SpeedWidget(Widget):
         flags = getattr(frame, "flags", None)
         car_on_track = bool(getattr(flags, "car_on_track", False))
         if car_on_track:
-            v = int((getattr(frame, "car_speed", 0.0) or 0.0) * 3.6)
+            # Round, don't truncate: int() biases every reading downward by
+            # up to 1 km/h (mean -0.5), which is a calibration error, not a
+            # display choice.
+            v = round((getattr(frame, "car_speed", 0.0) or 0.0) * 3.6)
         else:
             v = 0
         self.set_value(v)

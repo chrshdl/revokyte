@@ -5,7 +5,7 @@ from pygame.sprite import DirtySprite
 
 from ...core.vehicle.vehicle_bus import VehicleBus
 from ..colors import Color
-from ..utils import FontFamily, load_font
+from ..utils import FontFamily, load_font, vertical_gradient
 
 
 class Widget(DirtySprite, ABC):
@@ -184,31 +184,7 @@ class Widget(DirtySprite, ABC):
     ) -> pygame.Surface | None:
         if top_color is None or bottom_color is None:
             return None
-
-        w, h = self.w, self.h
-        surf = pygame.Surface((w, h))
-        r1, g1, b1 = top_color
-        r2, g2, b2 = bottom_color
-
-        if h <= 1:
-            surf.fill(top_color)
-            return surf
-
-        for y in range(h):
-            # linear 0..1
-            t_lin = y / (h - 1)
-
-            # this makes the middle region flatter / brighter
-            # try different exponents, e.g. 1.5, 2.0, 2.5
-            t = t_lin**1.1
-
-            r = int(r1 + (r2 - r1) * t)
-            g = int(g1 + (g2 - g1) * t)
-            b = int(b1 + (b2 - b1) * t)
-
-            pygame.draw.line(surf, (r, g, b), (0, y), (w, y))
-
-        return surf
+        return vertical_gradient((self.w, self.h), top_color, bottom_color)
 
     def _render_value(
         self,

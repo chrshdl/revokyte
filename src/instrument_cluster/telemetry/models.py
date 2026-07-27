@@ -53,6 +53,11 @@ class Bounds(BaseModel):
 
 
 class TelemetryFrame(BaseModel):
+    # Monotonic timestamp of when this frame was *received*, stamped by the
+    # reader (UdpJsonlReader / the direct readers) — feeds do not need to
+    # set it. It is the freshness clock: a value that stops changing is how
+    # DeltaSignal, FuelSignal and LinkSignal all detect a dead or paused
+    # link, so it must come from the receiving side to be trustworthy.
     received_time: float = 0.0
     car_id: int = -1
     car_speed: float = 0.0

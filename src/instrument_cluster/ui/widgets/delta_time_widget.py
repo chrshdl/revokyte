@@ -3,19 +3,53 @@ import math
 import pygame
 
 from ...core.vehicle.vehicle_bus import VehicleBus
-from ...signals.signal_keys import SignalKey
+from ...signals.signal_keys import DeltaState, SignalKey
 from ...telemetry.mode import DiffReferenceMode
 from ..colors import Color
-from ..utils import FontFamily, su
+from ..utils import FontFamily, load_font, su
 from ..widgets import Widget
 
 # Header per active diff reference mode, so a mode switch is visible even
 # when the two references happen to read the same delta at the current spot.
+#
+# Built from DiffReferenceMode.label — the same string Setup's Reference Lap
+# dropdown shows — so one setting can never be named two ways (the dash once
+# read "[Best]" for what Setup called "fastest"). The longest today is
+# "[Previous]" at 200 px, inside the 332 px header.
 _HEADER_DEFAULT = "Time  Diff"
 _MODE_HEADERS = {
-    DiffReferenceMode.FASTEST.value: "Time  Diff  [Best]",
-    DiffReferenceMode.PREVIOUS.value: "Time  Diff  [Prev]",
+    mode.value: f"{_HEADER_DEFAULT}  [{mode.label}]" for mode in DiffReferenceMode
 }
+
+# GT3-dash vocabulary shown in place of the number when there is no delta.
+# A blank gauge is ambiguous — it reads the same as a broken one — so every
+# reason gets its own word, and the driver learns which wait they are in.
+_STATE_TEXT = {
+    DeltaState.BEACON: "BEACON",    # waiting for the start/finish crossing
+    DeltaState.REF_LAP: "REF LAP",  # this lap is being recorded as reference
+    DeltaState.NO_REF: "NO REF",    # an established reference was discarded
+}
+
+# The state words are longer than the 5-char "00.42" the value font is sized
+# for, so they get their own face rather than being squeezed through the
+# digit-metrics path (which allots every glyph a digit's width).
+#
+# Same family as the value itself, so the slot reads consistently whether it
+# holds a number or a word — and because PIXEL_TYPE (the *header* face) draws
+# a stray apex pixel on "A" that looks like a rendering fault at this size.
+# 46 design px sits the widest token, "BEACON" (185 px), comfortably inside
+# the 336 px panel without crowding the number's optical weight.
+_STATE_FONT_SIZE = 46
+_STATE_FONT_FAMILY = FontFamily.D_DIN_EXP
+
+# Lift of the state word above the value area's centre, in design px.
+#
+# The value area starts below the header, so its centre sits low in the
+# panel — geometrically correct, optically not: the eye centres the word
+# against the *box*, and reads a value-area-centred word as sitting low.
+# The number doesn't need this (it has value_offset_y plus the segment
+# tracker beneath it to balance the box); a lone word does.
+_STATE_OFFSET_Y = 10
 
 
 class DeltaTimeWidget(Widget):
@@ -68,12 +102,24 @@ class DeltaTimeWidget(Widget):
 
         self._last_rendered_value: float | None = None
         self._last_value_str: str = ""
+        # load_font scales design px to the panel itself, so pass the design
+        # size — pre-scaled only by font_scale, as the base class does.
+        self._state_font = load_font(
+            size=max(1, round(_STATE_FONT_SIZE * self.font_scale)),
+            family=_STATE_FONT_FAMILY,
+        )
+        self.state_offset_y = su(_STATE_OFFSET_Y * self.font_scale)
 
         self.set_value()
         self.visible = 1
 
     def reset(self) -> None:
-        """Reset UI state."""
+        """Clear the gauge completely.
+
+        Not used by ``update()``: leaving a timed lap is not a blank gauge
+        but a BEACON state, so that path renders the state word instead.
+        Kept for callers that want the panel genuinely empty.
+        """
         self.set_value()
         self._lap_index = -1
 
@@ -85,19 +131,19 @@ class DeltaTimeWidget(Widget):
         self._sync_header(bus)
 
         lap_count = int(getattr(packet, "lap_count", 0) or 0)
+        self._lap_index = lap_count if lap_count else -1
 
-        if lap_count in (0, None):
-            if self._lap_index != -1:
-                self.reset()
+        stable_delta = bus.signals.get(SignalKey.DELTA_DIFF_STABLE)
+
+        if not lap_count or stable_delta is None or not math.isfinite(stable_delta):
+            # There is no delta to show. Name the reason instead of holding
+            # the previous number: a delta left over from an earlier lap,
+            # reference or track is indistinguishable from a live one, which
+            # is the one thing this gauge must never be.
+            self.set_state(bus.signals.get(SignalKey.DELTA_STATE))
             return
 
-        if lap_count != self._lap_index:
-            self._lap_index = lap_count
-
-        stable_delta = bus.signals.get("delta_diff_stable")
-
-        if stable_delta is not None and math.isfinite(stable_delta):
-            self.set_value(float(stable_delta))
+        self.set_value(float(stable_delta))
 
     def _sync_header(self, bus: VehicleBus) -> None:
         mode = bus.signals.get(SignalKey.DELTA_REFERENCE_MODE)
@@ -108,6 +154,49 @@ class DeltaTimeWidget(Widget):
             # last-rendered state so the next set_value repaints in full.
             self._last_value_str = ""
             self._last_rendered_value = None
+
+    def set_state(self, state: str | None) -> None:
+        """Show why there is no delta, or clear the gauge when there is no
+        reason to give (``state`` None / unrecognised)."""
+        text = _STATE_TEXT.get(state, "")
+        if text == self._last_value_str:
+            return
+
+        self._last_value_str = text
+        # No number is on screen any more, so the numeric fast-path must not
+        # compare against a value that is no longer displayed.
+        self._last_rendered_value = None
+        self._render_state(text)
+        self.dirty = 1
+
+    def _value_area(self) -> pygame.Rect:
+        """The panel area below the header, where the value or state word
+        is centred (mirrors the geometry in Widget._render_value)."""
+        inner_left = self.border_width
+        inner_top = max(self._header_bottom + self.header_margin, self.border_width)
+        return pygame.Rect(
+            inner_left,
+            inner_top,
+            self.w - self.border_width - inner_left,
+            self.h - self.border_width - inner_top,
+        )
+
+    def _render_state(self, text: str) -> None:
+        """Paint a state word (or nothing) over a clean base image."""
+        self.image.blit(self._base_image, (0, 0))
+        if not text:
+            return
+
+        # Dimmed: it is status, not data, and must not read as a measurement.
+        surf = self._state_font.render(text, self.antialias, Color.LIGHT_GREY.rgb())
+        area = self._value_area()
+        # Not value_offset_y: that lift is sized for the number, which also
+        # has the segment tracker under it. A lone word needs a smaller
+        # nudge off the value area's centre — see _STATE_OFFSET_Y.
+        self.image.blit(
+            surf,
+            surf.get_rect(center=(area.centerx, area.centery - self.state_offset_y)),
+        )
 
     def set_value(self, value: float | None = None):
         # Optimization: If value is effectively unchanged, skip logic. The

@@ -65,6 +65,15 @@ class UdpJsonlReader:
                 continue
             try:
                 obj = json.loads(data.decode("utf-8"))
+                # The receiver owns received_time, not the feed. It is the
+                # freshness clock every downstream consumer gates on
+                # (DeltaSignal's lap timer, FuelSignal's whole update,
+                # LinkSignal's staleness), and the schema gives it a
+                # plausible-looking default of 0.0 — so a feed that simply
+                # never set it used to leave the delta and fuel silently
+                # dead forever while speed and RPM looked perfect. Stamping
+                # it here makes those consumers independent of feed quality.
+                obj["received_time"] = time.monotonic()
                 self._latest = TelemetryFrame.model_validate(obj)
             except Exception as e:
                 # One bad packet must not kill the reader, but total loss

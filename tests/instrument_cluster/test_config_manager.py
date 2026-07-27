@@ -251,3 +251,17 @@ def test_set_direct_host_strips_and_persists(config_path):
 
     assert ConfigManager.get_config().direct_host == "192.168.1.7"
     assert json.loads(config_path.read_text())["direct_host"] == "192.168.1.7"
+
+
+def test_diff_reference_mode_labels_are_display_ready():
+    """One source for Setup's dropdown and the delta gauge header."""
+    from instrument_cluster.telemetry.mode import DiffReferenceMode
+
+    assert DiffReferenceMode.FASTEST.label == "Fastest"
+    assert DiffReferenceMode.PREVIOUS.label == "Previous"
+
+    for mode in DiffReferenceMode:
+        # The label must stay recognisable as the persisted config value —
+        # that link is what keeps the two screens naming one setting alike.
+        assert mode.label.lower().replace(" ", "_") == mode.value
+        assert mode.label[0].isupper()

@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,8 +16,8 @@ from .feeds import ACTIVE_LINK, FeedDescriptor
 
 # Re-exported for callers/tests that reach them via this module.
 _flatten_extract = flatten_extract
-__all__ = ["FeedUnreachable", "InstallResult", "install_from_url",
-           "resolve_latest_tarball_url", "verify_signature"]
+__all__ = ["FeedRateLimited", "FeedUnreachable", "InstallResult",
+           "install_from_url", "resolve_latest_tarball_url", "verify_signature"]
 
 
 class FeedUnreachable(Exception):
@@ -26,6 +27,17 @@ class FeedUnreachable(Exception):
     user their device is offline instead of claiming the feed has no
     release — the two need completely different fixes, and on a release
     image with no SSH the on-screen message is the only diagnosis available.
+    """
+
+
+class FeedRateLimited(FeedUnreachable):
+    """GitHub answered, but refused the request as rate-limited.
+
+    A subclass so existing handling still catches it, but distinguishable:
+    the device is demonstrably online, and telling its owner "no network
+    connection" sends them to rewire a working router. Unauthenticated API
+    calls share a 60/hour budget per public IP, so this is reachable in a
+    household behind CGNAT or after a few retries.
     """
 
 ENV_FILE = Path("/data/etc/instrument-cluster-proxy")
@@ -57,6 +69,12 @@ def resolve_latest_tarball_url(descriptor: FeedDescriptor) -> str | None:
     try:
         with urllib.request.urlopen(req, timeout=30) as response:
             data = json.load(response)
+    except urllib.error.HTTPError as e:
+        # A reply — even a refusal — proves the link works, so never report
+        # these as "no network".
+        if e.code in (403, 429):
+            raise FeedRateLimited(f"HTTP {e.code}") from e
+        raise FeedUnreachable(f"HTTP {e.code}") from e
     except Exception as e:
         raise FeedUnreachable(str(e) or e.__class__.__name__) from e
 

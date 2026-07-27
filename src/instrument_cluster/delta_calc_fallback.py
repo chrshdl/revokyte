@@ -16,6 +16,12 @@ class DummyDeltaCalculator(DeltaCalculatorProtocol):
     def use_fastest_reference_only(self, value: bool) -> None:
         self._use_fastest_reference_only = bool(value)
 
+    @property
+    def has_reference(self) -> bool:
+        # The no-op calculator never builds one, so the gauge correctly
+        # stays in its "waiting for a reference lap" state.
+        return False
+
     def process(
         self, lap_index, dt, x, y, z, running,
         gt7_lap_time_ms=None, gt7_last_lap_time_ms=None,

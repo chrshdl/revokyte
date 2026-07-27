@@ -103,6 +103,13 @@ class DeltaCalculator:
         self._ref_mgr.use_fastest_only = bool(value)
 
     @property
+    def has_reference(self) -> bool:
+        """True once a reference trajectory exists, i.e. a delta can be
+        produced. Surfaced so the UI can distinguish "no delta yet because
+        there is no reference" from "no delta this frame"."""
+        return self._ref_mgr.has_reference
+
+    @property
     def last_reference_reject_reason(self) -> Optional[str]:
         """Why the most recent lap-change promotion attempt did not adopt a new
         reference, or None if it did (or no attempt was made). Useful for

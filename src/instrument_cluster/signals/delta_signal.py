@@ -3,7 +3,7 @@ from ..delta_calc import make_delta_calculator
 from ..logger import Logger
 from ..telemetry.mode import DiffReferenceMode
 from ..telemetry.models import TelemetryFrame
-from .signal_keys import SignalKey
+from .signal_keys import DeltaState, SignalKey
 from .stable_signal import StableSignal
 
 # Partial-lap rejection thresholds.
@@ -35,6 +35,11 @@ class DeltaSignal:
         self._max_reference_length: float = 0.0  # longest accepted reference (m)
         self._ref_lap_time: float | None = None  # calculator clock time of the active reference lap
         self._last_ref_version = -1  # calculator ref_version at the last adopted lap
+        # True once an *established* reference has been thrown away (track
+        # change, dirty/partial lap). Distinguishes "you lost your reference"
+        # (NO REF) from "you never had one yet" (REF LAP) — different news
+        # for the driver, so the gauge must not conflate them.
+        self._ref_discarded: bool = False
         self.logger = Logger(__class__.__name__).get()
         self._sync_configuration()
 
@@ -81,6 +86,9 @@ class DeltaSignal:
                 SignalKey.DELTA_DIFF_STABLE: self._stable.update(raw_delta, dt),
                 SignalKey.DELTA_REF_LAP_TIME: None,
                 SignalKey.DELTA_REFERENCE_MODE: None,
+                # The source vouches for the number; there is no reference
+                # lap of ours to wait for.
+                SignalKey.DELTA_STATE: None,
             }
 
         self._sync_configuration()
@@ -121,7 +129,31 @@ class DeltaSignal:
             SignalKey.DELTA_REFERENCE_MODE: (
                 self._last_diff_mode.value if self._last_diff_mode else None
             ),
+            SignalKey.DELTA_STATE: self._compute_state(lap_count),
         }
+
+    def _compute_state(self, lap_count: int) -> str | None:
+        """Why there is no delta to show, or None when the gauge is armed.
+
+        Only consulted by the UI when there is no numeric delta — publishing
+        it unconditionally keeps the reason available the moment the number
+        goes away, instead of having to reconstruct it there.
+        """
+        if not lap_count:
+            # Not in a timed lap: nothing can be timed until the car crosses
+            # the line, reference or no reference. Checked first for exactly
+            # that reason.
+            return DeltaState.BEACON
+        if self._has_reference():
+            return None
+        if self._ref_discarded:
+            return DeltaState.NO_REF
+        return DeltaState.REF_LAP
+
+    def _has_reference(self) -> bool:
+        """Whether the calculator can currently produce a delta. Defensive:
+        a third-party/fallback calculator may not expose the property."""
+        return bool(getattr(self.calculator, "has_reference", False))
 
     def _advance_lap_timer(
         self, frame: TelemetryFrame, lap_count: int, dt: float
@@ -160,6 +192,9 @@ class DeltaSignal:
                     f"Track changed {self._last_confirmed_track_id!r} → {track_id!r} "
                     f"({signals.get(SignalKey.TRACK_NAME)}), resetting delta reference"
                 )
+                # Read before the reset: only losing a reference we actually
+                # had is NO REF news for the driver.
+                self._ref_discarded = self._has_reference()
                 self.calculator.full_reset()
                 self._skip_first_reference = True
                 self._max_reference_length = 0.0
@@ -211,6 +246,7 @@ class DeltaSignal:
                 self.logger.info(
                     f"[delta] discarding partial-lap reference: {discard_reason}"
                 )
+                self._ref_discarded = self._has_reference()
                 self.calculator.full_reset()
                 self._last_ref_version = -1
                 self._ref_lap_time = None
@@ -234,6 +270,8 @@ class DeltaSignal:
             # prediction by the full pause duration.
             self._ref_lap_time = ref_state.get("ref_lap_time") if ref_state else None
             self._last_ref_version = new_ref_version
+            # A fresh reference is established; any earlier loss is history.
+            self._ref_discarded = False
         else:
             # No new reference adopted. In FASTEST mode this is the normal "lap
             # wasn't quicker" case, but it also covers gated rejections

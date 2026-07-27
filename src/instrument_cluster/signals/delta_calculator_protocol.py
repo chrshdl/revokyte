@@ -9,6 +9,9 @@ class DeltaCalculatorProtocol(Protocol):
     @use_fastest_reference_only.setter
     def use_fastest_reference_only(self, value: bool) -> None: ...
 
+    @property
+    def has_reference(self) -> bool: ...
+
     def process(
         self,
         lap_index: int,
