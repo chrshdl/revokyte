@@ -33,6 +33,18 @@ ENTRY_SETTINGS = "settings"  # opened from Setup: pop back to the dashboard
 # WPA passphrases are 8..63 chars; reject early so we don't bounce the radio.
 _MIN_PSK_LEN = 8
 
+# Connect-worker outcomes and the hint each one shows. Only auth failure
+# blames the password; setup and DHCP failures name their own layer.
+_CONNECT_OK = "ok"
+_CONNECT_SETUP_FAILED = "setup-failed"  # config write / service restart raised
+_CONNECT_AUTH_FAILED = "auth-failed"  # never associated within the window
+_CONNECT_NO_DHCP = "no-dhcp"  # associated but no IP lease
+_CONNECT_HINTS = {
+    _CONNECT_SETUP_FAILED: "Could  not  save  Wi-Fi  settings.",
+    _CONNECT_AUTH_FAILED: "Could  not  connect.  Check  password.",
+    _CONNECT_NO_DHCP: "Joined,  but  got  no  IP  address.",
+}
+
 
 class WifiSetupState(State):
     """Let the user join a Wi-Fi network from the display.
@@ -143,12 +155,24 @@ class WifiSetupState(State):
         self.view.show_status(f"Connecting  to  {ssid} ...")
 
         def worker():
+            # Three distinct failure modes so the hint can say what actually
+            # went wrong — release images have no SSH, so the screen is the
+            # only diagnostic port and "check password" must not be a
+            # catch-all for infrastructure failures.
             try:
                 self.manager.connect(ssid, psk)
-                self._connect_result = self.manager.wait_for_connection()
             except Exception as e:
                 self.logger.error(f"Connect worker failed: {e}")
-                self._connect_result = False
+                self._connect_result = _CONNECT_SETUP_FAILED
+                self._connecting = False
+                return
+            try:
+                if not self.manager.wait_for_association(timeout=30.0):
+                    self._connect_result = _CONNECT_AUTH_FAILED
+                elif self.manager.wait_for_connection(timeout=30.0):
+                    self._connect_result = _CONNECT_OK
+                else:
+                    self._connect_result = _CONNECT_NO_DHCP
             finally:
                 self._connecting = False
 
@@ -177,14 +201,14 @@ class WifiSetupState(State):
         if self._connect_result is not None and not self._connecting:
             result = self._connect_result
             self._connect_result = None
-            if result:
+            if result == _CONNECT_OK:
                 self._on_connected()
             else:
-                self.logger.warning("Wi-Fi connection failed")
+                self.logger.warning(f"Wi-Fi connection failed: {result}")
                 self.view.show_password(
                     self._selected_ssid, self._selected_secured, self._manual
                 )
-                self.view.set_hint("Could  not  connect.  Check  password.")
+                self.view.set_hint(_CONNECT_HINTS[result])
 
     # ------------------------------------------------------------------
     # success

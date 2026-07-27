@@ -100,3 +100,57 @@ def test_network_bars_buckets():
     assert Network("a", True, -75).bars == 2
     assert Network("a", True, -85).bars == 1
     assert Network("a", True, -95).bars == 0
+
+
+def test_build_config_modern_offers_wpa3_transition():
+    conf = WifiManager._build_config("MyNet", "s3cr3tpass", "DE", modern=True)
+    assert "key_mgmt=WPA-PSK WPA-PSK-SHA256 SAE" in conf
+    assert "ieee80211w=1" in conf
+    # SAE needs the raw passphrase; the hashed psk stays for the PSK path.
+    assert 'sae_password="s3cr3tpass"' in conf
+    import hashlib
+    expected = hashlib.pbkdf2_hmac(
+        "sha1", b"s3cr3tpass", b"MyNet", 4096, 32
+    ).hex()
+    assert f"psk={expected}" in conf
+
+
+def test_build_config_legacy_stays_plain_wpa_psk():
+    conf = WifiManager._build_config("MyNet", "s3cr3tpass", "DE", modern=False)
+    assert "key_mgmt=WPA-PSK\n" in conf
+    assert "sae_password" not in conf
+    assert "ieee80211w" not in conf
+
+
+def test_build_config_open_network_ignores_modern():
+    conf = WifiManager._build_config("OpenGuest", None, "DE", modern=True)
+    assert "key_mgmt=NONE" in conf
+    assert "sae_password" not in conf
+
+
+def test_supports_sae_parses_capability(monkeypatch):
+    mgr = WifiManager()
+    monkeypatch.setattr(
+        mgr, "_wpa_cli", lambda *a, **k: "WPA-PSK WPA-EAP SAE OWE\n"
+    )
+    assert mgr.supports_sae() is True
+    # cached: a later failing wpa_cli must not flip the answer
+    monkeypatch.setattr(mgr, "_wpa_cli", lambda *a, **k: (_ for _ in ()).throw(OSError))
+    assert mgr.supports_sae() is True
+
+
+def test_supports_sae_false_without_sae(monkeypatch):
+    mgr = WifiManager()
+    monkeypatch.setattr(mgr, "_wpa_cli", lambda *a, **k: "WPA-PSK WPA-EAP\n")
+    assert mgr.supports_sae() is False
+
+
+def test_supports_sae_probe_failure_falls_back_uncached(monkeypatch):
+    mgr = WifiManager()
+    monkeypatch.setattr(
+        mgr, "_wpa_cli", lambda *a, **k: (_ for _ in ()).throw(OSError("no ctrl"))
+    )
+    assert mgr.supports_sae() is False
+    # transient failure was not cached: a working probe later succeeds
+    monkeypatch.setattr(mgr, "_wpa_cli", lambda *a, **k: "SAE\n")
+    assert mgr.supports_sae() is True

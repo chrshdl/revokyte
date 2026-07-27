@@ -95,6 +95,7 @@ class WifiManager:
         self._systemctl_bin = _resolve_bin(
             "systemctl", "/usr/bin/systemctl", "/bin/systemctl"
         )
+        self._supports_sae_cached: bool | None = None
 
     # ------------------------------------------------------------------
     # availability
@@ -219,6 +220,23 @@ class WifiManager:
                 status[key.strip()] = value.strip()
         return status
 
+    def supports_sae(self) -> bool:
+        """True when the running wpa_supplicant was built with WPA3/SAE.
+
+        Probed via ``wpa_cli get_capability key_mgmt`` and cached: the answer
+        is a build-time property of the image's supplicant. Gates the modern
+        network block — writing ``sae_password``/``ieee80211w`` to a
+        supplicant compiled without CONFIG_SAE/CONFIG_IEEE80211W is a config
+        parse error that would take Wi-Fi down entirely (relevant when new
+        app bytecode lands on an older dev image)."""
+        if self._supports_sae_cached is None:
+            try:
+                caps = self._wpa_cli("get_capability", "key_mgmt")
+            except (subprocess.SubprocessError, OSError):
+                return False  # transient failure: fall back, don't cache
+            self._supports_sae_cached = "SAE" in caps.split()
+        return self._supports_sae_cached
+
     def is_associated(self) -> bool:
         """True when wpa_supplicant has completed association, regardless of DHCP state.
 
@@ -267,7 +285,7 @@ class WifiManager:
         write the config or restart the service; association success must be
         confirmed separately via :meth:`wait_for_connection`.
         """
-        self._write_config(ssid, psk)
+        self._write_config(ssid, psk, modern=bool(psk) and self.supports_sae())
         # Prefer wpa_cli reconfigure over a full service restart: reconfigure
         # reloads the config in-place while preserving wpa_supplicant's BSSID
         # blacklist. A full restart resets that state, so on routers with
@@ -312,8 +330,8 @@ class WifiManager:
             time.sleep(poll)
         return self.is_connected()
 
-    def _write_config(self, ssid: str, psk: str | None) -> None:
-        content = self._build_config(ssid, psk, self.country)
+    def _write_config(self, ssid: str, psk: str | None, modern: bool = False) -> None:
+        content = self._build_config(ssid, psk, self.country, modern=modern)
         directory = os.path.dirname(self.conf_path) or "."
         os.makedirs(directory, exist_ok=True)
         # Atomic replace so a crash mid-write can't leave a truncated config
@@ -351,7 +369,20 @@ class WifiManager:
         return hashlib.pbkdf2_hmac("sha1", psk.encode(), ssid.encode(), 4096, 32).hex()
 
     @classmethod
-    def _build_config(cls, ssid: str, psk: str | None, country: str) -> str:
+    def _build_config(
+        cls, ssid: str, psk: str | None, country: str, modern: bool = False
+    ) -> str:
+        """Render the wpa_supplicant config for one network.
+
+        ``modern`` (only when the supplicant supports SAE, see
+        :meth:`supports_sae`) additionally offers WPA3: routers in
+        WPA2+WPA3 transition mode with "PMF required" reject a plain
+        WPA-PSK/no-PMF client — which the UI can only report as a wrong
+        password. SAE authenticates with the raw passphrase by protocol
+        design, so ``sae_password`` must be plaintext; the hashed ``psk=``
+        stays for the WPA-PSK path and the file is chmod 0600 on /data.
+        ``ieee80211w=1`` makes PMF optional-capable for both.
+        """
         lines = [
             "ctrl_interface=/run/wpa_supplicant",
             "update_config=1",
@@ -360,7 +391,12 @@ class WifiManager:
             "network={",
             f'    ssid="{cls._escape(ssid)}"',
         ]
-        if psk:
+        if psk and modern:
+            lines.append(f"    psk={cls._hash_psk(ssid, psk)}")
+            lines.append(f'    sae_password="{cls._escape(psk)}"')
+            lines.append("    key_mgmt=WPA-PSK WPA-PSK-SHA256 SAE")
+            lines.append("    ieee80211w=1")
+        elif psk:
             lines.append(f"    psk={cls._hash_psk(ssid, psk)}")
             lines.append("    key_mgmt=WPA-PSK")
         else:
