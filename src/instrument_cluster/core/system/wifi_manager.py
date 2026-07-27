@@ -329,63 +329,6 @@ class WifiManager:
         parts = out.stdout.split()
         return f"{parts[-2]}/{parts[-1]}" if len(parts) >= 5 else ""
 
-    def _identity_files(self) -> str:
-        """State of the files networkd needs to build a DHCP client id.
-
-        An empty or absent machine-id, or a missing udev database entry for
-        the interface, makes the DUID/IAID unavailable and the DHCPv4
-        client fails to start with ENOENT.
-        """
-        lines = []
-        paths = [
-            "/etc/machine-id",
-            "/run/machine-id",
-            f"/sys/class/net/{self.interface}/ifindex",
-        ]
-        for path in paths:
-            try:
-                size = os.stat(path).st_size
-                lines.append(f"{path}: {size} bytes")
-            except OSError as e:
-                lines.append(f"{path}: {e.strerror}")
-        try:
-            with open(f"/sys/class/net/{self.interface}/ifindex") as f:
-                index = f.read().strip()
-            udev = f"/run/udev/data/n{index}"
-            lines.append(f"{udev}: {'present' if os.path.exists(udev) else 'MISSING'}")
-        except OSError as e:
-            lines.append(f"udev db entry: unavailable ({e.strerror})")
-        return "\n".join(lines)
-
-    def diagnostics(self) -> str:
-        """networkd's own account of the link, for the debug log.
-
-        Its reasoning lives in the journal, which is volatile — so when a
-        lease fails, copy the relevant part into our own log rather than
-        leaving it to expire. Best-effort; returns whatever could be
-        collected.
-        """
-        out = [f"--- DHCP client identity inputs ---\n{self._identity_files()}"]
-        commands = [
-            ["journalctl", "-u", "systemd-networkd", "-n", "60", "--no-pager"],
-            ["journalctl", "-u", f"wpa_supplicant@{self.interface}", "-n", "30",
-             "--no-pager"],
-        ]
-        if self._networkctl_bin:
-            commands.insert(
-                0, [self._networkctl_bin, "status", "--no-pager", self.interface]
-            )
-        for cmd in commands:
-            try:
-                result = subprocess.run(
-                    cmd, capture_output=True, text=True, timeout=10, check=False
-                )
-                body = (result.stdout or result.stderr).strip()
-            except (subprocess.SubprocessError, OSError) as e:
-                body = f"<{e}>"
-            out.append(f"--- {' '.join(cmd)} ---\n{body}")
-        return "\n".join(out)
-
     def request_dhcp(self) -> None:
         """Ask systemd-networkd to (re)run link configuration now.
 
