@@ -197,6 +197,13 @@ class WifiSetupState(State):
                     )
                     publish(_CONNECT_OK)
                 else:
+                    # The screen only has room for the link state; the
+                    # reason behind it goes to the log (readable off the
+                    # boot partition — see logger.install_debug_file_log).
+                    self.logger.warning(
+                        "No lease. networkd's account of the link:\n%s",
+                        self.manager.diagnostics(),
+                    )
                     publish(_CONNECT_NO_DHCP, self.manager.link_state())
             finally:
                 self._connecting = False

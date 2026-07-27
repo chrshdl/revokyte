@@ -332,3 +332,32 @@ def test_request_dhcp_noop_without_networkctl(monkeypatch):
         lambda *a, **k: pytest.fail("must not shell out without networkctl"),
     )
     mgr.request_dhcp()  # must not raise
+
+
+def test_diagnostics_collects_networkd_and_supplicant_journals(monkeypatch):
+    mgr = WifiManager()
+    mgr._networkctl_bin = "/usr/bin/networkctl"
+    seen = []
+
+    def fake_run(cmd, **kwargs):
+        seen.append(" ".join(cmd))
+        return SimpleNamespace(returncode=0, stdout=f"output of {cmd[0]}\n", stderr="")
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    report = mgr.diagnostics()
+
+    assert any("networkctl status" in c for c in seen)
+    assert any("systemd-networkd" in c for c in seen)
+    assert any("wpa_supplicant@wlan0" in c for c in seen)
+    assert "output of" in report
+
+
+def test_diagnostics_survives_missing_tools(monkeypatch):
+    mgr = WifiManager()
+    mgr._networkctl_bin = None
+    monkeypatch.setattr(
+        "subprocess.run",
+        lambda *a, **k: (_ for _ in ()).throw(FileNotFoundError("journalctl")),
+    )
+    report = mgr.diagnostics()  # must not raise
+    assert "journalctl" in report

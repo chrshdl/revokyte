@@ -373,6 +373,35 @@ class WifiManager:
         parts = out.stdout.split()
         return f"{parts[-2]}/{parts[-1]}" if len(parts) >= 5 else ""
 
+    def diagnostics(self) -> str:
+        """networkd's own account of the link, for the debug log.
+
+        Its reasoning lives in the journal, which is volatile and
+        unreachable on a release image (no SSH) — so when a lease fails,
+        copy the relevant part into our log, where it can be read off the
+        boot partition. Best-effort; returns whatever could be collected.
+        """
+        out = []
+        commands = [
+            ["journalctl", "-u", "systemd-networkd", "-n", "60", "--no-pager"],
+            ["journalctl", "-u", f"wpa_supplicant@{self.interface}", "-n", "30",
+             "--no-pager"],
+        ]
+        if self._networkctl_bin:
+            commands.insert(
+                0, [self._networkctl_bin, "status", "--no-pager", self.interface]
+            )
+        for cmd in commands:
+            try:
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, timeout=10, check=False
+                )
+                body = (result.stdout or result.stderr).strip()
+            except (subprocess.SubprocessError, OSError) as e:
+                body = f"<{e}>"
+            out.append(f"--- {' '.join(cmd)} ---\n{body}")
+        return "\n".join(out)
+
     def request_dhcp(self) -> None:
         """Ask systemd-networkd to (re)run link configuration now.
 
