@@ -206,7 +206,13 @@ class WifiSetupState(State):
         if self._scan_result is not None and not self._scanning:
             self._networks = self._scan_result
             self._scan_result = None
-            self.view.show_networks(self._networks, self._scan_ssid)
+            # Only ever render results into the scan phase. A scan started
+            # before the user picked a network can land while they are
+            # typing a password or waiting on "Connecting …", and switching
+            # the view then throws away their input and looks like the app
+            # jumping back to the network list on its own.
+            if self.view.phase == self.view.PHASE_SCAN:
+                self.view.show_networks(self._networks, self._scan_ssid)
 
         if self._connect_result is not None and not self._connecting:
             result = self._connect_result
