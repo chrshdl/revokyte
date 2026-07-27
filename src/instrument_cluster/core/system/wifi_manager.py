@@ -33,7 +33,6 @@ logger = Logger("wifi_manager").get()
 DEFAULT_INTERFACE = "wlan0"
 DEFAULT_CONF_PATH = "/etc/wpa_supplicant/wpa_supplicant-wlan0.conf"
 DEFAULT_SERVICE = "wpa_supplicant@wlan0.service"
-DEFAULT_COUNTRY = "DE"
 
 # wpa_supplicant's printf_encode() single-character escapes; everything else
 # non-printable arrives as \xHH byte escapes.
@@ -84,16 +83,28 @@ class WifiManager:
         interface: str = DEFAULT_INTERFACE,
         conf_path: str = DEFAULT_CONF_PATH,
         service: str = DEFAULT_SERVICE,
-        country: str = DEFAULT_COUNTRY,
+        country: str | None = None,
     ):
         self.interface = interface
         self.conf_path = conf_path
         self.service = service
-        self.country = country
+        # None = look up the optional config override; "" = no country=
+        # line at all, so the radio runs the world regulatory domain and
+        # adopts the router's advertised country (802.11d) — a hardcoded
+        # country hides channels that are legal elsewhere (e.g. 5 GHz
+        # 149-165: fine in the US/UK, absent from the German domain).
+        if country is None:
+            from ...config import ConfigManager
+
+            country = ConfigManager.get_config().wifi_country
+        self.country = country or ""
 
         self._wpa_cli_bin = _resolve_bin("wpa_cli", "/usr/sbin/wpa_cli", "/sbin/wpa_cli")
         self._systemctl_bin = _resolve_bin(
             "systemctl", "/usr/bin/systemctl", "/bin/systemctl"
+        )
+        self._networkctl_bin = _resolve_bin(
+            "networkctl", "/usr/bin/networkctl", "/bin/networkctl"
         )
         self._supports_sae_cached: bool | None = None
 
@@ -261,13 +272,101 @@ class WifiManager:
                 return True
         return False
 
+    def ipv4_address(self) -> str | None:
+        """The interface's IPv4 address straight from the kernel (SIOCGIFADDR).
+
+        ``wpa_cli status`` reports ``ip_address=`` only while the supplicant
+        holds an l2_packet socket it can read one from; asking the kernel
+        keeps lease detection independent of supplicant build/driver details
+        (and gives us the address itself for the log). A link-local 169.254
+        address is an autoconfiguration fallback, not a lease, so it counts
+        as "no address". Returns None when the interface has none — or does
+        not exist, as on dev machines.
+        """
+        # Deferred imports: fcntl is Linux/Unix-only and this path only ever
+        # runs on the appliance.
+        import fcntl
+        import socket
+        import struct
+
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            packed = fcntl.ioctl(
+                s.fileno(),
+                0x8915,  # SIOCGIFADDR
+                struct.pack("256s", self.interface.encode()[:15]),
+            )
+            address = socket.inet_ntoa(packed[20:24])
+        except OSError:
+            return None
+        finally:
+            s.close()
+        return None if address.startswith("169.254.") else address
+
+    def link_state(self) -> str:
+        """networkd's ``<operational>/<setup>`` state for the interface.
+
+        Diagnostic only, and the only window into networkd a release image
+        has (no SSH): "routable/configured" is a working link, while
+        "carrier/configuring" says DHCP is still in flight and
+        "no-carrier/..." says the radio never associated. Empty string when
+        networkctl is unavailable or the call fails.
+        """
+        if self._networkctl_bin is None:
+            return ""
+        try:
+            out = subprocess.run(
+                [self._networkctl_bin, "list", "--no-legend", self.interface],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+        except (subprocess.SubprocessError, OSError):
+            return ""
+        # "IDX LINK TYPE OPERATIONAL SETUP", optionally with a leading "*"
+        # marker on the default-route link — read from the right instead.
+        parts = out.stdout.split()
+        return f"{parts[-2]}/{parts[-1]}" if len(parts) >= 5 else ""
+
+    def request_dhcp(self) -> None:
+        """Ask systemd-networkd to (re)run link configuration now.
+
+        In the provisioning flow association happens long after boot, and a
+        DHCP client that saw no carrier at boot — or is sitting in a retry
+        backoff after an earlier failure — may not lease promptly on its own.
+        ``networkctl reconfigure`` re-applies the .network config and
+        restarts the DHCP client; ``renew`` is the fallback for systemd
+        versions without it. Best-effort: failure only means we fall back to
+        networkd's own schedule.
+        """
+        if self._networkctl_bin is None:
+            return
+        for verb in ("reconfigure", "renew"):
+            try:
+                result = subprocess.run(
+                    [self._networkctl_bin, verb, self.interface],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    check=False,
+                )
+            except (subprocess.SubprocessError, OSError) as e:
+                logger.warning(f"networkctl {verb} {self.interface} failed: {e}")
+                return
+            if result.returncode == 0:
+                return
+            logger.warning(
+                f"networkctl {verb} {self.interface} returned "
+                f"{result.returncode}: {result.stderr.strip()}"
+            )
+
     def is_connected(self) -> bool:
         """Associated *and* has an IP lease (so the network is actually usable)."""
         status = self.status()
-        return (
-            status.get("wpa_state") == "COMPLETED"
-            and bool(status.get("ip_address"))
-        )
+        if status.get("wpa_state") != "COMPLETED":
+            return False
+        return bool(status.get("ip_address")) or self.ipv4_address() is not None
 
     def current_ssid(self) -> str | None:
         # ``wpa_cli status`` escapes the ssid the same way scan results are;
@@ -386,7 +485,10 @@ class WifiManager:
         lines = [
             "ctrl_interface=/run/wpa_supplicant",
             "update_config=1",
-            f"country={country}",
+        ]
+        if country:
+            lines.append(f"country={country}")
+        lines += [
             "",
             "network={",
             f'    ssid="{cls._escape(ssid)}"',

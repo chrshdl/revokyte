@@ -1,3 +1,7 @@
+from types import SimpleNamespace
+
+import pytest
+
 from instrument_cluster.core.system.wifi_manager import Network, WifiManager
 
 SCAN_OUTPUT = """\
@@ -154,3 +158,127 @@ def test_supports_sae_probe_failure_falls_back_uncached(monkeypatch):
     # transient failure was not cached: a working probe later succeeds
     monkeypatch.setattr(mgr, "_wpa_cli", lambda *a, **k: "SAE\n")
     assert mgr.supports_sae() is True
+
+
+def test_build_config_no_country_omits_the_line():
+    conf = WifiManager._build_config("MyNet", "s3cr3tpass", "")
+    assert "country=" not in conf
+    assert conf.startswith("ctrl_interface=/run/wpa_supplicant\nupdate_config=1\n\n")
+
+
+def test_build_config_country_override_pins_the_domain():
+    conf = WifiManager._build_config("MyNet", "s3cr3tpass", "GB")
+    assert "country=GB\n" in conf
+
+
+def test_manager_country_from_config_override(tmp_path, monkeypatch):
+    from instrument_cluster.config import ConfigManager
+
+    original = ConfigManager.path
+    ConfigManager.reset()
+    ConfigManager.set_path(tmp_path / "config.json")
+    (tmp_path / "config.json").write_text('{"wifi_country": "GB"}')
+    try:
+        assert WifiManager().country == "GB"
+        (tmp_path / "config.json").write_text("{}")
+        ConfigManager.reset()
+        assert WifiManager().country == ""
+    finally:
+        ConfigManager.reset()
+        ConfigManager.set_path(original)
+
+
+# --- lease detection / networkd control ---
+
+
+def test_is_connected_uses_kernel_address_when_status_lacks_ip(monkeypatch):
+    """wpa_cli only reports ip_address= while its l2 socket can read one;
+    a lease must still be detected without it."""
+    mgr = WifiManager()
+    monkeypatch.setattr(mgr, "status", lambda: {"wpa_state": "COMPLETED"})
+    monkeypatch.setattr(mgr, "ipv4_address", lambda: "10.22.33.85")
+    assert mgr.is_connected() is True
+
+
+def test_is_connected_false_without_association(monkeypatch):
+    mgr = WifiManager()
+    monkeypatch.setattr(mgr, "status", lambda: {"wpa_state": "SCANNING"})
+    monkeypatch.setattr(mgr, "ipv4_address", lambda: "10.22.33.85")
+    assert mgr.is_connected() is False
+
+
+def test_is_connected_false_when_associated_without_lease(monkeypatch):
+    mgr = WifiManager()
+    monkeypatch.setattr(mgr, "status", lambda: {"wpa_state": "COMPLETED"})
+    monkeypatch.setattr(mgr, "ipv4_address", lambda: None)
+    assert mgr.is_connected() is False
+
+
+def test_link_state_reads_last_two_columns(monkeypatch):
+    mgr = WifiManager()
+    mgr._networkctl_bin = "/usr/bin/networkctl"
+    monkeypatch.setattr(
+        "subprocess.run",
+        lambda *a, **k: SimpleNamespace(
+            returncode=0, stdout="  3 wlan0 wlan routable configured\n", stderr=""
+        ),
+    )
+    assert mgr.link_state() == "routable/configured"
+
+
+def test_link_state_tolerates_default_route_marker(monkeypatch):
+    mgr = WifiManager()
+    mgr._networkctl_bin = "/usr/bin/networkctl"
+    monkeypatch.setattr(
+        "subprocess.run",
+        lambda *a, **k: SimpleNamespace(
+            returncode=0, stdout="* 3 wlan0 wlan carrier configuring\n", stderr=""
+        ),
+    )
+    assert mgr.link_state() == "carrier/configuring"
+
+
+def test_link_state_empty_without_networkctl():
+    mgr = WifiManager()
+    mgr._networkctl_bin = None
+    assert mgr.link_state() == ""
+
+
+def test_request_dhcp_falls_back_to_renew(monkeypatch):
+    mgr = WifiManager()
+    mgr._networkctl_bin = "/usr/bin/networkctl"
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd[1])
+        # reconfigure unsupported on older systemd, renew works
+        rc = 1 if cmd[1] == "reconfigure" else 0
+        return SimpleNamespace(returncode=rc, stdout="", stderr="unknown verb")
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    mgr.request_dhcp()
+    assert calls == ["reconfigure", "renew"]
+
+
+def test_request_dhcp_stops_after_success(monkeypatch):
+    mgr = WifiManager()
+    mgr._networkctl_bin = "/usr/bin/networkctl"
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd[1])
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    mgr.request_dhcp()
+    assert calls == ["reconfigure"]
+
+
+def test_request_dhcp_noop_without_networkctl(monkeypatch):
+    mgr = WifiManager()
+    mgr._networkctl_bin = None
+    monkeypatch.setattr(
+        "subprocess.run",
+        lambda *a, **k: pytest.fail("must not shell out without networkctl"),
+    )
+    mgr.request_dhcp()  # must not raise

@@ -67,6 +67,12 @@ class Config:
     # provider plugin (0 = the built-in default). An invalid or
     # no-longer-available value silently falls back to the default.
     dashboard_slot: int = field(default=0)
+    # Optional Wi-Fi regulatory domain override (ISO 3166-1 alpha-2, e.g.
+    # "GB"). Empty (the default) writes no country= line: the radio starts
+    # in the world domain and adopts the country the router itself
+    # advertises (802.11d), which is correct in any country. Config-file
+    # only — no settings UI row.
+    wifi_country: str = field(default="")
 
     @classmethod
     def parse_config(cls, path: Path) -> "Config":

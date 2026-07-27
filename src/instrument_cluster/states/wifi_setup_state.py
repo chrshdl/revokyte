@@ -91,7 +91,9 @@ class WifiSetupState(State):
         self._scanning = False
 
         self._connect_thread: threading.Thread | None = None
-        self._connect_result: bool | None = None
+        self._connect_result: str | None = None
+        # networkd's link state when a connect fails, shown alongside the hint
+        self._connect_detail: str = ""
         self._connecting = False
 
         self._connected_timer: float = 0.0
@@ -169,10 +171,18 @@ class WifiSetupState(State):
             try:
                 if not self.manager.wait_for_association(timeout=30.0):
                     self._connect_result = _CONNECT_AUTH_FAILED
-                elif self.manager.wait_for_connection(timeout=30.0):
+                    return
+                # Association happens long after boot here, so networkd may
+                # still be waiting on its own retry schedule — kick it.
+                self.manager.request_dhcp()
+                if self.manager.wait_for_connection(timeout=45.0):
+                    self.logger.info(
+                        f"Wi-Fi lease acquired: {self.manager.ipv4_address()}"
+                    )
                     self._connect_result = _CONNECT_OK
                 else:
                     self._connect_result = _CONNECT_NO_DHCP
+                    self._connect_detail = self.manager.link_state()
             finally:
                 self._connecting = False
 
@@ -204,11 +214,16 @@ class WifiSetupState(State):
             if result == _CONNECT_OK:
                 self._on_connected()
             else:
-                self.logger.warning(f"Wi-Fi connection failed: {result}")
+                detail = self._connect_detail
+                self._connect_detail = ""
+                self.logger.warning(f"Wi-Fi connection failed: {result} {detail}")
                 self.view.show_password(
                     self._selected_ssid, self._selected_secured, self._manual
                 )
-                self.view.set_hint(_CONNECT_HINTS[result])
+                hint = _CONNECT_HINTS[result]
+                # A release image has no SSH: put networkd's own verdict on
+                # the screen rather than leaving the user (and us) guessing.
+                self.view.set_hint(f"{hint}  ({detail})" if detail else hint)
 
     # ------------------------------------------------------------------
     # success
