@@ -42,6 +42,11 @@ class DashboardState(State):
     # state is active. Harmless with no popups registered.
     allows_notification_popup = True
 
+    # Opt-in for SYSTEM_ALERT overlays (the NO SIGNAL banner). Set here and
+    # nowhere else: Setup is where a dead feed gets configured, so covering
+    # it with the alert would obscure the remedy.
+    allows_system_alert = True
+
     def __init__(
         self,
         state_manager: StateManager = None,

@@ -3,6 +3,7 @@ from ..logger import Logger
 from ..telemetry.mode import TelemetryMode
 from ..signals.delta_signal import DeltaSignal
 from ..signals.fuel_signal import FuelSignal
+from ..signals.link_signal import LinkSignal
 from ..signals.track_signal import TrackSignal
 from ..telemetry.demo import DemoDeltaSignal, DemoFuelSignal
 from ..telemetry.source import TelemetrySource
@@ -38,6 +39,8 @@ class SignalPipeline:
             TelemetryMode.DIRECT: FuelSignal(),
         }
         self.fuel = self._fuel_map[self._last_mode]
+        # Link supervision is mode-independent: every source can go quiet.
+        self.link = LinkSignal()
         self.telemetry = TelemetrySource(
             mode=self._last_mode,
             host=cfg.udp_host,
@@ -64,6 +67,7 @@ class SignalPipeline:
         self.track = TrackSignal()
         self.delta = self._delta_map[mode]
         self.fuel = self._fuel_map[mode]
+        self.link.reset()
         self._pending_reset = True
 
     @staticmethod
@@ -130,6 +134,12 @@ class SignalPipeline:
                 bus.update_frame(raw)
         except Exception:
             pass
+
+        # Link supervision runs before the no-frame guard below: a reader
+        # that has never produced a frame (inert direct reader, feed not yet
+        # connected) is precisely the case the driver needs told about, and
+        # returning early would leave the dash silently blank instead.
+        bus.merge_signals(self.link.update(bus.frame, bus.signals, dt))
 
         if bus.frame is None:
             return

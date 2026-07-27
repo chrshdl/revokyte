@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 
 from instrument_cluster.signals.delta_signal import DeltaSignal
-from instrument_cluster.signals.signal_keys import SignalKey
+from instrument_cluster.signals.signal_keys import DeltaState, SignalKey
 
 
 # ---------------------------------------------------------------------------
@@ -280,3 +280,115 @@ def test_publishes_active_reference_mode(signal, monkeypatch):
     cfg.diff_reference_mode = DiffReferenceMode.PREVIOUS.value
     result = signal.update(FakeFrame(), {}, 0.016)
     assert result[SignalKey.DELTA_REFERENCE_MODE] == "previous"
+
+
+# ---------------------------------------------------------------------------
+# Delta state — why the gauge has no number
+# ---------------------------------------------------------------------------
+
+
+class RefStateStubCalculator(StubCalculator):
+    """StubCalculator with a controllable reference, so the state machine can
+    be driven through every cause of a missing delta."""
+
+    def __init__(self, return_value: float = 0.5, has_reference: bool = False):
+        super().__init__(return_value=return_value)
+        self.has_reference = has_reference
+
+    def full_reset(self) -> None:
+        super().full_reset()
+        self.has_reference = False
+
+
+def _state(signal, frame, signals=None, dt=0.016):
+    return signal.update(frame, signals or {}, dt).get(SignalKey.DELTA_STATE)
+
+
+def test_state_is_beacon_when_not_in_a_timed_lap():
+    """lap_count 0 — nothing can be timed until the car crosses the line."""
+    signal = DeltaSignal()
+    signal.calculator = RefStateStubCalculator(has_reference=True)
+    assert _state(signal, FakeFrame(lap_count=0)) == DeltaState.BEACON
+
+
+def test_state_is_ref_lap_while_recording_the_first_reference():
+    """A driver who has never had a reference is told a lap is being
+    recorded — not that something was lost."""
+    signal = DeltaSignal()
+    signal.calculator = RefStateStubCalculator(has_reference=False)
+    assert _state(signal, FakeFrame(lap_count=1)) == DeltaState.REF_LAP
+
+
+def test_state_is_none_once_a_reference_exists():
+    """Armed: the number is the thing to show, so no state word."""
+    signal = DeltaSignal()
+    signal.calculator = RefStateStubCalculator(has_reference=True)
+    assert _state(signal, FakeFrame(lap_count=2)) is None
+
+
+def test_losing_an_established_reference_reports_no_ref():
+    """Changing circuit throws away a reference the driver had — different
+    news from never having had one."""
+    calc = RefStateStubCalculator(has_reference=True)
+    signal = DeltaSignal()
+    signal.calculator = calc
+
+    # Arriving on a circuit clears any carry-over reference…
+    signal.update(FakeFrame(lap_count=1), {SignalKey.TRACK_ID: "spa"}, 0.016)
+    # …then a lap gets recorded, so the driver now has one.
+    calc.has_reference = True
+    assert _state(signal, FakeFrame(lap_count=2), {SignalKey.TRACK_ID: "spa"}) is None
+
+    # A genuinely different circuit throws that reference away.
+    assert (
+        _state(signal, FakeFrame(lap_count=2), {SignalKey.TRACK_ID: "monza"})
+        == DeltaState.NO_REF
+    )
+    assert calc.full_reset_calls == 2  # arrival + the change
+
+
+def test_track_change_before_any_reference_still_reports_ref_lap():
+    """No reference was lost, so NO REF would be a lie."""
+    signal = DeltaSignal()
+    signal.calculator = RefStateStubCalculator(has_reference=False)
+
+    signal.update(FakeFrame(lap_count=1), {SignalKey.TRACK_ID: "spa"}, 0.016)
+    state = _state(signal, FakeFrame(lap_count=1), {SignalKey.TRACK_ID: "monza"})
+    assert state == DeltaState.REF_LAP
+
+
+def test_no_ref_clears_once_a_new_reference_is_adopted():
+    calc = RefStateStubCalculator(has_reference=True)
+    signal = DeltaSignal()
+    signal.calculator = calc
+
+    signal.update(FakeFrame(lap_count=1), {SignalKey.TRACK_ID: "spa"}, 0.016)
+    calc.has_reference = True  # a reference lap was recorded on spa
+    signal.update(FakeFrame(lap_count=2), {SignalKey.TRACK_ID: "spa"}, 0.016)
+
+    assert (
+        _state(signal, FakeFrame(lap_count=2), {SignalKey.TRACK_ID: "monza"})
+        == DeltaState.NO_REF
+    )
+
+    calc.has_reference = True  # a replacement lap was recorded
+    assert _state(signal, FakeFrame(lap_count=3), {SignalKey.TRACK_ID: "monza"}) is None
+
+
+def test_native_delta_never_shows_a_waiting_state():
+    """A feed that computes its own delta has no reference lap of ours to
+    wait for (ACC via the Broadcasting API)."""
+    signal = DeltaSignal()
+    signal.calculator = RefStateStubCalculator(has_reference=False)
+    result = signal.update(FakeFrame(native_delta_ms=-250), {}, 0.016)
+
+    assert result[SignalKey.DELTA_STATE] is None
+    assert result[SignalKey.DELTA_DIFF] == -0.25
+
+
+def test_state_survives_a_calculator_without_the_property():
+    """An external/fallback calculator may not expose has_reference; the
+    gauge must degrade to 'waiting', not crash."""
+    signal = DeltaSignal()
+    signal.calculator = StubCalculator(return_value=0.5)  # no has_reference
+    assert _state(signal, FakeFrame(lap_count=1)) == DeltaState.REF_LAP

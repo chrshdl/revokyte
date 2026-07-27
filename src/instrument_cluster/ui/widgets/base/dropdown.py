@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 import pygame
 from pygame.sprite import DirtySprite, LayeredDirty
@@ -136,6 +136,7 @@ class Dropdown(Button):
         font=None,
         text_color=None,
         *,
+        labels: Mapping[Any, str] | None = None,
         menu_layer: int = DROPDOWN_MENU_LAYER,
         menu_pitch: int | None = None,
         closed_bg_color: tuple[int, int, int] = Color.BLACK.rgb(),
@@ -147,6 +148,11 @@ class Dropdown(Button):
     ):
         self.options = list(options)
         self.selected_index = int(selected_index)
+        # Per-option display text. Without it an option renders as its raw
+        # value, which is right for options that are already display strings
+        # (feed labels) but not for enums — DiffReferenceMode would put a
+        # bare "fastest" on screen.
+        self._labels: dict[Any, str] = dict(labels) if labels else {}
         # Vertical distance (scaled px) between the header top and each
         # successive menu option top. Lets an open menu align with a row grid
         # (e.g. the setup view's ListItems). None keeps the compact default.
@@ -279,8 +285,10 @@ class Dropdown(Button):
     # Labels / selection
     # -----------------------------------------------------------------
 
-    @staticmethod
-    def _label_for_value(value: Any) -> str:
+    def _label_for_value(self, value: Any) -> str:
+        label = self._labels.get(value)
+        if label is not None:
+            return label
         v = getattr(value, "value", None)
         return str(v) if isinstance(v, str) else str(value)
 

@@ -164,7 +164,9 @@ class SetupView(View):
             events=events,
         )
 
-    def _row_dropdown(self, options, selected, events: ButtonEvents) -> Dropdown:
+    def _row_dropdown(
+        self, options, selected, events: ButtonEvents, labels=None
+    ) -> Dropdown:
         """Standard row dropdown at row-local (DROPDOWN_X, 0), extending to
         the row's right edge (matching the separator lines) with no margin.
         Also stretched vertically to fill the row's grid cell (rather than
@@ -185,6 +187,7 @@ class SetupView(View):
             ),
             options=options,
             events=events,
+            labels=labels,
             font=load_font(
                 size=ListItem.ROW_FONT_SIZE, family=FontFamily.NOTOSANS_REGULAR
             ),
@@ -242,6 +245,9 @@ class SetupView(View):
         self.diff_reference_mode_dropdown = self._row_dropdown(
             options=self.DIFF_REFERENCE_OPTIONS,
             selected=DiffReferenceMode(config.diff_reference_mode),
+            # Without these the row would read a bare, lowercase "fastest" —
+            # the raw config value. Same source as the gauge header.
+            labels={mode: mode.label for mode in self.DIFF_REFERENCE_OPTIONS},
             events=ButtonEvents(
                 pressed=DIFF_REFERENCE_MODE_PRESSED,
                 released=DIFF_REFERENCE_MODE_RELEASED,

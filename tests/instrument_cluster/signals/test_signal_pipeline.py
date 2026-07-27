@@ -84,3 +84,84 @@ def test_unchanged_mode_does_not_reset():
     pipeline = SignalPipeline()
     pipeline.sync_mode()
     assert pipeline._pending_reset is False
+
+
+# --- Link supervision ------------------------------------------------------
+
+
+def test_link_is_supervised_even_when_no_frame_ever_arrives():
+    """A reader that never produces a frame (inert direct reader, feed not
+    connected) is exactly the case the driver needs told about.
+
+    Regression: the pipeline returned early on `bus.frame is None`, so the
+    dashboard sat blank and silent instead of reporting the dead link.
+    """
+    pipeline = SignalPipeline()
+    pipeline.telemetry = _NullTelemetry()
+    pipeline.start()
+    bus = VehicleBus()
+    try:
+        for _ in range(120):  # 2 s, past the 1 s threshold
+            pipeline.update(bus, 0.016)
+        assert bus.frame is None
+        assert bus.signals["telemetry_stale"] is True
+    finally:
+        pipeline._active = False
+
+
+def test_live_demo_telemetry_never_reports_a_stale_link():
+    pipeline = SignalPipeline()
+    pipeline.start()
+    bus = VehicleBus()
+    try:
+        for _ in range(120):
+            pipeline.update(bus, 0.016)
+        assert bus.signals["telemetry_stale"] is False
+    finally:
+        pipeline.stop()
+
+
+def test_a_frozen_reader_goes_stale():
+    """UdpJsonlReader hands back its last frame forever; after the threshold
+    that must stop reading as live data."""
+    pipeline = SignalPipeline()
+    pipeline.telemetry = _FrozenTelemetry()
+    pipeline.start()
+    bus = VehicleBus()
+    try:
+        pipeline.update(bus, 0.016)
+        assert bus.signals["telemetry_stale"] is False
+
+        for _ in range(120):
+            pipeline.update(bus, 0.016)
+        assert bus.signals["telemetry_stale"] is True
+    finally:
+        pipeline._active = False
+
+
+class _NullTelemetry:
+    def start(self):
+        pass
+
+    def stop(self):
+        pass
+
+    def latest(self):
+        return None
+
+
+class _FrozenTelemetry:
+    """Always returns the same frame object, as a reader does when the feed
+    has gone quiet."""
+
+    def __init__(self):
+        self._frame = TelemetryFrame(received_time=1234.5)
+
+    def start(self):
+        pass
+
+    def stop(self):
+        pass
+
+    def latest(self):
+        return self._frame

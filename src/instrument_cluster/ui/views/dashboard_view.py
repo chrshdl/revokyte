@@ -1,3 +1,4 @@
+import pygame
 from pygame.sprite import LayeredDirty
 
 from ...config import ConfigManager
@@ -19,7 +20,6 @@ from ...ui.widgets.slot_dots_widget import SlotDotsWidget
 from ...ui.widgets.slot_name_widget import SlotNameWidget
 from ...ui.widgets.status_lights_widget import StatusLightsWidget
 from .base import View
-
 
 class DashboardView(View):
     """The dashboard's chrome and compositor.
@@ -139,7 +139,12 @@ class DashboardView(View):
         track_right = self._COLUMN_LEFT + self._TRACK_RECT[2]
         name_left = self._COLUMN_LEFT + 120
         self.slot_name = SlotNameWidget(
-            rect=(name_left, FOOTER_BUTTONGROUP_Y, track_right - name_left, BUTTON_HEIGHT)
+            rect=(
+                name_left,
+                FOOTER_BUTTONGROUP_Y,
+                track_right - name_left,
+                BUTTON_HEIGHT,
+            )
         )
         self.slot_name.set_value(self._slot_name)
         self.ui_layer.add(self.slot_name)

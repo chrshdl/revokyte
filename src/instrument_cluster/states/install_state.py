@@ -4,6 +4,7 @@ import threading
 from typing import TYPE_CHECKING
 
 from ..addons.installer import (
+    FeedRateLimited,
     FeedUnreachable,
     InstallResult,
     install_from_url,
@@ -141,6 +142,14 @@ class InstallState(State):
 
         try:
             url = resolve_latest_tarball_url(self.descriptor)
+        except FeedRateLimited as e:
+            # Checked before FeedUnreachable (its base): the device is
+            # online, and the fix is to wait, not to touch the network.
+            self.logger.error(f"Feed release lookup rate-limited: {e}")
+            self.view.set_error(
+                "GitHub is rate-limiting this network. Try again in a few minutes."
+            )
+            return
         except FeedUnreachable as e:
             # Being offline is by far the likeliest cause and needs a
             # completely different fix than a missing release, so say so —

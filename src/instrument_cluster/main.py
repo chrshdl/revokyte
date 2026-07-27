@@ -15,6 +15,7 @@ from .signals.signal_pipeline import SignalPipeline
 from .states.gate import entry_state
 from .states.state_manager import StateManager
 from .states.wifi_connecting_state import WifiConnectingState
+from .ui.no_signal_window import NoSignalWindow
 from .ui.window_layering import WindowManager
 
 logger = Logger("InstrumentClusterOS").get()
@@ -61,6 +62,10 @@ def run(conf: Config) -> None:
         # the BASE layer. Overlay windows are composited above
         # it every frame (refer to ui/window_layering.py).
         window_manager = WindowManager(state_manager)
+        # Telemetry link loss. The one overlay the base build registers
+        # itself: it must never be drawn over, which is exactly what the
+        # SYSTEM_ALERT layer guarantees.
+        window_manager.add_window(NoSignalWindow(vehicle_bus, state_manager))
 
         # Installed extension distributions wire themselves in here; with
         # none installed this is a silent no-op. Wired before load_plugins

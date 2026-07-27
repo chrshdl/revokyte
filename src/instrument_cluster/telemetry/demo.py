@@ -97,6 +97,9 @@ class DemoDeltaSignal:
             # in bus.signals by an earlier UDP session so the diff widget
             # falls back to its neutral header.
             SignalKey.DELTA_REFERENCE_MODE: None,
+            # Always a number in demo mode: never show a waiting state, and
+            # clear one left behind by an earlier live session.
+            SignalKey.DELTA_STATE: None,
         }
 
 

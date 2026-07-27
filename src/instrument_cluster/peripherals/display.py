@@ -24,7 +24,6 @@ Supported panels:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple
 
 import pygame
 
@@ -58,10 +57,10 @@ class DisplayProfile:
     """Static description of a physical panel and how to drive it."""
 
     name: str
-    physical_size: Tuple[int, int]
+    physical_size: tuple[int, int]
     rotation: int = 0  # degrees the logical surface is rotated for presentation
     renderer: str = "software"  # "gpu" | "software"
-    logical_size: Tuple[int, int] = LOGICAL_SIZE
+    logical_size: tuple[int, int] = LOGICAL_SIZE
     # Desktop windows only: let the user resize the window, with pygame's
     # SCALED mode stretching the logical surface to fit.
     resizable: bool = False
@@ -78,7 +77,7 @@ class DisplayProfile:
     def uses_hardware_renderer(self) -> bool:
         return self.renderer == "gpu"
 
-    def to_logical(self, event: pygame.event.Event) -> Tuple[int, int] | None:
+    def to_logical(self, event: pygame.event.Event) -> tuple[int, int] | None:
         """Map a mouse/touch event into logical (1280x720) coordinates.
 
         Touch events arrive normalized to ``[0, 1]`` over the physical panel;
@@ -139,6 +138,7 @@ _PROFILES = {
     ),
 }
 
+
 class _DisplayState:
     """Mutable holder for the process-wide active display selection.
 
@@ -155,7 +155,7 @@ class _DisplayState:
 
     def __init__(self) -> None:
         self.profile: DisplayProfile | None = None
-        self.display: "Display" | None = None
+        self.display: Display | None = None
 
 
 _state = _DisplayState()
@@ -168,7 +168,7 @@ def active_profile() -> DisplayProfile:
     return _state.profile
 
 
-def scale_factors() -> Tuple[float, float]:
+def scale_factors() -> tuple[float, float]:
     """(x, y) factors mapping design coordinates to the active logical size."""
     lw, lh = active_profile().logical_size
     return lw / DESIGN_WIDTH, lh / DESIGN_HEIGHT
@@ -180,7 +180,7 @@ def scale_uniform() -> float:
     return min(sx, sy)
 
 
-def active_display() -> "Display" | None:
+def active_display() -> Display | None:
     """Return the active Display, or None if the app isn't running."""
     return _state.display
 
@@ -202,7 +202,7 @@ def is_raspberry_pi_display_2() -> bool:
     return active_profile().name == RPI_DISPLAY_2
 
 
-def _detect_physical_size() -> Tuple[int, int] | None:
+def _detect_physical_size() -> tuple[int, int] | None:
     """Best-effort native panel resolution (requires pygame to be initialized)."""
     try:
         info = pygame.display.Info()
@@ -214,7 +214,7 @@ def _detect_physical_size() -> Tuple[int, int] | None:
     return (w, h)
 
 
-def _match_by_resolution(size: Tuple[int, int]) -> DisplayProfile | None:
+def _match_by_resolution(size: tuple[int, int]) -> DisplayProfile | None:
     for profile in (_PROFILES[RPI_DISPLAY_2], _PROFILES[WAVESHARE_7]):
         if profile.physical_size == size:
             return profile
@@ -244,8 +244,7 @@ def _resolve_profile(configured: str | None = None) -> DisplayProfile:
             if matched is not None:
                 return matched
             logger.warning(
-                f"Unrecognized panel resolution {size}; "
-                f"defaulting to {RPI_DISPLAY_2}."
+                f"Unrecognized panel resolution {size}; defaulting to {RPI_DISPLAY_2}."
             )
         return _PROFILES[RPI_DISPLAY_2]
 
@@ -346,9 +345,7 @@ class Display:
             self._gpu_renderer.render(self.surface)
         elif self.scales:
             screen = pygame.display.get_surface()
-            pygame.transform.scale(
-                self.surface, self.profile.physical_size, screen
-            )
+            pygame.transform.scale(self.surface, self.profile.physical_size, screen)
             pygame.display.flip()
         else:
             # Logical surface is the display surface; flush dirty rects only.

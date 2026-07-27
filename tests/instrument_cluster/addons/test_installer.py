@@ -109,3 +109,45 @@ def test_resolve_still_returns_none_when_release_lacks_the_asset(monkeypatch):
         lambda *a, **k: _FakeResponse(payload),
     )
     assert installer.resolve_latest_tarball_url(feed_by_id("granturismo")) is None
+
+
+def _http_error(code):
+    import urllib.error
+
+    def _raise(*a, **k):
+        raise urllib.error.HTTPError(
+            url="https://api.github.com/x", code=code, msg="nope", hdrs=None, fp=None
+        )
+
+    return _raise
+
+
+@pytest.mark.parametrize("code", [403, 429])
+def test_rate_limited_is_not_reported_as_offline(monkeypatch, code):
+    """GitHub answering at all proves the link works.
+
+    Unauthenticated release lookups share a 60/hour budget per public IP, so
+    a household behind CGNAT can hit this. Telling its owner "no network
+    connection" sends them to rewire a working router.
+    """
+    monkeypatch.setattr(installer.urllib.request, "urlopen", _http_error(code))
+
+    with pytest.raises(installer.FeedRateLimited):
+        installer.resolve_latest_tarball_url(feed_by_id("acc"))
+
+
+def test_rate_limited_still_fails_closed(monkeypatch):
+    """It remains a FeedUnreachable subclass, so existing handling that only
+    knows the base class still refuses to install anything."""
+    monkeypatch.setattr(installer.urllib.request, "urlopen", _http_error(403))
+
+    with pytest.raises(installer.FeedUnreachable):
+        installer.resolve_latest_tarball_url(feed_by_id("acc"))
+
+
+def test_other_http_errors_stay_plain_unreachable(monkeypatch):
+    monkeypatch.setattr(installer.urllib.request, "urlopen", _http_error(500))
+
+    with pytest.raises(installer.FeedUnreachable) as excinfo:
+        installer.resolve_latest_tarball_url(feed_by_id("acc"))
+    assert not isinstance(excinfo.value, installer.FeedRateLimited)

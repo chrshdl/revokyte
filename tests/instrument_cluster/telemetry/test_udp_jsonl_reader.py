@@ -137,6 +137,54 @@ class TestSourceFiltering:
         reader = self._run_with_packets("0.0.0.0", packets)
         assert reader._latest.car_speed == 77.0
 
+    def test_received_time_is_stamped_when_the_feed_omits_it(self):
+        """The receiver owns received_time, not the feed.
+
+        Regression: it defaults to 0.0 in the schema, and the README tells
+        feed authors to leave unknown fields at their defaults. A feed that
+        never set it produced frames whose freshness clock never advanced,
+        which silently killed the delta and fuel signals forever while
+        speed and RPM looked perfect.
+        """
+        packets = [
+            (_minimal_frame_bytes(speed=55.0), ("127.0.0.1", 9999)),
+            None,
+        ]
+        reader = self._run_with_packets("127.0.0.1", packets)
+        assert reader._latest.received_time > 0.0
+
+    def test_received_time_from_the_feed_is_overridden(self):
+        """A feed sending a constant (or nonsense) stamp must not be able to
+        freeze the freshness clock."""
+        data = json.dumps({"car_speed": 12.0, "received_time": 999.0}).encode()
+        reader = self._run_with_packets(
+            "127.0.0.1", [(data, ("127.0.0.1", 9999)), None]
+        )
+        assert reader._latest.received_time != 999.0
+
+    def test_consecutive_packets_get_distinct_stamps(self):
+        """Freshness detection needs the value to actually change per packet."""
+        stamps = []
+        reader = UdpJsonlReader(host="127.0.0.1", port=5600)
+        for speed in (10.0, 20.0):
+            reader._sock = FakeSocket(
+                [(_minimal_frame_bytes(speed=speed), ("127.0.0.1", 9999)), None]
+            )
+            reader._running = True
+            reader._run()
+            stamps.append(reader._latest.received_time)
+
+        assert stamps[0] != stamps[1]
+        assert stamps[1] > stamps[0], "monotonic clock"
+
+    def test_non_dict_payload_is_counted_as_a_dropped_packet(self):
+        """Stamping must not turn malformed JSON into a crash."""
+        reader = self._run_with_packets(
+            "127.0.0.1", [(b"[1, 2, 3]", ("127.0.0.1", 9999)), None]
+        )
+        assert reader._dropped == 1
+        assert reader._latest.car_speed == 0.0
+
     def test_multiple_packets_only_accepted_from_correct_host(self):
         """Mixed traffic: only frames from the bound host update state."""
         good = _minimal_frame_bytes(speed=33.0)
