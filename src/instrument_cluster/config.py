@@ -51,6 +51,11 @@ class Config:
     # the settings dropdown can show the current selection when telemetry_mode
     # is "udp". The app never branches on its value.
     telemetry_feed: str = field(default="")
+    # Release tag of the feed build actually installed on this device. The
+    # install lives on /data and survives OS updates, so the descriptor's pin
+    # alone says nothing about what is really running — see
+    # feeds.feed_needs_reinstall.
+    telemetry_feed_version: str = field(default="")
     diff_reference_mode: str = field(default=DiffReferenceMode.FASTEST.value)
     # Console/game-PC IP the in-process reader connects to when
     # telemetry_mode is "direct" (desktop builds; the appliance runs the
@@ -186,9 +191,17 @@ class ConfigManager:
             cls.persist()
 
     @classmethod
-    def set_telemetry_feed(cls, feed_id: str, persist: bool = True) -> None:
+    def set_telemetry_feed(
+        cls, feed_id: str, version: str = "", persist: bool = True
+    ) -> None:
+        """Record which feed is installed, and which build of it.
+
+        The version is what lets a later image tell whether the feed on /data
+        is the one it was tested against.
+        """
         cfg = cls.get_config()
         cfg.telemetry_feed = str(feed_id)
+        cfg.telemetry_feed_version = str(version)
         if persist:
             cls.persist()
 

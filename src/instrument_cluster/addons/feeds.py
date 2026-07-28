@@ -42,7 +42,14 @@ class FeedDescriptor:
 
     id: str  # opaque persisted key, e.g. "granturismo", "acc"
     label: str  # human label shown in the settings dropdown
-    github_repo: str  # "owner/repo" whose latest release holds the tarball
+    github_repo: str  # "owner/repo" whose releases hold the tarball
+    # Release tag this image installs. Pinned, never "latest": the feed and
+    # the cluster share the TelemetryFrame schema, so which feed build a
+    # device gets has to be a decision made when the image is built and
+    # tested — not whatever happened to be published the day someone ran
+    # Setup. Must match the pin in pyproject.toml's "pc" extra, which is the
+    # version desktop builds read in-process (see test_feeds.py).
+    version: str
     asset_prefix: str  # release asset name prefix (…-<version>.tar.gz)
     ip_prompt_title: str  # title shown on the IP-entry screen
     env_builder: Callable[[str], str]  # ip -> env-file body for the feed's proxy
@@ -91,6 +98,7 @@ FEEDS: list[FeedDescriptor] = [
         id="granturismo",
         label="Gran Turismo 7",
         github_repo="chrshdl/granturismo",
+        version="v0.3.16",
         asset_prefix="granturismo-selfcontained-",
         ip_prompt_title="Enter Playstation IP",
         env_builder=_granturismo_env,
@@ -102,6 +110,7 @@ FEEDS: list[FeedDescriptor] = [
         id="acc",
         label="Assetto Corsa Competizione",
         github_repo="chrshdl/assettocorsa",
+        version="v0.1.0",
         asset_prefix="acc-selfcontained-",
         ip_prompt_title="Enter Computer IP",
         env_builder=_acc_env,
@@ -115,6 +124,29 @@ FEEDS: list[FeedDescriptor] = [
 
 def feed_by_id(feed_id: str) -> FeedDescriptor | None:
     return next((f for f in FEEDS if f.id == feed_id), None)
+
+
+def feed_needs_reinstall(feed_id: str, installed_version: str) -> FeedDescriptor | None:
+    """The installed feed whose build no longer matches this image's pin.
+
+    The descriptor's ``version`` only governs what a *fresh* install fetches.
+    The install itself lives under ``/data`` and survives OS updates, so a
+    device can go on running a feed the current image was never tested
+    against — and it would degrade exactly as silently as an unstamped
+    ``received_time`` did. This is the check that notices.
+
+    An empty ``installed_version`` counts as needing a reinstall: it means the
+    feed was installed before the version was recorded, so its build is
+    genuinely unknown, which is the state worth converging away from. The cost
+    of being wrong is one redundant download of the very version already
+    wanted.
+
+    Returns the descriptor to re-install, or None when nothing is stale.
+    """
+    descriptor = feed_by_id(feed_id)
+    if descriptor is None:
+        return None
+    return descriptor if installed_version != descriptor.version else None
 
 
 @dataclass(frozen=True)

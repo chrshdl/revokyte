@@ -17,18 +17,23 @@ from .base import View
 
 
 class InstallView(View):
-    def __init__(self, feed_label: str = None):
+    def __init__(self, feed_label: str = None, updating: bool = False):
         self.ui_layer = LayeredDirty()
         self.background_color = Color.BLACK.rgb()
 
         self._w, self._h = DESIGN_WIDTH, DESIGN_HEIGHT
         self._feed_label = feed_label or "your game"
+        self._updating = updating
 
         self._init_ui_elements()
 
     def _init_ui_elements(self):
         self.title_label = Label(
-            text="Install UDP Telemetry?",
+            text=(
+                "Updating UDP Telemetry"
+                if self._updating
+                else "Install UDP Telemetry?"
+            ),
             font=load_font(
                 size=HEADER_TITLE_FONT_SIZE, family=FontFamily.NOTOSANS_LIGHT
             ),
@@ -47,7 +52,11 @@ class InstallView(View):
             "maintained and is not affiliated with or endorsed by the",
             "respective game's publisher.",
             "",
-            "Press Install to proceed or Cancel to go back.",
+            (
+                "Updating now. Press Cancel to go back."
+                if self._updating
+                else "Press Install to proceed or Cancel to go back."
+            ),
         ]
 
         self.info_labels = []
@@ -91,7 +100,10 @@ class InstallView(View):
         button_width = 220
         button_height = 70
         button_gap = 60
-        total_width = button_width * 2 + button_gap
+        # An update starts on its own, so Install would be a dead control on
+        # a screen that is already installing — Cancel alone, centred.
+        buttons = 1 if self._updating else 2
+        total_width = button_width * buttons + button_gap * (buttons - 1)
         start_x = (self._w - total_width) // 2
         btn_y = self._h // 2 + 200
 
@@ -125,7 +137,10 @@ class InstallView(View):
         )
 
         self.btns = ButtonGroup()
-        self.btns.add(self.install_button, self.cancel_button)
+        if self._updating:
+            self.btns.add(self.cancel_button)
+        else:
+            self.btns.add(self.install_button, self.cancel_button)
 
         self.ui_layer.add(
             self.title_label, self.status_label, self.error_label, *self.btns.sprites()

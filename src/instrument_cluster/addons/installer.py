@@ -16,8 +16,9 @@ from .feeds import ACTIVE_LINK, FeedDescriptor
 
 # Re-exported for callers/tests that reach them via this module.
 _flatten_extract = flatten_extract
-__all__ = ["FeedRateLimited", "FeedUnreachable", "InstallResult",
-           "install_from_url", "resolve_latest_tarball_url", "verify_signature"]
+__all__ = ["FeedRateLimited", "FeedUnreachable", "FeedVersionMissing",
+           "InstallResult", "install_from_url", "installed_feed_ip",
+           "resolve_pinned_tarball_url", "verify_signature"]
 
 
 class FeedUnreachable(Exception):
@@ -27,6 +28,15 @@ class FeedUnreachable(Exception):
     user their device is offline instead of claiming the feed has no
     release — the two need completely different fixes, and on a release
     image with no SSH the on-screen message is the only diagnosis available.
+    """
+
+
+class FeedVersionMissing(Exception):
+    """The release the descriptor pins does not exist on GitHub.
+
+    Not a FeedUnreachable: the network is fine and the answer was
+    authoritative. This is a packaging fault — a retracted or mistyped tag —
+    so it needs a message that sends someone to the image, not the router.
     """
 
 
@@ -47,18 +57,27 @@ SYSTEMCTL: str | None = shutil.which("systemctl")
 ASSET_SUFFIX = ".tar.gz"
 
 
-def resolve_latest_tarball_url(descriptor: FeedDescriptor) -> str | None:
-    """Return the download URL of the feed's latest self-contained tarball.
+def resolve_pinned_tarball_url(descriptor: FeedDescriptor) -> str | None:
+    """Return the download URL of the feed's pinned self-contained tarball.
 
-    We always install the *latest* published release rather than a hardcoded
-    version: the device asks the descriptor's GitHub Releases API which release
-    is newest and picks its ``<asset_prefix><ver>.tar.gz`` asset (the .sha256 and
+    The device installs the release the descriptor *pins*, not whatever is
+    newest. The feed and the cluster share the ``TelemetryFrame`` schema, so a
+    feed published after this image was built can speak a shape this image
+    does not — the exact failure the ``received_time`` stamping fixed, only
+    arriving silently on someone else's schedule. Pinning also makes the
+    install reproducible and matches the desktop path, where the same feeds
+    are pinned as git refs in pyproject's ``pc`` extra.
+
+    Picks the release's ``<asset_prefix><ver>.tar.gz`` asset (the .sha256 and
     .sig sidecars, verified in install_from_url, sit next to it). Returns None
     when the release carries no matching asset, so callers fail closed instead
     of installing something unexpected, and raises :class:`FeedUnreachable`
     when the API could not be reached at all.
     """
-    api_url = f"https://api.github.com/repos/{descriptor.github_repo}/releases/latest"
+    api_url = (
+        f"https://api.github.com/repos/{descriptor.github_repo}"
+        f"/releases/tags/{descriptor.version}"
+    )
     req = urllib.request.Request(
         api_url,
         headers={
@@ -74,6 +93,14 @@ def resolve_latest_tarball_url(descriptor: FeedDescriptor) -> str | None:
         # these as "no network".
         if e.code in (403, 429):
             raise FeedRateLimited(f"HTTP {e.code}") from e
+        if e.code == 404:
+            # The pinned tag isn't published (retracted, renamed, typo in the
+            # descriptor). Distinct from "no network" and from "no matching
+            # asset" — this one is a packaging mistake, not the user's.
+            raise FeedVersionMissing(
+                f"{descriptor.github_repo} has no release tagged "
+                f"{descriptor.version}"
+            ) from e
         raise FeedUnreachable(f"HTTP {e.code}") from e
     except Exception as e:
         raise FeedUnreachable(str(e) or e.__class__.__name__) from e
@@ -85,6 +112,29 @@ def resolve_latest_tarball_url(descriptor: FeedDescriptor) -> str | None:
             if url:
                 return url
     return None
+
+
+def installed_feed_ip() -> str:
+    """The console address the installed feed is already configured with.
+
+    Every descriptor's env file carries it under its own key (``GT_PS_IP``,
+    ``ACC_PC_IP``, ...), so this matches on the shared ``_IP`` suffix rather
+    than knowing any particular feed. It is the authoritative record — it is
+    literally what the running proxy connects to — which is what lets an
+    update re-install without asking for anything.
+
+    Returns "" when there is no env file or no address in it.
+    """
+    try:
+        text = ENV_FILE.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+    for line in text.splitlines():
+        key, _, value = line.partition("=")
+        if key.strip().endswith("_IP"):
+            return value.strip()
+    return ""
 
 
 @dataclass

@@ -155,7 +155,7 @@ The app is game-agnostic — it only ever reads `TelemetryFrame`-shaped NDJSON o
 
 2. **Register the feed** — add one `FeedDescriptor` to `FEEDS` in `src/instrument_cluster/addons/feeds.py`:
    - `id` / `label` — persisted key and settings-dropdown text
-   - `github_repo` / `asset_prefix` — where the installer fetches the latest signed release
+   - `github_repo` / `version` / `asset_prefix` — which signed release the installer fetches. `version` is a pinned release tag, never "latest": the feed and the cluster share the `TelemetryFrame` schema, so which feed build a device installs has to be decided when the image is built and tested. Keep it equal to the git ref in pyproject's `pc` extra (a test enforces this) so the appliance and desktop paths run the same feed version.
    - `signing_pubkey_b64` — the Ed25519 public key matching your release-signing key
    - `ip_prompt_title` — title of the IP-entry screen
    - `env_builder` — builds the env-file body your proxy reads (variable names must match what your proxy expects)
