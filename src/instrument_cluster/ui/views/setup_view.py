@@ -6,7 +6,8 @@ from ...addons.feeds import current_choice, telemetry_choices
 from ...config import ConfigManager
 from ...extensions import runtime as extensions
 from ...peripherals.display import is_raspberry_pi
-from ...telemetry.mode import DiffReferenceMode
+from ...addons.feeds import feed_needs_reinstall
+from ...telemetry.mode import DiffReferenceMode, TelemetryMode
 from ...ui.colors import Color
 from ...ui.constants import (
     HEADER_BACKBUTTON_POSITION,
@@ -280,7 +281,15 @@ class SetupView(View):
         # window the OS owns both; the widgets above are still built so
         # SetupState can address them unconditionally.
         on_pi = is_raspberry_pi()
-        row_contents = [("\ue51e", "Telemetry Mode", self.telemetry_mode_dropdown)]
+        # A feed left behind by an earlier image is flagged on the row that
+        # re-installs it — picking the game again runs the install flow.
+        stale = feed_needs_reinstall(
+            config.telemetry_feed, config.telemetry_feed_version
+        )
+        telemetry_label = "Telemetry Mode"
+        if config.telemetry_mode != TelemetryMode.DEMO.value and stale is not None:
+            telemetry_label = "Telemetry (update)"
+        row_contents = [("\ue51e", telemetry_label, self.telemetry_mode_dropdown)]
         if on_pi:
             row_contents.append(("\ue518", "Brightness", self.brightness_widget))
         row_contents += [

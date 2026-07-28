@@ -113,6 +113,9 @@ class AbstractButton(DirtySprite):
             return 0
         if event.type in (pygame.FINGERDOWN, pygame.FINGERUP):
             return getattr(event, "finger_id", None)
+        # Motion is deliberately not mapped: a press holds its highlight
+        # while the pointer is dragged off, and only the release decides
+        # whether it counted. See test_button_drag.py.
         return None
 
     def is_inside_xy(self, x: int, y: int) -> bool:

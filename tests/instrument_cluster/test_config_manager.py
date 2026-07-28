@@ -265,3 +265,25 @@ def test_diff_reference_mode_labels_are_display_ready():
         # that link is what keeps the two screens naming one setting alike.
         assert mode.label.lower().replace(" ", "_") == mode.value
         assert mode.label[0].isupper()
+
+
+def test_installing_a_feed_records_its_version(tmp_path):
+    """Which build is on the device, not just which feed — that is what lets
+    a later image notice the install is stale."""
+    from instrument_cluster.config import ConfigManager
+
+    ConfigManager.reset()
+    ConfigManager.set_path(tmp_path / "config.json")
+
+    ConfigManager.set_telemetry_feed("granturismo", "v0.3.16", persist=False)
+    cfg = ConfigManager.get_config()
+
+    assert cfg.telemetry_feed == "granturismo"
+    assert cfg.telemetry_feed_version == "v0.3.16"
+
+
+def test_feed_version_defaults_to_unknown():
+    """Configs written before the field existed still parse."""
+    from instrument_cluster.config import Config
+
+    assert Config().telemetry_feed_version == ""

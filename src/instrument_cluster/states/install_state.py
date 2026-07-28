@@ -6,9 +6,10 @@ from typing import TYPE_CHECKING
 from ..addons.installer import (
     FeedRateLimited,
     FeedUnreachable,
+    FeedVersionMissing,
     InstallResult,
     install_from_url,
-    resolve_latest_tarball_url,
+    resolve_pinned_tarball_url,
 )
 from ..config import ConfigManager
 from ..logger import Logger
@@ -59,20 +60,32 @@ class InstallState(State):
         state_manager: StateManager = None,
         descriptor: "FeedDescriptor" = None,
         ip: str = "",
+        auto_start: bool = False,
     ):
         super().__init__(state_manager)
         self.logger = Logger(__class__.__name__).get()
 
         self.descriptor = descriptor
         self.ip = (ip or "").strip()
+        # Set when the decision was already made elsewhere (the stale-feed
+        # notice's "Update now"). Asking again would be a second
+        # confirmation for one choice, so the screen only reports progress.
+        self.auto_start = bool(auto_start)
         self.view = InstallView(
             feed_label=descriptor.label if descriptor else None,
+            updating=self.auto_start,
         )
 
         self._is_installing: bool = False
         self._install_thread: threading.Thread | None = None
         self._install_result: InstallResult | None = None
         self._install_exception: Exception | None = None
+
+    def enter(self, screen):
+        rects = super().enter(screen)
+        if self.auto_start:
+            self._start_install()
+        return rects
 
     def background_color(self):
         return self.view.background_color
@@ -141,7 +154,16 @@ class InstallState(State):
             return
 
         try:
-            url = resolve_latest_tarball_url(self.descriptor)
+            url = resolve_pinned_tarball_url(self.descriptor)
+        except FeedVersionMissing as e:
+            # A packaging fault, not something the user can fix by fiddling
+            # with the network — name the version so it is actionable.
+            self.logger.error(f"Pinned feed release missing: {e}")
+            self.view.set_error(
+                f"{self.descriptor.label} {self.descriptor.version} is not "
+                f"available. This image needs an update."
+            )
+            return
         except FeedRateLimited as e:
             # Checked before FeedUnreachable (its base): the device is
             # online, and the fix is to wait, not to touch the network.
@@ -159,7 +181,8 @@ class InstallState(State):
             return
         if not url:
             self.view.set_error(
-                f"Could not find the latest {self.descriptor.label} release."
+                f"The {self.descriptor.label} {self.descriptor.version} "
+                f"release has no installable asset."
             )
             return
 
@@ -198,7 +221,11 @@ class InstallState(State):
         # Every feed streams NDJSON to localhost, so the runtime mode is always
         # UDP; telemetry_feed records *which* feed for the settings selection.
         ConfigManager.set_telemetry_mode(TelemetryMode.UDP, persist=False)
-        ConfigManager.set_telemetry_feed(self.descriptor.id)
+        # Record the build, not just which feed: a later image compares it
+        # against its own pin to notice a device left on a stale feed.
+        ConfigManager.set_telemetry_feed(
+            self.descriptor.id, self.descriptor.version
+        )
 
         # Just pop state and return to dashboard
         # DashboardState.on_resume() will call _reconfigure_telemetry_if_needed()

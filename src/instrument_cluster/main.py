@@ -15,6 +15,9 @@ from .signals.signal_pipeline import SignalPipeline
 from .states.gate import entry_state
 from .states.state_manager import StateManager
 from .states.wifi_connecting_state import WifiConnectingState
+from .telemetry.mode import TelemetryMode
+from .addons.feeds import feed_needs_reinstall
+from .ui.feed_update_window import FeedUpdateWindow
 from .ui.no_signal_window import NoSignalWindow
 from .ui.window_layering import WindowManager
 
@@ -46,6 +49,22 @@ def run(conf: Config) -> None:
         display = Display(getattr(conf, "display", "auto"))
         main_surface = display.surface
 
+        # A feed installed by an earlier image survives on /data, so it can
+        # be a build this image was never tested against. Say so in the log —
+        # on a release image with no SSH the Setup row is the other half of
+        # this warning.
+        stale_feed = feed_needs_reinstall(
+            conf.telemetry_feed, conf.telemetry_feed_version
+        )
+        if stale_feed is not None and conf.telemetry_mode != TelemetryMode.DEMO.value:
+            logger.warning(
+                "Installed %s feed is %r but this image pins %s — "
+                "re-run Setup to update it.",
+                stale_feed.label,
+                conf.telemetry_feed_version or "unknown",
+                stale_feed.version,
+            )
+
         vehicle_bus = VehicleBus()
 
         plugin_dir = os.path.join(os.path.dirname(__file__), "plugins")
@@ -66,6 +85,11 @@ def run(conf: Config) -> None:
         # itself: it must never be drawn over, which is exactly what the
         # SYSTEM_ALERT layer guarantees.
         window_manager.add_window(NoSignalWindow(vehicle_bus, state_manager))
+        # Stale-feed notice, once per boot. Constructed unconditionally; it
+        # decides at build time whether it has anything to say.
+        window_manager.add_window(
+            FeedUpdateWindow(conf, state_manager, main_surface.get_size())
+        )
 
         # Installed extension distributions wire themselves in here; with
         # none installed this is a silent no-op. Wired before load_plugins
