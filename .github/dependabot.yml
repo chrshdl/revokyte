@@ -1,0 +1,18 @@
+version: 2
+
+updates:
+  # Workflow actions are pinned by commit SHA, which is safe but frozen:
+  # nothing tells us when a pinned action gains a fix. Dependabot reads the
+  # "# vX.Y.Z" comment beside each SHA and bumps both together, so the pins
+  # stay auditable and current instead of only auditable.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # One pull request for all of them: six actions bumping separately is
+    # six reviews of the same decision.
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci"
