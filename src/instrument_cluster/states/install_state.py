@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+import time
 from typing import TYPE_CHECKING
 
 from ..addons.installer import (
@@ -29,24 +30,68 @@ if TYPE_CHECKING:
     from ..states.state_manager import StateManager
 
 
-def _network_detail() -> str:
-    """The device's IP, or networkd's link state when it has none.
+# DNS is not ready the instant a DHCP lease arrives — systemd-resolved
+# writes the servers a moment later — so the first lookup after joining a
+# network fails while the next succeeds. Retry within a window rather than
+# for a fixed count: a name that fails to resolve fails in milliseconds and
+# gets several attempts, while a network that hangs burns its timeout once
+# and gives up instead of making the user wait three times over.
+_LOOKUP_RETRY_WINDOW_S = 10.0
+_LOOKUP_RETRY_PAUSE_S = 2.0
 
-    Best-effort and never fatal: this only decorates an error message.
+
+class _AssetMissing(Exception):
+    """The pinned release exists but carries no installable asset."""
+
+
+def _unreachable_message() -> str:
+    """Say what could not be reached, without contradicting ourselves.
+
+    An IP address means the network is up and only the request failed;
+    printing "no network connection" next to the device's own address
+    sends the reader after the wrong problem. Without an address, name
+    networkd's link state instead — a release image has no SSH.
     """
     try:
         from ..core.system.wifi_manager import WifiManager
 
         manager = WifiManager()
         if not manager.available:
-            return ""
+            return "Could not reach GitHub. Try again."
         address = manager.ipv4_address()
         if address:
-            return f"({address})"
+            return f"Could not reach GitHub. Try again.  ({address})"
         state = manager.link_state()
-        return f"(no IP, link: {state})" if state else "(no IP address)"
+        if state:
+            return f"No network connection.  (no IP, link: {state})"
+        return "No network connection."
     except Exception:
-        return ""
+        return "Could not reach GitHub. Try again."
+
+
+def _resolve_pinned_url(descriptor: FeedDescriptor) -> str:
+    """Resolve the pinned release's asset, retrying a transient outage.
+
+    Raises the installer's own exceptions; rate limiting and a missing
+    version are not retried, because waiting two seconds cannot fix either.
+    """
+    deadline = time.monotonic() + _LOOKUP_RETRY_WINDOW_S
+    while True:
+        try:
+            url = resolve_pinned_tarball_url(descriptor)
+            break
+        except FeedRateLimited:
+            raise
+        except FeedUnreachable:
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(_LOOKUP_RETRY_PAUSE_S)
+    if not url:
+        raise _AssetMissing(
+            f"The {descriptor.label} {descriptor.version} release has no "
+            f"installable asset."
+        )
+    return url
 
 
 class InstallState(State):
@@ -107,9 +152,10 @@ class InstallState(State):
         self.view.update(dt)
 
         if self._install_exception is not None:
-            self.view.set_error(f"Install failed: {self._install_exception}")
+            exc = self._install_exception
             self._install_exception = None
             self._install_result = None
+            self.view.set_error(self._error_text(exc))
 
         elif self._install_result is not None:
             res = self._install_result
@@ -153,39 +199,6 @@ class InstallState(State):
             self.view.set_error("IP not set. Enter it first.")
             return
 
-        try:
-            url = resolve_pinned_tarball_url(self.descriptor)
-        except FeedVersionMissing as e:
-            # A packaging fault, not something the user can fix by fiddling
-            # with the network — name the version so it is actionable.
-            self.logger.error(f"Pinned feed release missing: {e}")
-            self.view.set_error(
-                f"{self.descriptor.label} {self.descriptor.version} is not "
-                f"available. This image needs an update."
-            )
-            return
-        except FeedRateLimited as e:
-            # Checked before FeedUnreachable (its base): the device is
-            # online, and the fix is to wait, not to touch the network.
-            self.logger.error(f"Feed release lookup rate-limited: {e}")
-            self.view.set_error(
-                "GitHub is rate-limiting this network. Try again in a few minutes."
-            )
-            return
-        except FeedUnreachable as e:
-            # Being offline is by far the likeliest cause and needs a
-            # completely different fix than a missing release, so say so —
-            # and name the link state, since a release image has no SSH.
-            self.logger.error(f"Feed release lookup failed: {e}")
-            self.view.set_error(f"No network connection. {_network_detail()}".strip())
-            return
-        if not url:
-            self.view.set_error(
-                f"The {self.descriptor.label} {self.descriptor.version} "
-                f"release has no installable asset."
-            )
-            return
-
         self.view.set_status("Downloading and installing...")
         self._is_installing = True
         self._install_exception = None
@@ -195,7 +208,13 @@ class InstallState(State):
         ip = self.ip
 
         def worker():
+            # The release lookup runs here, not on the main loop: it can
+            # block for its full 30 s timeout against a network that hangs
+            # rather than refuses, and the service is started with
+            # WatchdogSec=30 — a stall there costs the app, not just a
+            # frame.
             try:
+                url = _resolve_pinned_url(descriptor)
                 res: InstallResult = install_from_url(
                     url=url,
                     descriptor=descriptor,
@@ -211,6 +230,34 @@ class InstallState(State):
 
         self._install_thread = threading.Thread(target=worker, daemon=True)
         self._install_thread.start()
+
+    def _error_text(self, exc: Exception) -> str:
+        """The user-facing sentence for a failed install.
+
+        Each cause needs a different action from the reader, so none of
+        them may collapse into a generic failure: a missing pinned version
+        is a packaging fault, rate limiting means wait, unreachable means
+        check the network.
+        """
+        if isinstance(exc, FeedVersionMissing):
+            self.logger.error(f"Pinned feed release missing: {exc}")
+            return (
+                f"{self.descriptor.label} {self.descriptor.version} is not "
+                f"available. This image needs an update."
+            )
+        # Checked before FeedUnreachable, its base: the device is online and
+        # the fix is to wait, not to touch the network.
+        if isinstance(exc, FeedRateLimited):
+            self.logger.error(f"Feed release lookup rate-limited: {exc}")
+            return "GitHub is rate-limiting this network. Try again in a few minutes."
+        if isinstance(exc, FeedUnreachable):
+            self.logger.error(f"Feed release lookup failed: {exc}")
+            return _unreachable_message()
+        if isinstance(exc, _AssetMissing):
+            self.logger.error(str(exc))
+            return str(exc)
+        self.logger.error(f"Install failed: {exc}", exc_info=exc)
+        return f"Install failed: {exc}"
 
     def _finalize_success(self):
         """

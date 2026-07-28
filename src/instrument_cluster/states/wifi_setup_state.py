@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+import time
 from typing import TYPE_CHECKING
 
 from ..core.system.wifi_manager import Network, WifiManager
@@ -32,6 +33,12 @@ ENTRY_SETTINGS = "settings"  # opened from Setup: pop back to the dashboard
 
 # WPA passphrases are 8..63 chars; reject early so we don't bounce the radio.
 _MIN_PSK_LEN = 8
+
+# A band steer, or the scan itself, can leave the supplicant with no
+# association to report for a moment; poll a little before concluding
+# there is none.
+_SSID_RESAMPLE_TRIES = 4
+_SSID_RESAMPLE_PAUSE_S = 0.5
 
 # Connect-worker outcomes and the hint each one shows. Only auth failure
 # blames the password; setup and DHCP failures name their own layer.
@@ -87,7 +94,8 @@ class WifiSetupState(State):
 
         self._scan_thread: threading.Thread | None = None
         self._scan_result: list[Network] | None = None
-        self._scan_ssid: str = ""
+        # Last SSID the supplicant reported, which marks the connected row.
+        self._current_ssid: str = ""
         self._scanning = False
 
         self._connect_thread: threading.Thread | None = None
@@ -132,10 +140,10 @@ class WifiSetupState(State):
         self._scan_result = None
         self.view.show_scanning()
 
-        # Snapshot the current SSID *before* the scan starts. wpa_cli scan
-        # forces an off-channel scan that briefly drops the association, so
-        # querying current_ssid() after the scan often returns None.
-        ssid_before_scan = self.manager.current_ssid() or ""
+        # Sample the association before scanning: wpa_cli scan goes
+        # off-channel and briefly drops it.
+        self._remember_ssid(self.manager.current_ssid())
+        knew_ssid = bool(self._current_ssid)
 
         def worker():
             try:
@@ -144,11 +152,34 @@ class WifiSetupState(State):
                 self.logger.error(f"Scan worker failed: {e}")
                 self._scan_result = []
             finally:
-                self._scan_ssid = ssid_before_scan
+                if not knew_ssid:
+                    self._resample_ssid()
                 self._scanning = False
 
         self._scan_thread = threading.Thread(target=worker, daemon=True)
         self._scan_thread.start()
+
+    def _remember_ssid(self, ssid: str | None) -> None:
+        """Remember the last SSID the supplicant actually reported.
+
+        ``wpa_cli status`` carries an ssid only while the supplicant is
+        COMPLETED, so a steer between an access point's bands — or the scan
+        we just ran — reports nothing for a moment. Dropping the marker on
+        every such miss makes the connected checkmark vanish for a reason
+        the user cannot see, on a network they are demonstrably using.
+        """
+        if ssid:
+            self._current_ssid = ssid
+
+    def _resample_ssid(self) -> None:
+        """Poll briefly for an association the first sample missed. Runs on
+        the scan worker, so the wait costs the UI nothing."""
+        for _ in range(_SSID_RESAMPLE_TRIES):
+            ssid = self.manager.current_ssid()
+            if ssid:
+                self._remember_ssid(ssid)
+                return
+            time.sleep(_SSID_RESAMPLE_PAUSE_S)
 
     def _start_connect(self, ssid: str, psk: str | None):
         if self._connecting:
@@ -227,7 +258,7 @@ class WifiSetupState(State):
             # the view then throws away their input and looks like the app
             # jumping back to the network list on its own.
             if self.view.phase == self.view.PHASE_SCAN:
-                self.view.show_networks(self._networks, self._scan_ssid)
+                self.view.show_networks(self._networks, self._current_ssid)
 
         if self._connect_result is not None and not self._connecting:
             result = self._connect_result
@@ -251,6 +282,7 @@ class WifiSetupState(State):
     # ------------------------------------------------------------------
     def _on_connected(self):
         ssid = self.manager.current_ssid() or self._selected_ssid or ""
+        self._remember_ssid(ssid)
         self.logger.info(f"Wi-Fi connected to {ssid}")
         self.view.show_connected(ssid)
         self._connected_timer = 2.0
@@ -373,13 +405,13 @@ class WifiSetupState(State):
             # drag the user back to the password screen minutes later.
             self._connect_gen += 1
             self.logger.info("Connect abandoned by the user")
-            self.view.show_networks(self._networks)
+            self.view.show_networks(self._networks, self._current_ssid)
             return True
 
         if phase == self.view.PHASE_PASSWORD or (
             phase == self.view.PHASE_STATUS and self.view.status_is_error
         ):
-            self.view.show_networks(self._networks)
+            self.view.show_networks(self._networks, self._current_ssid)
             return True
 
         # scan phase
