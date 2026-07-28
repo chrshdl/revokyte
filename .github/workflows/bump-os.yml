@@ -20,7 +20,7 @@ jobs:
       # .git_archival.txt (describe-name needs the tag objects) — that file is
       # how setuptools_scm derives the app version from the tarball.
       - name: Checkout at tag
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -51,7 +51,7 @@ jobs:
           gh release upload "v${VERSION}" "python-instrument-cluster-${VERSION}.tar.gz" --clobber
 
       - name: Checkout instrument-cluster-os
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: chrshdl/instrument-cluster-os
           token: ${{ secrets.INSTRUMENT_CLUSTER_OS_REPO_PAT }}
