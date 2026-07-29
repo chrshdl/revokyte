@@ -31,38 +31,43 @@ from .window_layering import OverlayWindow, WindowLayer
 # top edge, which would sit on top of the Fastest Lap and Speed gauges. The
 # banner must not hide the very readings it is marking as stale.
 #
-# It runs from 480 to 628, deliberately overlapping the gear widget: that
-# widget's rect ends at 504 and its glyph ink at 489, so the band eats the
-# empty padding plus the last ~9 px of the digit. It reads as a layered
-# alert rather than a clipped glyph because of the border and rounded top.
-# The bottom stops 2 px clear of the footer row, whose first ink is at 630.
-BANNER_RECT = (0, 480, DESIGN_WIDTH, 148)
+# It runs from 514 to 614, clear of everything either side: the gear widget's
+# rect ends at 504, and the footer row's first ink is at 630. Overlapping the
+# gear digit was tried and dropped — the band has to be legible at a glance
+# without costing a reading, and the strip is tall enough without borrowing
+# from the gauge above it.
+BANNER_RECT = (0, 514, DESIGN_WIDTH, 100)
 BANNER_TEXT = "NO SIGNAL"
-BANNER_FONT_SIZE = 64
+BANNER_FONT_SIZE = 56
 BANNER_FONT_FAMILY = FontFamily.D_DIN_EXP_BOLD
 
 # Same ramp *and* the same colours the gauge panels use (see
-# ui/utils.vertical_gradient and the tyre temp widget): dark at the top
-# falling to RPM red at the bottom. A fully-saturated red-to-red pair was
-# tried and rejected — the dark top is what ties the band to the rest of the
-# dash, even though it costs saturation in the upper half.
-BANNER_TOP_COLOR = Color.DARKEST_GREY.rgb()
-BANNER_BOTTOM_COLOR = Color.RPM_RED.rgb()
+# ui/utils.vertical_gradient and the tyre temp widget): dark grey at the top
+# falling to black at the bottom. The fill carries no colour of its own — a
+# red one was tried and dropped, along with a fully-saturated red-to-red pair.
+# Keeping the band neutral is what ties it to the rest of the dash and leaves
+# the red border rule below as the single accent, rather than competing with
+# it across 1280 px.
+BANNER_TOP_COLOR = Color.DARK_GREY.rgb()
+BANNER_BOTTOM_COLOR = Color.BLACK.rgb()
 
 # Thin outline so the band has a defined edge instead of bleeding into the
-# panel. It ramps with the fill rather than being one flat colour: a solid
-# red hairline sits at maximum chroma contrast against the near-black top
-# edge — saturated red on black has no luminance edge for the eye to focus
-# on, so a 1280 px line of it shimmers — while simultaneously vanishing into
-# the red at the bottom. Ramping keeps the edge a constant, quiet step above
-# the band the whole way down.
+# panel. It ramps rather than being one flat colour because the two rules do
+# different jobs. The bottom one is the banner's accent: a bright red hairline
+# on the black end of the fill, the one piece of colour in the whole widget,
+# and — now that the fill itself is neutral — what makes the band read as an
+# alert at a glance rather than as another dark panel. The top one only has to
+# stop the band bleeding into the panel behind it, so it stays a quiet
+# low-chroma step over the fill; a second saturated line up there would box
+# the band in instead of ruling it off, and would split the eye between two
+# reds 100 px apart.
 BANNER_BORDER_TOP_COLOR = Color.GREY.rgb()
 BANNER_BORDER_BOTTOM_COLOR = Color.LIGHT_RED.rgb()
 BANNER_BORDER_WIDTH = 2
 
-# Rounded on the top corners only — the band runs to the bottom of the free
-# strip, so its lower corners sit against the footer and reading square is
-# right there. The corners are cut out of the surface rather than merely
+# Rounded on the top corners only — the band stops just short of the footer
+# row, close enough that its lower corners read as meeting it, and reading
+# square is right there. The corners are cut out of the surface rather than merely
 # outlined, or the gradient would still square them off behind the arc.
 BANNER_CORNER_RADIUS = 2
 
@@ -143,6 +148,16 @@ class NoSignalWindow(OverlayWindow):
     """Shows the NO SIGNAL band while the telemetry link is dead."""
 
     layer = WindowLayer.SYSTEM_ALERT
+    # A dead link is read alone. Sharing the screen with a notification card
+    # was not merely untidy: the band runs the full width of the free strip
+    # and a centred card reaches into it, so the band sliced through the
+    # card's lower edge — and the card's own 35% dimming knocked back the
+    # very gauges the band is there to mark as stale. The card is withdrawn
+    # while this is up and returns on recovery, so nothing is lost by making
+    # it wait. The remedy stays reachable meanwhile: the band clears the
+    # footer, so the Setup button — and its "Telemetry (update)" row — is
+    # still there.
+    occludes_below = True
 
     def __init__(self, vehicle_bus, state_manager):
         super().__init__()
@@ -157,7 +172,7 @@ class NoSignalWindow(OverlayWindow):
         sprite.dirty = 1
         self.sprites = [sprite]
 
-        self._was_visible = False
+        self._was_showing = False
 
     @property
     def visible(self) -> bool:
@@ -172,9 +187,11 @@ class NoSignalWindow(OverlayWindow):
     def update(self, dt: float) -> None:
         # The banner image never changes, so its sprite would stay clean
         # after the first paint and a later reappearance would composite
-        # nothing. Re-dirty it on the rising edge of visibility.
-        now = self.visible
-        if now and not self._was_visible:
+        # nothing. Re-dirty it on the rising edge of actually being up —
+        # `showing`, not `visible`, or a window that was withdrawn by
+        # arbitration while stale would come back invisible.
+        now = self.showing
+        if now and not self._was_showing:
             for sprite in self.sprites:
                 sprite.dirty = 1
-        self._was_visible = now
+        self._was_showing = now
