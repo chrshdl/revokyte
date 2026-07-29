@@ -22,6 +22,12 @@ extension registers what it needs:
 * ``runtime.add_setup_entry(SetupEntry(...))`` — an extra row in the
   Setup screen whose button switches to ``make_state(state_manager)``.
 * Overlay windows go straight to ``runtime.window_manager.add_window``.
+  A window shares the screen with whatever else is registered, so if it
+  must be read alone it should set ``occludes_below`` (and if it must
+  survive someone else's occlusion, ``show_when_occluded``) — see
+  ui/window_layering.py. Note the cluster's own NO SIGNAL alert occludes,
+  so an extension popup can be withdrawn while the link is dead and will
+  come back on its own afterwards.
 
 Extensions are fail-open: one that raises during ``wire`` has its
 processor/entry registrations rolled back and is skipped (windows it

@@ -135,7 +135,7 @@ class FeedUpdateWindow(OverlayWindow):
         super().__init__()
         self._state_manager = state_manager
         self._dismissed = False
-        self._was_visible = False
+        self._was_showing = False
         self._buttons = ButtonGroup()
 
         descriptor = feed_needs_reinstall(
@@ -256,17 +256,21 @@ class FeedUpdateWindow(OverlayWindow):
     def update(self, dt: float) -> None:
         # The card and the dimming never change, so their sprites go clean
         # after the first composite and a later reappearance would paint
-        # nothing. Re-dirty on the rising edge of visibility — the window is
+        # nothing. Re-dirty on the rising edge of being up — the window is
         # built before the dashboard is pushed, so the very first show is
-        # already such a transition.
-        now = self.visible
-        if now and not self._was_visible:
+        # already such a transition, and so is returning from behind a
+        # NO SIGNAL alert that withdrew it (`showing`, not `visible`).
+        now = self.showing
+        if now and not self._was_showing:
             for sprite in self.sprites:
                 sprite.dirty = 1
-        self._was_visible = now
+        self._was_showing = now
 
     def handle_event(self, event) -> bool:
-        if not self.visible:
+        # `showing`: a card withdrawn behind an alert must stop swallowing
+        # touches. The WindowManager already skips occluded windows, so this
+        # is the same answer from the other side.
+        if not self.showing:
             return False
 
         # Buttons first: they own the press/release animation and post the
