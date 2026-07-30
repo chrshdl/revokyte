@@ -4,6 +4,7 @@
 
 # Revokyte
 
+[![Website](https://img.shields.io/badge/website-revokyte.com-3dd1d8)](https://www.revokyte.com)
 [![Build Status](https://github.com/chrshdl/instrument-cluster-os/actions/workflows/ci.yml/badge.svg?event=push)](https://github.com/chrshdl/instrument-cluster-os/actions/workflows/ci.yml)
 [![Download Raspberry Pi Image](https://img.shields.io/badge/download-pi4--64%20%C2%B7%20pi5-c51d4a?logo=raspberry-pi&logoColor=white)](https://github.com/chrshdl/instrument-cluster-os/releases)
 [![Discord](https://img.shields.io/discord/1452332495683981478?label=chat&logo=discord&color=5865F2)](https://discord.gg/dEQJSuva7K)
