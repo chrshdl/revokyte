@@ -98,9 +98,8 @@ class AccelLogState(State):
             self._shown_result = result
             if result.accepted:
                 self.view.set_result(
-                    f"saved: gear {result.gear}, "
-                    f"{int(result.rpm_lo)}-{int(result.rpm_hi)} rpm "
-                    f"({result.reason})",
+                    f"saved: {int(result.rpm_lo)}-{int(result.rpm_hi)} rpm, "
+                    f"gear {result.gear}",
                     good=True,
                 )
                 self.logger.info(f"accel run saved: {result.path}")

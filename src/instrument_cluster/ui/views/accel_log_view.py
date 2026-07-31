@@ -27,24 +27,27 @@ _DIM = (150, 150, 150)
 _AMBER = (255, 180, 40)
 
 _INSTRUCTIONS = (
-    "Log a few clean full-throttle pulls; they measure the real",
-    "torque curve of this car and help improve the engine model.",
+    "Log a few clean full-throttle pulls; they",
+    "measure this car's real torque curve and",
+    "help improve the engine model.",
     "",
-    "1.  Pick a long, flat straight (Special Stage Route X).",
-    "2.  Use 2nd or 3rd gear and let the revs settle low.",
-    "3.  Floor the throttle and hold it to the rev limiter.",
+    "1.  Pick a long, flat straight",
+    "     (Special Stage Route X works well).",
+    "2.  Use 2nd or 3rd gear, revs settled low.",
+    "3.  Floor it and hold to the rev limiter.",
     "     TC off, wheel straight, no wheelspin.",
-    "4.  Lift, slow down, repeat - three clean pulls are plenty.",
+    "4.  Lift, slow, repeat - three clean pulls.",
     "",
-    "Runs are detected and saved automatically. A pull only",
-    "counts when it is longer than 1.5 s and covers 1500 rpm.",
+    "Runs save automatically. A pull counts",
+    "when it exceeds 1.5 s and 1500 rpm.",
 )
 
 _LEFT_X = 40
-_RIGHT_X = 700
+_RIGHT_X = 720
 _TOP_Y = 120
 _LINE_H = 40
-_STATUS_FONT = 34
+_STATUS_FONT = 30
+_RESULT_FONT = 26
 _VALUE_FONT = 44
 
 
@@ -97,6 +100,7 @@ class AccelLogView(View):
             )
 
         font_status = load_font(size=_STATUS_FONT, family=FontFamily.NOTOSANS_REGULAR)
+        font_result = load_font(size=_RESULT_FONT, family=FontFamily.NOTOSANS_REGULAR)
         font_value = load_font(size=_VALUE_FONT, family=FontFamily.PIXEL_TYPE)
 
         def status_label(row: int, text: str = "", color=Color.WHITE.rgb(), font=None):
@@ -114,7 +118,7 @@ class AccelLogView(View):
         self.car_label = status_label(0, "no live car", _DIM)
         self.state_label = status_label(1, "WAITING FOR TELEMETRY", _AMBER, font_value)
         self.live_label = status_label(2, "", Color.WHITE.rgb(), font_value)
-        self.result_label = status_label(3, "", _DIM)
+        self.result_label = status_label(3, "", _DIM, font_result)
         self.runs_label = status_label(4, "", Color.WHITE.rgb())
 
         # Where the files land — small print at the bottom.
@@ -123,7 +127,7 @@ class AccelLogView(View):
                 text=f"runs saved to {save_dir}",
                 font=load_font(size=22, family=FontFamily.NOTOSANS_REGULAR),
                 color=_DIM,
-                pos=spos(_LEFT_X, 640),
+                pos=spos(_LEFT_X, 668),
                 center=False,
                 bg_color=Color.BLACK.rgb(),
             )
