@@ -117,9 +117,34 @@ class AccelLogView(View):
 
         self.car_label = status_label(0, "no live car", _DIM)
         self.state_label = status_label(1, "WAITING FOR TELEMETRY", _AMBER, font_value)
-        self.live_label = status_label(2, "", Color.WHITE.rgb(), font_value)
-        self.result_label = status_label(3, "", _DIM, font_result)
-        self.runs_label = status_label(4, "", Color.WHITE.rgb())
+        self.result_label = status_label(2, "", _DIM, font_result)
+        self.runs_label = status_label(3, "", Color.WHITE.rgb())
+
+        # The mid-run glance panel (lower right): what the driver needs
+        # while actually driving the pull — gear and pedal huge, live rpm
+        # against the car's rev limit, and progress toward the save gates.
+        font_caption = load_font(size=24, family=FontFamily.NOTOSANS_REGULAR)
+        font_huge = load_font(size=150, family=FontFamily.PIXEL_TYPE)
+        font_rpm = load_font(size=48, family=FontFamily.PIXEL_TYPE)
+
+        def panel_label(x, y, text="", color=Color.WHITE.rgb(), font=None):
+            label = Label(
+                text=text,
+                font=font or font_caption,
+                color=color,
+                pos=spos(x, y),
+                center=False,
+                bg_color=Color.BLACK.rgb(),
+            )
+            self.ui_layer.add(label)
+            return label
+
+        panel_label(760, 396, "gear", _DIM)
+        panel_label(1010, 396, "throttle", _DIM)
+        self.gear_value = panel_label(760, 424, "-", Color.WHITE.rgb(), font_huge)
+        self.throttle_value = panel_label(1010, 424, "-", Color.WHITE.rgb(), font_huge)
+        self.rpm_value = panel_label(720, 566, "", Color.WHITE.rgb(), font_rpm)
+        self.progress_label = panel_label(720, 630, "", _DIM)
 
         # Where the files land — small print at the bottom.
         self.ui_layer.add(
@@ -145,11 +170,41 @@ class AccelLogView(View):
         self.state_label.color = color
         self.state_label.set_text(text)
 
-    def set_live(self, gear: int, rpm: float, throttle: float) -> None:
-        # Coarse rounding keeps the label from going dirty on every frame.
-        self.live_label.set_text(
-            f"gear {gear}   {int(rpm // 50) * 50:>5} rpm   {int(throttle * 100):>3}%"
+    def set_run_panel(
+        self,
+        gear: int,
+        throttle: float,
+        rpm: float,
+        rev_limit: float,
+        limiter_active: bool,
+        recording: bool,
+        span: float,
+        duration_s: float,
+        min_span: float,
+        min_duration_s: float,
+    ) -> None:
+        # Coarse rounding keeps the labels from going dirty every frame.
+        self.gear_value.set_text("-" if gear < 1 else str(gear))
+        self.throttle_value.set_text(f"{int(throttle * 20) * 5}")
+
+        rpm_50 = int(rpm // 50) * 50
+        limit = f"{int(rev_limit)}" if rev_limit > 0 else "----"
+        self.rpm_value.color = (
+            Color.LIGHT_RED.rgb() if limiter_active else Color.WHITE.rgb()
         )
+        self.rpm_value.set_text(f"{rpm_50} / {limit} rpm")
+
+        if recording:
+            self.progress_label.color = Color.WHITE.rgb()
+            self.progress_label.set_text(
+                f"captured {int(span // 100) * 100} rpm "
+                f"of {int(min_span)}  -  {duration_s:.1f} s"
+            )
+        else:
+            self.progress_label.color = _DIM
+            self.progress_label.set_text(
+                f"a pull needs {int(min_span)} rpm and {min_duration_s:.1f} s"
+            )
 
     def set_result(self, text: str, good: bool) -> None:
         self.result_label.color = Color.GREEN.rgb() if good else Color.LIGHT_RED.rgb()

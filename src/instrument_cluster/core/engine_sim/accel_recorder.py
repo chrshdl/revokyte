@@ -117,6 +117,24 @@ class AccelRunRecorder:
     def car_id(self) -> int | None:
         return self._car_id
 
+    @property
+    def run_rpm_span(self) -> float:
+        """rpm covered by the run in progress (0 outside a run)."""
+        if self.state != RecorderState.RECORDING or not self._samples:
+            return 0.0
+        return max(0.0, self._rpm_hi - self._samples[0]["rpm"])
+
+    @property
+    def run_duration_s(self) -> float:
+        if self.state != RecorderState.RECORDING or len(self._samples) < 2:
+            return 0.0
+        return self._samples[-1]["t"] - self._samples[0]["t"]
+
+    # The save gates, re-exported so the view can show live progress
+    # against them without duplicating the numbers.
+    MIN_RPM_SPAN = _MIN_RPM_SPAN
+    MIN_DURATION_S = _MIN_DURATION_S
+
     def runs_on_disk(self) -> int:
         if self._car_id is None or self._car_id < 0:
             return 0

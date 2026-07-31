@@ -89,8 +89,21 @@ class AccelLogState(State):
             self.view.set_capture_state("WAITING FOR TELEMETRY", _AMBER)
 
         if frame is not None and frame.car_id >= 0:
-            self.view.set_live(
-                frame.current_gear, frame.engine_rpm, min(1.0, frame.throttle)
+            rpm_alert = getattr(frame, "rpm_alert", None)
+            flags = getattr(frame, "flags", None)
+            self.view.set_run_panel(
+                gear=frame.current_gear,
+                throttle=min(1.0, frame.throttle),
+                rpm=frame.engine_rpm,
+                rev_limit=rpm_alert.max if rpm_alert else 0.0,
+                limiter_active=bool(
+                    flags and flags.rev_limiter_alert_active
+                ),
+                recording=recorder.state == RecorderState.RECORDING,
+                span=recorder.run_rpm_span,
+                duration_s=recorder.run_duration_s,
+                min_span=recorder.MIN_RPM_SPAN,
+                min_duration_s=recorder.MIN_DURATION_S,
             )
 
         result = recorder.last_result
