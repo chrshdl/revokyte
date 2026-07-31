@@ -19,6 +19,7 @@ class SignalKey:
     FUEL_PER_LAP = "fuel_per_lap"
     FUEL_USED_CURRENT_LAP = "fuel_used_current_lap"
     FUEL_LAPS_REMAINING = "fuel_laps_remaining"
+    FUEL_RATE = "fuel_rate"
     TRACK_ID = "track_id"
     TRACK_NAME = "track_name"
     TELEMETRY_STALE = "telemetry_stale"
@@ -49,6 +50,7 @@ SIGNAL_REGISTRY: dict[str, SignalMeta] = {
     SignalKey.FUEL_PER_LAP: SignalMeta(float, "", "FuelSignal"),
     SignalKey.FUEL_USED_CURRENT_LAP: SignalMeta(float, "", "FuelSignal"),
     SignalKey.FUEL_LAPS_REMAINING: SignalMeta(float, "", "FuelSignal"),
+    SignalKey.FUEL_RATE: SignalMeta(float, "units/s", "FuelSignal"),
     SignalKey.TRACK_ID: SignalMeta(str, "", "TrackSignal"),
     SignalKey.TRACK_NAME: SignalMeta(str, "", "TrackSignal"),
     SignalKey.TELEMETRY_STALE: SignalMeta(bool, "", "LinkSignal"),

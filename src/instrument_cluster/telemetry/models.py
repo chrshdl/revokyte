@@ -63,6 +63,10 @@ class TelemetryFrame(BaseModel):
     car_speed: float = 0.0
     engine_rpm: float = 0.0
     current_gear: int = 0  # 0 is reverse, -1 is neutral
+    # Pedal positions, 0.0 (released) .. 1.0 (fully applied). GT7 transmits
+    # raw 0-255 bytes; the readers normalize. A feed that emits raw bytes
+    # anyway is caught by ThrottleNormalizer (telemetry/units.py) on the
+    # consumer side.
     throttle: float = 0.0
     brake: float = 0.0
     steering: float = 0.0

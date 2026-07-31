@@ -49,8 +49,10 @@ def packet_to_frame(packet) -> TelemetryFrame:
         car_speed=packet.car_speed,
         engine_rpm=packet.engine_rpm,
         current_gear=-1 if packet.current_gear is None else packet.current_gear,
-        throttle=packet.throttle,
-        brake=packet.brake,
+        # granturismo exposes the packet's raw pedal bytes (0-255); the
+        # schema wants 0..1.
+        throttle=min(1.0, packet.throttle / 255.0),
+        brake=min(1.0, packet.brake / 255.0),
         gas_level=packet.gas_level,
         gas_capacity=packet.gas_capacity,
         lap_count=packet.lap_count,

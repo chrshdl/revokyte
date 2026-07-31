@@ -42,7 +42,7 @@ It runs on a Raspberry Pi 4 or 5 with a 720×1280 touch display — or as a [des
 **Telemetry & gauges**
 
 - Vehicle speed and gear indicator
-- Graphical RPM with torque-based shift lights
+- Graphical RPM with shift lights driven by a per-car engine simulation (see [Engine simulation](#engine-simulation))
 - Per-tire temperatures
 
 **Driver coaching**
@@ -146,6 +146,50 @@ How the pieces fit together:
 - **`LinkSignal`** supervises the telemetry link. Readers hold their last frame indefinitely, so without it a sleeping console, a crashed feed or a dropped Wi-Fi link would leave the gauges showing the last speed and gear forever, indistinguishable from live data. It publishes `telemetry_stale`, which drives `NoSignalWindow` — a SYSTEM_ALERT overlay window (see Window Layering) that raises a full-width **NO SIGNAL** banner across the band above the footer. The gauges keep their last values at full brightness; the banner is what says they are no longer live.
 - **`StateManager`** maintains a *stack* of UI states (dashboard, setup, IP entry, …). Pushing a state pauses the one below; popping resumes it. Rendering uses dirty-rect updates.
 - **`Display`** presents the fixed 1280×720 logical surface to the physical panel — GPU-rotated 270° on the Raspberry Pi Display 2, scaled on the Waveshare 7″, or stretched into the resizable desktop window (pygame `SCALED`, aspect preserved).
+
+### Engine simulation
+
+The shift lights and the fuel readout are driven by a crank-angle-resolved simulation of each car's engine (`src/instrument_cluster/core/engine_sim/`) — actual piston kinematics, camshaft valve events, and ignition/injection advance, not a lookup of three magic numbers:
+
+- **Single-zone cycle model.** Slider-crank kinematics give cylinder volume per crank degree; parametric cam lobes feed a compressible-orifice valve-flow model, so volumetric efficiency *emerges* from cam geometry instead of being prescribed. Combustion is a Wiebe heat release anchored on a CA50 timing target (the standard MBT proxy — spark/injection advance follows in closed form), with Woschni heat transfer and Chen–Flynn friction. Turbo cars get boost with wastegate behaviour, diesels a compression-ignition path, rotaries and the two-stroke kart equivalent parameters through the same integrator.
+- **Calibrated offline, once per car.** `tools/engine_sim/fit_cars.py` fits every car in `db/cars.json` against its known peaks (max power/torque + rpm) via engine archetypes and a staged fitter, and writes the checked-in `db/engine_params.json`. 490 of 541 entries calibrate to within 2% at both anchor points (most within 0.1%); the rest — fictional VGTs, hybrids whose electric torque-fill an ICE model shouldn't fake — are marked and simply keep the old heuristic.
+- **Never on the frame loop.** At car change, a background thread bakes the model into a small RPM×throttle torque+fuel map (~0.4 s on a desktop, ~1–2 s expected on the Pi); the 60 fps loop only ever does map lookups. The old heuristic drives the LEDs from the very first frame and is swapped out when the bake lands, so the shift lights never wait.
+- **Fuel, physically.** The map's fuel-flow channel gives a live burn rate at the actual rpm and throttle. `FuelSignal` uses it to fill the gaps between GT7's quantized fuel readings — continuously rescaled against every measured drop, so the game's own fuel accounting stays ground truth — and publishes a new `fuel_rate` signal.
+
+#### Old vs. new, on the Scirocco Gr.4 (car id 3231)
+
+Both models are anchored to the same cars.json data (396 Nm @ 4000, 267 kW @ 7000, redline 8000) and agree exactly at those points — the physics changes what happens *between and beyond* them:
+
+| rpm | heuristic Nm | simulated Nm | heuristic kW | simulated kW |
+|----:|----:|----:|----:|----:|
+| 2000 | 356 | 294 | 75 | 62 |
+| 3000 | 376 | 361 | 118 | 113 |
+| 4000 | **396** | **396** | 166 | 166 |
+| 5000 | 392 | 390 | 205 | 204 |
+| 6000 | 382 | 370 | 240 | 232 |
+| 7000 | 364 | 364 | **267** | **267** |
+| 7500 | 331 | 345 | 260 | 271 |
+| 8000 | 255 | 323 | 213 | 271 |
+
+The heuristic's low end is a guessed linear ramp (356 Nm at 2000 rpm); the simulation shows what restricted breathing actually delivers there (294 Nm). Past rated power the heuristic *forces* torque to collapse, while the simulated race engine keeps pulling to the limiter — which moves the optimal shift points:
+
+| upshift | heuristic | simulated |
+|--------:|----------:|----------:|
+| 1 → 2 | 7897 | 8000 |
+| 2 → 3 | 7833 | 8000 |
+| 3 → 4 | 7730 | 8000 |
+| 4 → 5 | 7717 | 8000 |
+| 5 → 6 | 7679 | 8000 |
+
+(representative Gr.4 gear set — live shift points always use the ratios from telemetry). For this car the heuristic was telling you to short-shift an engine that holds power at the limiter. The simulation also knows part throttle, which the heuristic never did: at 4000 rpm the Scirocco makes 235 Nm at 30% pedal, 328 Nm at 60%, 396 Nm flat out — that throttle axis is what the fuel model runs on. Inspect any car yourself with `python tools/engine_sim/dyno.py --car-id 3231`.
+
+#### Remaining work
+
+- [ ] **Validate on the Pi**: run `python tools/engine_sim/bench_bake.py` and the profiling harness on the device — the bake budget (soft cap 2 s, background thread) is projected from desktop numbers, not yet measured on a Pi 4.
+- [ ] **Ship it in an image**: this adds new packages (`core/engine_sim/`, `db/engine_params.json`) and modified modules, so it reaches appliances through an OS image release, not a single-module hot fix.
+- [ ] **Feed release for pedal units**: the GT7 NDJSON proxy still emits raw 0–255 throttle/brake bytes; the cluster normalizes defensively (`telemetry/units.py`), but the proper fix is a granturismo feed release that sends 0..1.
+- [ ] **Optional**: a `fuel_rate` dashboard widget; Cython-compiling the cycle integrator (`CYTHONIZE_ENGINE_SIM`, mirroring the delta calculator) if Pi bake times measure worse than projected.
+- [ ] Regenerate `db/engine_params.json` (`python tools/engine_sim/fit_cars.py --jobs 8 --report`, ~35 min) whenever `cars.json`, the archetypes, or the cycle physics change — `test_calibration_artifact.py` fails if it drifts.
 
 ### Adding another game
 

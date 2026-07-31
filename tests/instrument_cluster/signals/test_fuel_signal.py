@@ -23,6 +23,10 @@ class FakeFrame:
     current_lap_time: int | None = 1000  # ms; GT7 master clock (Packet C)
     gas_level: float = 100.0
     gas_capacity: float = 100.0
+    # Read by the FuelFlowObserver; car_id -1 keeps it inert (no map).
+    car_id: int = -1
+    engine_rpm: float = 0.0
+    throttle: float = 0.0
 
 
 # ---------------------------------------------------------------------------

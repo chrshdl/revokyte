@@ -196,6 +196,19 @@ class ShiftLightController:
         self._thresholds_by_gear: dict[int, list[float]] = {}
         self._shift_rpm_by_gear: dict[int, float] = {}
 
+    def install_engine_map(self, engine_like) -> None:
+        """Swap the torque source for a calibrated one (engine_sim's
+        MappedEngineModel) — anything with ``.redline`` and
+        ``.get_torque(rpm)``. Clearing the calculator and ratio cache
+        makes the existing ratios-changed branch in calculate_lights
+        rebuild the shift points from the new curve next frame."""
+        engine_like.redline = self.engine.redline
+        self.engine = engine_like
+        self.calculator = None
+        self.last_gear_ratios = None
+        self._thresholds_by_gear.clear()
+        self._shift_rpm_by_gear.clear()
+
     def _clamp(self, x: float, lo: float, hi: float) -> float:
         return lo if x < lo else min(x, hi)
 

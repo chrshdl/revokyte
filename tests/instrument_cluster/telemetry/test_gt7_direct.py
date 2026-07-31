@@ -100,6 +100,17 @@ def test_maps_core_fields():
     assert frame.flags.asm_active is False
 
 
+def test_pedal_bytes_normalize_to_unit_range():
+    """GT7 transmits pedals as raw 0-255 bytes; the schema wants 0..1."""
+    frame = packet_to_frame(_packet(throttle=255, brake=0))
+    assert frame.throttle == 1.0
+    assert frame.brake == 0.0
+
+    frame = packet_to_frame(_packet(throttle=51, brake=204))
+    assert frame.throttle == 51 / 255
+    assert frame.brake == 204 / 255
+
+
 def test_neutral_gear_none_becomes_minus_one():
     frame = packet_to_frame(_packet(current_gear=None))
     assert frame.current_gear == -1
