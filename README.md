@@ -183,6 +183,28 @@ The heuristic's low end is a guessed linear ramp (356 Nm at 2000 rpm); the simul
 
 (representative Gr.4 gear set — live shift points always use the ratios from telemetry). For this car the heuristic was telling you to short-shift an engine that holds power at the limiter. The simulation also knows part throttle, which the heuristic never did: at 4000 rpm the Scirocco makes 235 Nm at 30% pedal, 328 Nm at 60%, 396 Nm flat out — that throttle axis is what the fuel model runs on. Inspect any car yourself with `python tools/engine_sim/dyno.py --car-id 3231`.
 
+#### Reading the dyno output
+
+```text
+Scirocco Gr.4  [i6_na]  fit_error={'t_pct': 0.0001, 'p_pct': -0.0002, 't_rpm': 410.6, 'p_rpm': 679.1}  (257 ms)
+DB: 396 Nm @ 4000, 267 kW @ 7000, redline 8000
+
+  rpm |  model Nm | heur Nm |  kW    | fuel g/s | throttle 100%
+ 1000 |     252.1 |   336.6 |   26.4 |     1.43 | ############################
+ 4000 |     393.1 |   396.0 |  164.7 |     8.86 | #############################################  <- T peak
+ 4500 |     400.4 |   395.1 |  188.7 |    10.23 | ##############################################
+ 7000 |     366.7 |   364.2 |  268.8 |    15.59 | ##########################################  <- P peak
+ 8000 |     323.3 |   254.6 |  270.9 |    16.55 | #####################################
+```
+
+**The header line.** `[i6_na]` is the archetype template the calibrator used as this car's shape prior; displacement, ram tuning, breathing and friction are all re-fitted per car, so the label matters less than the result. `fit_error` states how well the calibrated model matches the DB anchors: `t_pct`/`p_pct` are the relative errors at the torque and power targets (here 0.01–0.02% on the calibrator's grid), `t_rpm`/`p_rpm` the offsets between where the model's curves actually crest and where the DB says they should. The trailing `(257 ms)` is the wall time of the full crank-angle run — exactly the work the appliance does once, on a background thread, when you get into the car; the LEDs run the old heuristic until it lands. The `DB:` line is the five cars.json numbers everything is calibrated against — they are all the game data provides.
+
+**The columns.** `model Nm` is the simulation's brake torque at the requested pedal position (`throttle 100%` in the last column's header; `--throttle 0.5` shows the part-load curve instead) — the curve the shift-point calculator uses. `heur Nm` is the old three-parameter heuristic for comparison. `kW` is model power (torque × angular speed). `fuel g/s` is the model's fuel mass flow at that rpm/throttle — the channel the fuel observer integrates at your live pedal position, continuously rescaled against GT7's own fuel readings. The `#` bar draws model torque scaled to its maximum, and `<- T peak` / `<- P peak` mark the rows nearest the **DB's claimed** peak locations, not the model's own maxima.
+
+**How to read the curve.** Three regions tell the story. *Low end:* the heuristic is a guessed linear ramp (337 Nm at 1000 rpm); the simulation shows what the cam and ports actually deliver down there (252 Nm, climbing as the intake starts to work). *Mid-range:* both are pinned to the same 396 Nm anchor and agree closely — the model's torque actually crests at ~4500 rather than 4000 (that is the `t_rpm: 410.6`), accepted because the crest is a plateau: the curve moves under 2% across that span, and round-hundred source data cannot localize a peak on something that flat. *Top end:* the decisive difference — the heuristic forces torque to collapse after rated power, while the simulated engine keeps breathing and power plateaus at 270–271 kW from 7250 all the way to the limiter (`p_rpm: 679` records the true crest near 7700, allowed under the same flatness policy). That plateau is why the shift table above moved to the limiter.
+
+Two honest footnotes. The printed values at the anchors (393.1 Nm, 268.8 kW) sit within ±0.7% of the DB targets rather than exactly on them: the correction is fitted on the calibrator's slightly coarser rpm grid, and off-grid samples like this table's land within a fraction of a percent. And the fuel column implies ~220 g/kWh at peak power — a touch optimistic against a real engine, which is fine by design: the runtime observer learns the absolute scale from the game's own consumption, so only the shape of the fuel surface matters, and that is what the physics provides.
+
 #### Remaining work
 
 - [ ] **Validate on the Pi**: run `python tools/engine_sim/bench_bake.py` and the profiling harness on the device — the bake budget (soft cap 2 s, background thread) is projected from desktop numbers, not yet measured on a Pi 4.
