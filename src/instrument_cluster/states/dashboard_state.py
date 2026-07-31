@@ -14,6 +14,7 @@ from ..states.setup_state import SetupState
 from ..states.state import State
 from ..states.state_manager import StateManager
 from ..ui.events import (
+    BUTTON_DYNO_RELEASED,
     BUTTON_SETUP_LONGPRESSED,
     BUTTON_SETUP_RELEASED,
 )
@@ -329,6 +330,11 @@ class DashboardState(State):
 
         if event.type == BUTTON_SETUP_RELEASED:
             self.state_manager.push_state(SetupState(self.state_manager))
+            return True
+        if event.type == BUTTON_DYNO_RELEASED:
+            from .accel_log_state import AccelLogState
+
+            self.state_manager.push_state(AccelLogState(self.state_manager))
             return True
         if event.type == BUTTON_SETUP_LONGPRESSED:
             return True

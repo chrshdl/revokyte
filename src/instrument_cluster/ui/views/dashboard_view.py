@@ -10,6 +10,8 @@ from ...ui.constants import (
     FOOTER_BUTTONGROUP_Y,
 )
 from ...ui.events import (
+    BUTTON_DYNO_PRESSED,
+    BUTTON_DYNO_RELEASED,
     BUTTON_SETUP_LONGPRESSED,
     BUTTON_SETUP_PRESSED,
     BUTTON_SETUP_RELEASED,
@@ -98,10 +100,12 @@ class DashboardView(View):
 
         # widget_layer holds only view-owned sprites → safe to rebuild.
         self.widget_layer.empty()
-        # setup_button + slot_name share ui_layer with external plugin
-        # sprites; drop just them (not the whole layer) and let
-        # _init_ui_elements re-add fresh ones at the new column position.
+        # setup_button + dyno_button + slot_name share ui_layer with
+        # external plugin sprites; drop just them (not the whole layer)
+        # and let _init_ui_elements re-add fresh ones at the new column
+        # position.
         self.ui_layer.remove(self.setup_button)
+        self.ui_layer.remove(self.dyno_button)
         self.ui_layer.remove(self.slot_name)
 
         self._init_ui_elements()  # rebuilds setup_button + slot_name (+re-adds)
@@ -133,11 +137,39 @@ class DashboardView(View):
         )
         self.ui_layer.add(self.setup_button)
 
-        # Slot name label: fills the footer from just right of the Setup
+        # Dyno button: opens the accel-run logger (engine-model
+        # validation). Sits directly right of Setup, same footprint.
+        self.dyno_button = Button(
+            rect=srect(
+                self._COLUMN_LEFT + 120, FOOTER_BUTTONGROUP_Y, 110, BUTTON_HEIGHT
+            ),
+            text="Dyno",
+            text_color=Color.WHITE.rgb(),
+            text_gap=0,
+            text_visible=True,
+            text_position="top",
+            events=ButtonEvents(
+                pressed=BUTTON_DYNO_PRESSED,
+                released=BUTTON_DYNO_RELEASED,
+            ),
+            font=load_font(size=32, family=FontFamily.PIXEL_TYPE),
+            antialias=True,
+            icon="",
+            icon_color=Color.WHITE.rgb(),
+            icon_size=34,
+            icon_position="center",
+            icon_gap=0,
+            content_align="center",
+            padding=(0, su(8), 0, 0),
+            icon_cell_width=su(34),
+        )
+        self.ui_layer.add(self.dyno_button)
+
+        # Slot name label: fills the footer from just right of the Dyno
         # button to the track column's right edge (its right edge == the
         # Track widget's right edge).
         track_right = self._COLUMN_LEFT + self._TRACK_RECT[2]
-        name_left = self._COLUMN_LEFT + 120
+        name_left = self._COLUMN_LEFT + 240
         self.slot_name = SlotNameWidget(
             rect=(
                 name_left,
@@ -202,3 +234,4 @@ class DashboardView(View):
 
     def handle_event(self, event):
         self.setup_button.handle_event(event)
+        self.dyno_button.handle_event(event)
