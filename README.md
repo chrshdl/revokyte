@@ -32,7 +32,7 @@ The result is an embedded sim racing instrument cluster, built with Python and p
 
 Support for each game comes from a small, separately-released _feed program_ that reads the game's telemetry and re-emits it as NDJSON to the cluster (GT7 via the [granturismo](https://github.com/chrshdl/granturismo) proxy; ACC via its native Broadcasting API). You pick a game in the settings and the device installs the matching feed — the cluster itself stays game-agnostic. ACC's Broadcasting API doesn't expose engine RPM, tyre temperatures, or fuel, so those gauges are inactive in ACC mode.
 
-It runs on a Raspberry Pi 4 or 5 with a 720×1280 touch display — or as a [desktop app](#desktop-app-windows--macos) on Windows and macOS, where GT7 telemetry is read straight from the console with no extra programs.
+It runs on a Raspberry Pi 4 or 5 with a supported DSI touch display — or as a [desktop app](#desktop-app-windows--macos) on Windows and macOS, where GT7 telemetry is read straight from the console with no extra programs.
 
 <div align="center">
 
@@ -146,7 +146,7 @@ How the pieces fit together:
 - **Signal processors** (`signals/`) enrich the frame before the UI sees it. `TrackSignal`, `DeltaSignal`, `FuelSignal`, `LinkSignal`, and `TelemetrySource` are bundled in `SignalPipeline`, which runs in the main loop alongside the health monitor — so telemetry processing continues uninterrupted even when settings menus are open. Each processor returns a dict merged into `VehicleBus.signals`.
 - **`LinkSignal`** supervises the telemetry link. Readers hold their last frame indefinitely, so without it a sleeping console, a crashed feed or a dropped Wi-Fi link would leave the gauges showing the last speed and gear forever, indistinguishable from live data. It publishes `telemetry_stale`, which drives `NoSignalWindow` — a SYSTEM_ALERT overlay window (see Window Layering) that raises a full-width **NO SIGNAL** banner across the band above the footer. The gauges keep their last values at full brightness; the banner is what says they are no longer live.
 - **`StateManager`** maintains a *stack* of UI states (dashboard, setup, IP entry, …). Pushing a state pauses the one below; popping resumes it. Rendering uses dirty-rect updates.
-- **`Display`** presents the fixed 1280×720 logical surface to the physical panel — GPU-rotated 270° on the Raspberry Pi Display 2, scaled on the Waveshare 7″, or stretched into the resizable desktop window (pygame `SCALED`, aspect preserved).
+- **`Display`** presents the logical surface to the physical panel — GPU-rotated 270° on the Raspberry Pi Display 2, rendered natively at panel resolution on the Waveshare 7″ (1024×600) and 5″ (800×480), or stretched into the resizable desktop window (pygame `SCALED`, aspect preserved). The panel is auto-detected by resolution; switching panels is a `dtoverlay` swap in the device's `/boot/config.txt`, no app configuration needed.
 
 ### Adding another game
 
@@ -198,7 +198,7 @@ Press F5 to start debugging.
 | Component | Supported |
 |-----------|-----------|
 | Board     | Raspberry Pi 4 Model B (1 GB RAM, built-in Wi-Fi) |
-| Display   | Raspberry Pi Touch Display 2 — 720×1280, 24-bit RGB, five-finger touch |
+| Display   | Raspberry Pi Touch Display 2 — 720×1280, 24-bit RGB, five-finger touch<br>Waveshare 5″ DSI LCD (WAV-18396) — 800×480, five-point touch (Pi 4) |
 | LEDs      | Pimoroni Blinkt! 8-LED bar (shift lights) |
 | Input     | Touch UI + on-screen brightness keys |
 

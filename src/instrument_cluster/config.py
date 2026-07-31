@@ -44,7 +44,7 @@ class Config:
     width: int = field(default=1280)
     height: int = field(default=720)
     # Display profile selector: "auto" (detect by panel resolution),
-    # "rpi_display_2", "waveshare_7", or "dev". See display.py.
+    # "rpi_display_2", "waveshare_7", "waveshare_5", or "dev". See display.py.
     display: str = field(default="auto")
     telemetry_mode: str = field(default=TelemetryMode.DEMO.value)
     # Opaque id (see addons/feeds.py) of the last-installed feed, used only so
