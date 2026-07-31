@@ -13,8 +13,10 @@ Supported panels:
 
 * **Raspberry Pi Display 2** – 720 x 1280 portrait panel mounted in landscape.
   The logical surface is rotated 270 deg onto the panel via the GPU renderer.
-* **Waveshare 7" DSI** – 1024 x 600 landscape panel. The logical surface is
-  scaled to fill the panel (no rotation).
+* **Waveshare 7" DSI** – 1024 x 600 landscape panel, rendered natively (no
+  rotation).
+* **Waveshare 5" DSI** – 800 x 480 landscape panel, rendered natively (no
+  rotation).
 * **Dev** – a resizable desktop window (also the PC app). The window opens at
   1280 x 720 and pygame's SCALED mode stretches the logical surface to
   whatever size the user drags it to (aspect preserved, input mapped back
@@ -46,6 +48,7 @@ LOGICAL_SIZE = DESIGN_SIZE
 # Profile identifiers (also accepted in config.json's "display" field).
 RPI_DISPLAY_2 = "rpi_display_2"
 WAVESHARE_7 = "waveshare_7"
+WAVESHARE_5 = "waveshare_5"
 DEV = "dev"
 
 _FINGER_EVENTS = (pygame.FINGERDOWN, pygame.FINGERUP, pygame.FINGERMOTION)
@@ -126,6 +129,14 @@ _PROFILES = {
         # Native landscape panel: render directly at panel resolution (the UI
         # scales the 1280x720 design down to this), so no post-scale blur.
         logical_size=(1024, 600),
+        rotation=0,
+        renderer="software",
+    ),
+    WAVESHARE_5: DisplayProfile(
+        name=WAVESHARE_5,
+        physical_size=(800, 480),
+        # Native landscape panel, rendered at panel resolution like the 7".
+        logical_size=(800, 480),
         rotation=0,
         renderer="software",
     ),
@@ -215,7 +226,11 @@ def _detect_physical_size() -> tuple[int, int] | None:
 
 
 def _match_by_resolution(size: tuple[int, int]) -> DisplayProfile | None:
-    for profile in (_PROFILES[RPI_DISPLAY_2], _PROFILES[WAVESHARE_7]):
+    for profile in (
+        _PROFILES[RPI_DISPLAY_2],
+        _PROFILES[WAVESHARE_7],
+        _PROFILES[WAVESHARE_5],
+    ):
         if profile.physical_size == size:
             return profile
     return None

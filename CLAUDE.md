@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## About
 
-An embedded sim racing instrument cluster built with Python/pygame. Runs on Raspberry Pi 5 with a 720×1280 touch display. Renders a real-time dashboard at 60 fps from telemetry delivered as NDJSON to `udp://127.0.0.1:5600`.
+An embedded sim racing instrument cluster built with Python/pygame. Runs on Raspberry Pi 4/5 with a supported DSI touch display (Raspberry Pi Touch Display 2 at 720×1280, or the Waveshare 5″ DSI at 800×480 — see the profiles in `peripherals/display.py`). Renders a real-time dashboard at 60 fps from telemetry delivered as NDJSON to `udp://127.0.0.1:5600`.
 
 The cluster is **game-agnostic**: it only ever reads that localhost NDJSON. Each supported game is a separately-released **feed program** the user installs, which reads the game's telemetry and re-emits the `TelemetryFrame` schema. GT7 uses the [granturismo](https://github.com/chrshdl/granturismo) proxy (decrypts GT7's Salsa20 UDP stream); Assetto Corsa Competizione uses a feed over its native UDP Broadcasting API. The feeds are listed as data in `addons/feeds.py` (`FeedDescriptor`s); the install flow, settings UI, and IP-entry are generic over a descriptor — there is no per-game branching in the runtime. A feed may set two optional `TelemetryFrame` fields, `native_delta_ms` and `track_name`, which `DeltaSignal`/`TrackSignal` republish instead of computing (ACC provides both; GT7 leaves them unset and the GT7 compute paths run).
 
@@ -161,7 +161,8 @@ The widget registry (`ui/widgets/registry.py`) stays here (free widgets, shared 
 
 ### Rendering
 
-- On Raspberry Pi 5: uses `HardwareRenderer` (OpenGL) which rotates the surface 270° to account for the portrait display mounted in landscape orientation.
+- On the Raspberry Pi Display 2: uses `HardwareRenderer` (OpenGL) which rotates the surface 270° to account for the portrait display mounted in landscape orientation.
+- On the Waveshare panels (7″ 1024×600, 5″ 800×480): software renderer at native panel resolution (`logical_size == physical_size`, no post-scale). The profile is auto-detected by panel resolution in `peripherals/display.py`.
 - On other platforms (dev): standard `pygame.display.update()` with dirty rects.
 - Tests run with `SDL_VIDEODRIVER=dummy` (set in `tests/conftest.py`).
 
