@@ -184,11 +184,12 @@ def test_a_missing_pinned_release_is_not_reported_as_offline(monkeypatch):
     """
     monkeypatch.setattr(installer.urllib.request, "urlopen", _http_error(404))
 
+    descriptor = feed_by_id("acc")
     with pytest.raises(installer.FeedVersionMissing) as excinfo:
-        installer.resolve_pinned_tarball_url(feed_by_id("acc"))
+        installer.resolve_pinned_tarball_url(descriptor)
 
     assert not isinstance(excinfo.value, installer.FeedUnreachable)
-    assert "v0.1.0" in str(excinfo.value)
+    assert descriptor.version in str(excinfo.value)
 
 
 # --- Recovering the configured address -------------------------------------
