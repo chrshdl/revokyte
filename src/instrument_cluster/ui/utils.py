@@ -110,8 +110,6 @@ class FontFamily(Enum):
     NOTOSANS_LIGHT = ("noto_sans", "NotoSans-Light")
     NOTOSANS_EXTRA_LIGHT = ("noto_sans", "NotoSans-ExtraLight")
 
-    APPLE_SYSTEM = ("Apple_System_1_Light", "apple-system-1-light")
-
     def __init__(self, subdir: str, basename: str):
         self.subdir = subdir  # folder under assets/fonts
         self.basename = basename  # filename without .ttf
