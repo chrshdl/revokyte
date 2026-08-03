@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from ..core.engine_sim.runtime_model import MappedEngineModel
+from ..core.engine_sim.service import get_service
 from ..core.vehicle.car_profiler import CarLibrary
 from ..core.vehicle.ecu import ShiftLightController
 from ..core.vehicle.vehicle_bus import VehicleBus
@@ -22,6 +24,7 @@ class ShiftLights:
 
         self.current_car_id = None
         self.controller = None
+        self._map_installed = False
 
         self.colors = [
             Color.GREEN.rgb(),
@@ -46,6 +49,25 @@ class ShiftLights:
 
         if frame.car_id != self.current_car_id:
             self._init_controller(frame.car_id)
+
+        # The heuristic EngineModel drives the LEDs from the first frame;
+        # once the background bake lands, swap in the calibrated map.
+        if not self._map_installed:
+            baked = get_service().poll(frame.car_id)
+            if baked is not None:
+                self.controller.install_engine_map(
+                    MappedEngineModel(
+                        baked,
+                        redline=self.controller.engine.redline,
+                        on_redline_extend=lambda rpm, car=frame.car_id: (
+                            get_service().ensure_rpm(car, rpm)
+                        ),
+                    )
+                )
+                self._map_installed = True
+                self.logger.info(
+                    f"calibrated engine map installed for car {frame.car_id}"
+                )
 
         lights, is_alert, is_tcs, is_asm = self.controller.calculate_lights(frame, dt)
 
@@ -90,6 +112,8 @@ class ShiftLights:
         car_data = self.car_library.get_specs(car_id)
         self.controller = ShiftLightController(**car_data)
         self.current_car_id = car_id
+        self._map_installed = False
+        get_service().request(car_id)
         self._force_render_next_frame()
 
         self.logger.info(

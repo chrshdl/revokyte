@@ -43,7 +43,7 @@ It runs on a Raspberry Pi 4 or 5 with a supported DSI touch display — or as a 
 **Telemetry & gauges**
 
 - Vehicle speed and gear indicator
-- Graphical RPM with torque-based shift lights
+- Graphical RPM with shift lights driven by a per-car engine simulation (see [Engine simulation](#engine-simulation))
 - Per-tire temperatures
 
 **Driver coaching**
@@ -147,6 +147,73 @@ How the pieces fit together:
 - **`LinkSignal`** supervises the telemetry link. Readers hold their last frame indefinitely, so without it a sleeping console, a crashed feed or a dropped Wi-Fi link would leave the gauges showing the last speed and gear forever, indistinguishable from live data. It publishes `telemetry_stale`, which drives `NoSignalWindow` — a SYSTEM_ALERT overlay window (see Window Layering) that raises a full-width **NO SIGNAL** banner across the band above the footer. The gauges keep their last values at full brightness; the banner is what says they are no longer live.
 - **`StateManager`** maintains a *stack* of UI states (dashboard, setup, IP entry, …). Pushing a state pauses the one below; popping resumes it. Rendering uses dirty-rect updates.
 - **`Display`** presents the logical surface to the physical panel — GPU-rotated 270° on the Raspberry Pi Display 2, rendered natively at panel resolution on the Waveshare 7″ (1024×600) and 5″ (800×480), or stretched into the resizable desktop window (pygame `SCALED`, aspect preserved). The panel is auto-detected by resolution; switching panels is a `dtoverlay` swap in the device's `/boot/config.txt`, no app configuration needed.
+
+### Engine simulation
+
+The shift lights and the fuel readout are driven by a crank-angle-resolved simulation of each car's engine (`src/instrument_cluster/core/engine_sim/`) — actual piston kinematics, camshaft valve events, and ignition/injection advance, not a lookup of three magic numbers:
+
+- **Single-zone cycle model.** Slider-crank kinematics give cylinder volume per crank degree; parametric cam lobes feed a compressible-orifice valve-flow model, so volumetric efficiency *emerges* from cam geometry instead of being prescribed. Combustion is a Wiebe heat release anchored on a CA50 timing target (the standard MBT proxy — spark/injection advance follows in closed form), with Woschni heat transfer and Chen–Flynn friction. Turbo cars get boost with wastegate behaviour, diesels a compression-ignition path, rotaries and the two-stroke kart equivalent parameters through the same integrator.
+- **Calibrated offline, once per car.** `tools/engine_sim/fit_cars.py` fits every car in `db/cars.json` against its known peaks (max power/torque + rpm) via engine archetypes and a staged fitter, and writes the checked-in `db/engine_params.json`. 490 of 541 entries calibrate to within 2% at both anchor points (most within 0.1%); the rest — fictional VGTs, hybrids whose electric torque-fill an ICE model shouldn't fake — are marked and simply keep the old heuristic.
+- **Never on the frame loop.** At car change, a background thread bakes the model into a small RPM×throttle torque+fuel map (~0.4 s on a desktop, ~1–2 s expected on the Pi); the 60 fps loop only ever does map lookups. The old heuristic drives the LEDs from the very first frame and is swapped out when the bake lands, so the shift lights never wait.
+- **Fuel, physically.** The map's fuel-flow channel gives a live burn rate at the actual rpm and throttle. `FuelSignal` uses it to fill the gaps between GT7's quantized fuel readings — continuously rescaled against every measured drop, so the game's own fuel accounting stays ground truth — and publishes a new `fuel_rate` signal.
+
+#### Old vs. new, on the Scirocco Gr.4 (car id 3231)
+
+Both models are anchored to the same cars.json data (396 Nm @ 4000, 267 kW @ 7000, redline 8000) and agree exactly at those points — the physics changes what happens *between and beyond* them:
+
+| rpm | heuristic Nm | simulated Nm | heuristic kW | simulated kW |
+|----:|----:|----:|----:|----:|
+| 2000 | 356 | 294 | 75 | 62 |
+| 3000 | 376 | 361 | 118 | 113 |
+| 4000 | **396** | **396** | 166 | 166 |
+| 5000 | 392 | 390 | 205 | 204 |
+| 6000 | 382 | 370 | 240 | 232 |
+| 7000 | 364 | 364 | **267** | **267** |
+| 7500 | 331 | 345 | 260 | 271 |
+| 8000 | 255 | 323 | 213 | 271 |
+
+The heuristic's low end is a guessed linear ramp (356 Nm at 2000 rpm); the simulation shows what restricted breathing actually delivers there (294 Nm). Past rated power the heuristic *forces* torque to collapse, while the simulated race engine keeps pulling to the limiter — which moves the optimal shift points:
+
+| upshift | heuristic | simulated |
+|--------:|----------:|----------:|
+| 1 → 2 | 7897 | 8000 |
+| 2 → 3 | 7833 | 8000 |
+| 3 → 4 | 7730 | 8000 |
+| 4 → 5 | 7717 | 8000 |
+| 5 → 6 | 7679 | 8000 |
+
+(representative Gr.4 gear set — live shift points always use the ratios from telemetry). For this car the heuristic was telling you to short-shift an engine that holds power at the limiter. The simulation also knows part throttle, which the heuristic never did: at 4000 rpm the Scirocco makes 235 Nm at 30% pedal, 328 Nm at 60%, 396 Nm flat out — that throttle axis is what the fuel model runs on. Inspect any car yourself with `python tools/engine_sim/dyno.py --car-id 3231`.
+
+#### Reading the dyno output
+
+```text
+Scirocco Gr.4  [i6_na]  fit_error={'t_pct': 0.0001, 'p_pct': -0.0002, 't_rpm': 410.6, 'p_rpm': 679.1}  (257 ms)
+DB: 396 Nm @ 4000, 267 kW @ 7000, redline 8000
+
+  rpm |  model Nm | heur Nm |  kW    | fuel g/s | throttle 100%
+ 1000 |     252.1 |   336.6 |   26.4 |     1.43 | ############################
+ 4000 |     393.1 |   396.0 |  164.7 |     8.86 | #############################################  <- T peak
+ 4500 |     400.4 |   395.1 |  188.7 |    10.23 | ##############################################
+ 7000 |     366.7 |   364.2 |  268.8 |    15.59 | ##########################################  <- P peak
+ 8000 |     323.3 |   254.6 |  270.9 |    16.55 | #####################################
+```
+
+**The header line.** `[i6_na]` is the archetype template the calibrator used as this car's shape prior; displacement, ram tuning, breathing and friction are all re-fitted per car, so the label matters less than the result. `fit_error` states how well the calibrated model matches the DB anchors: `t_pct`/`p_pct` are the relative errors at the torque and power targets (here 0.01–0.02% on the calibrator's grid), `t_rpm`/`p_rpm` the offsets between where the model's curves actually crest and where the DB says they should. The trailing `(257 ms)` is the wall time of the full crank-angle run — exactly the work the appliance does once, on a background thread, when you get into the car; the LEDs run the old heuristic until it lands. The `DB:` line is the five cars.json numbers everything is calibrated against — they are all the game data provides.
+
+**The columns.** `model Nm` is the simulation's brake torque at the requested pedal position (`throttle 100%` in the last column's header; `--throttle 0.5` shows the part-load curve instead) — the curve the shift-point calculator uses. `heur Nm` is the old three-parameter heuristic for comparison. `kW` is model power (torque × angular speed). `fuel g/s` is the model's fuel mass flow at that rpm/throttle — the channel the fuel observer integrates at your live pedal position, continuously rescaled against GT7's own fuel readings. The `#` bar draws model torque scaled to its maximum, and `<- T peak` / `<- P peak` mark the rows nearest the **DB's claimed** peak locations, not the model's own maxima.
+
+**How to read the curve.** Three regions tell the story. *Low end:* the heuristic is a guessed linear ramp (337 Nm at 1000 rpm); the simulation shows what the cam and ports actually deliver down there (252 Nm, climbing as the intake starts to work). *Mid-range:* both are pinned to the same 396 Nm anchor and agree closely — the model's torque actually crests at ~4500 rather than 4000 (that is the `t_rpm: 410.6`), accepted because the crest is a plateau: the curve moves under 2% across that span, and round-hundred source data cannot localize a peak on something that flat. *Top end:* the decisive difference — the heuristic forces torque to collapse after rated power, while the simulated engine keeps breathing and power plateaus at 270–271 kW from 7250 all the way to the limiter (`p_rpm: 679` records the true crest near 7700, allowed under the same flatness policy). That plateau is why the shift table above moved to the limiter.
+
+Two honest footnotes. The printed values at the anchors (393.1 Nm, 268.8 kW) sit within ±0.7% of the DB targets rather than exactly on them: the correction is fitted on the calibrator's slightly coarser rpm grid, and off-grid samples like this table's land within a fraction of a percent. And the fuel column implies ~220 g/kWh at peak power — a touch optimistic against a real engine, which is fine by design: the runtime observer learns the absolute scale from the game's own consumption, so only the shape of the fuel surface matters, and that is what the physics provides.
+
+#### Remaining work
+
+- [ ] **Validate on the Pi**: run `python tools/engine_sim/bench_bake.py` and the profiling harness on the device — the bake budget (soft cap 2 s, background thread) is projected from desktop numbers, not yet measured on a Pi 4.
+- [ ] **Ship it in an image**: this adds new packages (`core/engine_sim/`, `db/engine_params.json`) and modified modules, so it reaches appliances through an OS image release, not a single-module hot fix.
+- [ ] **Feed release for pedal units**: the GT7 NDJSON proxy still emits raw 0–255 throttle/brake bytes; the cluster normalizes defensively (`telemetry/units.py`), but the proper fix is a granturismo feed release that sends 0..1.
+- [ ] **Collect empirical curves**: the dashboard's **Dyno** button (next to Setup) opens the accel-run logger — it captures full-throttle pulls for the current car automatically and saves them under `<config dir>/accel_runs/`. `python tools/engine_sim/analyze_accel.py --car-id <id>` then compares the measured torque *shape* against the model and the old heuristic (shape is all shift points depend on, so no mass/drag constants are needed). Log a few cars, see which model wins, and feed systematic misfits back into the archetypes.
+- [ ] **Optional**: a `fuel_rate` dashboard widget; Cython-compiling the cycle integrator (`CYTHONIZE_ENGINE_SIM`, mirroring the delta calculator) if Pi bake times measure worse than projected.
+- [ ] Regenerate `db/engine_params.json` (`python tools/engine_sim/fit_cars.py --jobs 8 --report`, ~35 min) whenever `cars.json`, the archetypes, or the cycle physics change — `test_calibration_artifact.py` fails if it drifts.
 
 ### Adding another game
 

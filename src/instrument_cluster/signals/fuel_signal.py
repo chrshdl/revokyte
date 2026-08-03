@@ -2,6 +2,7 @@ from collections import deque
 
 from ..logger import Logger
 from ..telemetry.models import TelemetryFrame
+from .fuel_flow import FuelFlowObserver
 from .signal_keys import SignalKey
 
 
@@ -12,10 +13,22 @@ class FuelSignal:
     - ``fuel_per_lap``       — the last valid completed lap's consumption
                                (GT7 gas units, not liters).
     - ``fuel_used_current_lap`` — fuel burned so far in the lap in progress:
-                               0.0 at the start/finish crossing, then
-                               refreshed every ``_LIVE_REFRESH_S`` seconds.
+                               anchored to measured gas_level at every
+                               ``_LIVE_REFRESH_S`` refresh and filled in
+                               between by the engine model's fuel flow
+                               (when a calibrated map is live), so the
+                               readout climbs smoothly and snaps back to
+                               truth on each refresh.
     - ``fuel_laps_remaining``— gas_level divided by the rolling average of
                                the last ``_WINDOW`` completed laps.
+    - ``fuel_rate``          — instantaneous model burn in game units/s;
+                               None whenever the model is inert.
+
+    Measured telemetry stays ground truth: the FuelFlowObserver only
+    interpolates between its samples and rescales itself against every
+    real gas_level drop. With no engine map (unknown car, ACC, missing
+    artifact) every published value is exactly what it was before the
+    observer existed.
 
     The completed-lap values are None until a full green-flag lap has been
     observed; all are None while fuel data is meaningless (EVs, fuel
@@ -28,8 +41,12 @@ class FuelSignal:
         refuel_eps=0.05,
         min_lap_consumption=0.01,
         live_refresh_s=3.0,
+        flow_observer: FuelFlowObserver | None = None,
     ):
         self.logger = Logger(__class__.__name__).get()
+
+        # Model-based rate between measured anchors; injected in tests.
+        self._flow = flow_observer if flow_observer is not None else FuelFlowObserver()
 
         # Rolling window of completed-lap consumptions the
         # laps-remaining estimate averages over.
@@ -117,8 +134,13 @@ class FuelSignal:
         restarted = self._is_restart(frame.lap_count)
         if restarted:
             self._reset_lap_tracking()
+            self._flow.freeze_observation()
 
         self._handle_refuel(gas_level)
+
+        # Integrate the model rate for this live frame before any anchor
+        # rebase below, so an anchor always matches the current integral.
+        self._flow.update(frame, dt)
 
         if self._is_lap_boundary(frame) and not restarted:
             self._close_lap(gas_level)
@@ -168,6 +190,7 @@ class FuelSignal:
             self._lap_valid = False
             self._lap_start_fuel = gas_level
             self._live_used = None
+            self._flow.freeze_observation()
 
     def _is_lap_boundary(self, frame: TelemetryFrame) -> bool:
         lap_count = frame.lap_count
@@ -220,16 +243,21 @@ class FuelSignal:
         self._lap_valid = True
         self._live_used = 0.0
         self._live_timer = 0.0
+        self._flow.rebase_anchor()
 
     def _update_live_used(self, gas_level: float, dt: float) -> None:
         # Live current-lap consumption, refreshed every live_refresh_s of
         # driving time. Stale (paused) frames return early in update(), so the
         # timer only advances while the session is live. A None samples
         # immediately so startup and rebases never leave the widget blank.
+        # Every measured sample re-anchors the model integral: between
+        # refreshes the published value climbs by the model, at each
+        # refresh it snaps back to measured truth.
         self._live_timer += dt
         if self._live_used is None or self._live_timer >= self.live_refresh_s:
             self._live_timer = 0.0
             self._live_used = max(0.0, self._lap_start_fuel - gas_level)
+            self._flow.rebase_anchor()
 
     def _remember(self, frame: TelemetryFrame) -> None:
         if frame.current_lap_time is not None:
@@ -240,20 +268,26 @@ class FuelSignal:
 
     def _build_output(self, gas_level: float) -> dict:
         avg = self._samples_sum / len(self._samples) if self._samples else None
+        live_used = self._live_used
+        if live_used is not None and self._flow.active:
+            live_used = live_used + self._flow.units_since_anchor()
         return self._publish(
             fuel_per_lap=self._samples[-1] if self._samples else None,
-            fuel_used_current_lap=self._live_used,
+            fuel_used_current_lap=live_used,
             fuel_laps_remaining=(
                 gas_level / avg if avg is not None and avg > 1e-6 else None
             ),
+            fuel_rate=self._flow.rate_units_s(),
         )
 
     def _publish(
-        self, fuel_per_lap, fuel_used_current_lap, fuel_laps_remaining
+        self, fuel_per_lap, fuel_used_current_lap, fuel_laps_remaining,
+        fuel_rate=None,
     ) -> dict:
         self._last_output = {
             SignalKey.FUEL_PER_LAP: fuel_per_lap,
             SignalKey.FUEL_USED_CURRENT_LAP: fuel_used_current_lap,
             SignalKey.FUEL_LAPS_REMAINING: fuel_laps_remaining,
+            SignalKey.FUEL_RATE: fuel_rate,
         }
         return self._last_output

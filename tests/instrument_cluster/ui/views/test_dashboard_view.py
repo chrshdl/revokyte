@@ -44,6 +44,32 @@ def test_view_owns_only_chrome(config_path):
     assert view.plugin_layer.sprites() == []
 
 
+def test_dyno_button_sits_next_to_setup(config_path):
+    _write_config(config_path, status_lights=False)
+    view = DashboardView()
+
+    assert view.dyno_button in view.ui_layer
+    # Directly right of Setup, same footer row, no overlap.
+    assert view.dyno_button.rect.top == view.setup_button.rect.top
+    assert view.dyno_button.rect.left >= view.setup_button.rect.right
+    # The slot-name label starts after the Dyno button.
+    assert view.slot_name.rect.left >= view.dyno_button.rect.right
+
+
+def test_dyno_button_survives_the_status_lights_reflow(config_path):
+    _write_config(config_path, status_lights=False)
+    view = DashboardView()
+
+    view.set_status_lights(True)
+    assert view.dyno_button in view.ui_layer
+    assert view.dyno_button.rect.left >= view.setup_button.rect.right
+    # Exactly one Dyno button after the rebuild — no stale duplicate.
+    from instrument_cluster.ui.widgets.base.button import Button
+
+    buttons = [s for s in view.ui_layer.sprites() if isinstance(s, Button)]
+    assert len(buttons) == 2  # Setup + Dyno
+
+
 def test_status_lights_on_reserves_the_bezel_strips(config_path):
     _write_config(config_path, status_lights=True)
     view = DashboardView()

@@ -8,6 +8,10 @@ BUTTON_SETUP_LONGRELEASED = pygame.event.custom_type()
 BUTTON_BACK_PRESSED = pygame.event.custom_type()
 BUTTON_BACK_RELEASED = pygame.event.custom_type()
 
+# Dashboard footer: opens the accel-run logger (engine-model validation)
+BUTTON_DYNO_PRESSED = pygame.event.custom_type()
+BUTTON_DYNO_RELEASED = pygame.event.custom_type()
+
 BRIGHTNESS_DOWN_PRESSED = pygame.event.custom_type()
 BRIGHTNESS_DOWN_RELEASED = pygame.event.custom_type()
 BRIGHTNESS_UP_PRESSED = pygame.event.custom_type()
