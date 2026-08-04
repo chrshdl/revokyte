@@ -1,9 +1,13 @@
+from __future__ import annotations
+
 import threading
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ..system.system_health_monitor import SystemHealthMonitor
-from ...telemetry.models import TelemetryFrame
+
+if TYPE_CHECKING:
+    from ...telemetry.models import TelemetryFrame
 
 
 @dataclass
@@ -41,6 +45,11 @@ class VehicleBus:
         frame rather than None — plugins skip updating on a None frame
         (sdk.py), which would freeze the old source's last render on
         screen instead of clearing it."""
+        # Deferred import: models pulls in pydantic, which stays off the
+        # boot-time import path (see telemetry/demo.py). Source switches
+        # happen long after boot, when it is loaded anyway.
+        from ...telemetry.models import TelemetryFrame
+
         with self._frame_lock:
             self.frame = TelemetryFrame()
         with self._signals_lock:

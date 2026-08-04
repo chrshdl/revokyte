@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 import math
 import random
 import time
 
 from ..signals.signal_keys import SignalKey
-from .models import Bounds, Flags, TelemetryFrame, Wheel, Wheels
 
 SHIFT_INTERVAL = 5.0  # seconds between gear changes
 SHIFT_PRE = 0.2  # seconds before change to show in_gear = False
@@ -17,6 +18,12 @@ class DemoReader:
         pass
 
     def latest(self) -> TelemetryFrame:
+        # Imported here, not at module top: models pulls in pydantic (~0.5 s
+        # of the boot's import phase) and this module is imported eagerly via
+        # signal_pipeline — deferring keeps pydantic off the critical path
+        # until the first frame is actually built, after the first paint.
+        from .models import Bounds, Flags, TelemetryFrame, Wheel, Wheels
+
         t = time.perf_counter() - self._t0
         speed = max(0.0, 36.0 + 36.0 * math.sin(2 * math.pi * (t / 20.0)))  # 38.62
         rpm = int(6500 + 2000 * math.sin(2 * math.pi * (t / 3.0)))

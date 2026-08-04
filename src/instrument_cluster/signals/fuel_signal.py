@@ -1,7 +1,12 @@
+from __future__ import annotations
+
 from collections import deque
 
 from ..logger import Logger
-from ..telemetry.models import TelemetryFrame
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..telemetry.models import TelemetryFrame
 from .signal_keys import SignalKey
 
 

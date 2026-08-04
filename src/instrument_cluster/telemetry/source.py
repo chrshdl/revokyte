@@ -1,10 +1,14 @@
-from typing import Callable
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Callable
 
 from ..logger import Logger
 from .mode import TelemetryMode
 from .demo import DemoReader
 from .reader_protocol import TelemetryReaderProtocol
-from .udp_jsonl import UdpJsonlReader
+
+if TYPE_CHECKING:
+    from .udp_jsonl import UdpJsonlReader
 
 
 class _InertReader:
@@ -69,6 +73,12 @@ class TelemetrySource:
         """Get cached reader or create new one for the given mode."""
         if mode == TelemetryMode.UDP:
             if self._udp_reader is None:
+                # Deferred import: udp_jsonl needs telemetry.models (and so
+                # pydantic) at module level for frame parsing. In demo mode —
+                # the factory default — this branch never runs at boot, which
+                # keeps pydantic out of the boot-time import phase entirely.
+                from .udp_jsonl import UdpJsonlReader
+
                 self._udp_reader = UdpJsonlReader(host=self._host, port=self._port)
             return self._udp_reader
         elif mode == TelemetryMode.DIRECT:

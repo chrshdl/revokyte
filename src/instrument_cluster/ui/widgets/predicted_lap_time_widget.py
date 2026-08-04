@@ -1,7 +1,12 @@
+from __future__ import annotations
+
 
 from ...core.vehicle.vehicle_bus import VehicleBus
 from ...signals.signal_keys import SignalKey
-from ...telemetry.models import TelemetryFrame
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ...telemetry.models import TelemetryFrame
 from ..constants import LAP_DEFAULT_VALUE
 from ..utils import FontFamily
 from ..widgets import Widget

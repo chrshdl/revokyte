@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import json
 import math
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, TYPE_CHECKING, Tuple
 
-from ..telemetry.models import TelemetryFrame
+if TYPE_CHECKING:
+    from ..telemetry.models import TelemetryFrame
 from ..ui.widgets.track_name_widget import TrackNameWidget
 from .signal_keys import SignalKey
 

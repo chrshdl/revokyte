@@ -1,9 +1,14 @@
+from __future__ import annotations
+
 import math
 
 import pygame
 
 from ...core.vehicle.vehicle_bus import VehicleBus
-from ...telemetry.models import TelemetryFrame
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ...telemetry.models import TelemetryFrame
 from ..colors import Color
 from ..utils import FontFamily, load_font
 from ..widgets import Widget

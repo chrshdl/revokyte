@@ -12,7 +12,12 @@ stamps on arrival (see ``UdpJsonlReader._run``). A value that stops changing
 means no packet arrived, whatever the reason.
 """
 
-from ..telemetry.models import TelemetryFrame
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..telemetry.models import TelemetryFrame
 from .signal_keys import SignalKey
 
 # No fresh frame for this long and the link is considered dead. Feeds run at

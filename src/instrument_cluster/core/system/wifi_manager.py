@@ -248,6 +248,19 @@ class WifiManager:
             self._supports_sae_cached = "SAE" in caps.split()
         return self._supports_sae_cached
 
+    def has_credentials(self) -> bool:
+        """True when the persistent supplicant config provisions at least one
+        network. The seeded first-boot config (prepare-data-dirs.service in
+        the OS image) is header-only, so a merely-present file doesn't count.
+        Distinguishes "association pending" (credentials exist, router may
+        just be off) from "association impossible" (nothing provisioned).
+        """
+        try:
+            with open(self.conf_path) as f:
+                return "network={" in f.read()
+        except OSError:
+            return False
+
     def is_associated(self) -> bool:
         """True when wpa_supplicant has completed association, regardless of DHCP state.
 

@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 from collections import deque
 
 import numpy as np
 
-from ...telemetry.models import TelemetryFrame
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ...telemetry.models import TelemetryFrame
 
 # EngineModel torque curve shape
 _TORQUE_LOW_BLEND_BASE: float = 0.8  # fraction of max torque at rpm=0
