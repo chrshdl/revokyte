@@ -1,10 +1,15 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 from ..core.vehicle.car_profiler import CarLibrary
 from ..core.vehicle.ecu import ShiftLightController
 from ..core.vehicle.vehicle_bus import VehicleBus
 from ..logger import Logger
-from ..telemetry.models import TelemetryFrame
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..telemetry.models import TelemetryFrame
 from ..ui.colors import Color
 from .ledbar import LEDBar, create_ledbar
 

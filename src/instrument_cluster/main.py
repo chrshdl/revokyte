@@ -1,6 +1,7 @@
 import os
 import signal
 import sys
+import time
 
 import pygame
 
@@ -14,14 +15,42 @@ from .peripherals.display import Display
 from .signals.signal_pipeline import SignalPipeline
 from .states.gate import entry_state
 from .states.state_manager import StateManager
-from .states.wifi_connecting_state import WifiConnectingState
 from .telemetry.mode import TelemetryMode
 from .addons.feeds import feed_needs_reinstall
 from .ui.feed_update_window import FeedUpdateWindow
 from .ui.no_signal_window import NoSignalWindow
+from .ui.wifi_status_window import WifiStatusWindow
 from .ui.window_layering import WindowManager
 
 logger = Logger("InstrumentClusterOS").get()
+
+# How long main() will wait for the volume holding the config to appear
+# before giving up and reading defaults. Sized to the worst /data ext4
+# journal replay observed after a power cut (~3.5 s) with slack on top.
+_CONFIG_VOLUME_TIMEOUT = 10.0
+
+
+def _wait_for_config_volume(timeout: float = _CONFIG_VOLUME_TIMEOUT) -> None:
+    """Block until the volume holding the config file is mounted.
+
+    On the appliance the config lives on /data, and the service starts
+    before local-fs.target on purpose: the seconds of Python/pygame imports
+    above overlap the ext4 journal replay /data needs after a power cut.
+    By the time the imports finish the mount is usually there; when it
+    isn't, wait here — at the last moment — instead of silently reading
+    defaults off the bare mountpoint directory. Dev machines (config under
+    $HOME) skip this entirely.
+    """
+    if not str(ConfigManager.path).startswith("/data/"):
+        return
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if os.path.ismount("/data"):
+            return
+        time.sleep(0.05)
+    logger.warning(
+        "/data not mounted after %.0f s; config may fall back to defaults", timeout
+    )
 
 
 def run(conf: Config) -> None:
@@ -103,25 +132,31 @@ def run(conf: Config) -> None:
         )
         plugin_manager.load_plugins()
 
-        # First-boot Wi-Fi gate: if this device drives Wi-Fi and isn't already
-        # associated, show WifiConnectingState which polls for up to 15 s and
-        # transitions on success or to WifiSetupState on timeout. On dev
-        # machines (no wlan0) this is skipped entirely.
-        #
-        # After connectivity, entry_state() hands off to the dashboard —
-        # nothing else gates the boot.
+        # Wi-Fi never gates the dashboard. With credentials provisioned the
+        # boot goes straight to the gauges and association completes in the
+        # background — WifiStatusWindow shows a small "connecting" pill until
+        # it does. This is deliberate for the trackside power-cut case: the
+        # router may come up minutes after the dash, and the old blocking
+        # connecting screen (15 s poll + 5 s minimum display) held the
+        # dashboard hostage to it. Only a true first boot — no network block
+        # on /data, so association could never succeed — goes to Wi-Fi setup.
+        # On dev machines (no wlan0) neither branch triggers.
         wifi = WifiManager()
-        if wifi.available and not wifi.is_associated():
-            logger.info("Wi-Fi not yet associated; showing connecting screen.")
+        if wifi.available and not wifi.is_associated() and not wifi.has_credentials():
+            logger.info("No Wi-Fi credentials provisioned; showing setup.")
+            from .states.wifi_setup_state import ENTRY_BOOT, WifiSetupState
+
             state_manager.push_state(
-                WifiConnectingState(
+                WifiSetupState(
                     state_manager,
                     manager=wifi,
+                    entry=ENTRY_BOOT,
                     plugin_manager=plugin_manager,
                     pipeline=signal_pipeline,
                 )
             )
         else:
+            window_manager.add_window(WifiStatusWindow(wifi, state_manager))
             state_manager.push_state(
                 entry_state(state_manager, signal_pipeline, plugin_manager)
             )
@@ -183,6 +218,7 @@ def run(conf: Config) -> None:
 
 def main() -> None:
     try:
+        _wait_for_config_volume()
         run(ConfigManager.get_config())
     except Exception as e:
         logger.critical(f"Application failed to start: {e}")

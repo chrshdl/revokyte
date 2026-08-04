@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 from ..config import ConfigManager
 from ..delta_calc import make_delta_calculator
 from ..logger import Logger
 from ..telemetry.mode import DiffReferenceMode
-from ..telemetry.models import TelemetryFrame
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..telemetry.models import TelemetryFrame
 from .signal_keys import DeltaState, SignalKey
 from .stable_signal import StableSignal
 
