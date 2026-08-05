@@ -15,6 +15,8 @@ import pytest
 
 from instrument_cluster.addons.agent_server import (
     CONFIG_NAME,
+    _PAGE,
+    _UNVERIFIED_BANNER,
     AgentUnavailable,
     _replace_output,
     _write_config,
@@ -109,7 +111,7 @@ def test_output_line_shapes(line):
 
 def test_local_override_serves_a_locally_built_bundle(tmp_path, monkeypatch):
     # The agent half of a feed only reaches a release after merge and tag, so
-    # without this the pairing screen is untestable until the last step.
+    # without this a change to it is untestable through this screen.
     path = _bundle(tmp_path)
     monkeypatch.setenv("AGENT_BUNDLE_PATH", str(path))
     bundle = prepare_bundle(feed_by_id("acc"), "192.168.1.42")
@@ -120,6 +122,55 @@ def test_local_override_serves_a_locally_built_bundle(tmp_path, monkeypatch):
     # ...and served from a copy, so the source zip is left alone.
     assert bundle.path != path
     assert _read_config(path)["output"] == "udp://127.0.0.1:5600"
+
+
+def test_unsigned_override_is_flagged_all_the_way_to_the_page(tmp_path, monkeypatch):
+    # The person who needs to know is the one about to run a .bat on their
+    # gaming PC, so "unverified" has to survive to the download page.
+    path = _bundle(tmp_path)
+    monkeypatch.setenv("AGENT_BUNDLE_PATH", str(path))
+    bundle = prepare_bundle(feed_by_id("acc"), "192.168.1.42")
+    assert bundle.verified is False
+
+    page = _PAGE.format(
+        label="ACC", unlocks="RPM", filename=bundle.filename,
+        sha256=bundle.sha256, version="v0.1.2",
+        warning="" if bundle.verified else _UNVERIFIED_BANNER,
+    )
+    assert "Unverified build" in page
+    assert "not signed by the project's release key" in page
+
+
+def test_signed_override_is_verified_like_a_release_asset(tmp_path, monkeypatch):
+    # The override is a way to serve a local file, not a way to skip the
+    # signature check: a .sig beside it is checked exactly as CI's would be.
+    path = _bundle(tmp_path)
+    path.with_name(path.name + ".sig").write_bytes(b"a-good-signature")
+    # Stubbed: what is under test is the branch, not Ed25519 itself — the
+    # refusal case below exercises the real verifier.
+    monkeypatch.setattr(
+        "instrument_cluster.addons.agent_server.verify_signature",
+        lambda data, sig, pub: True,
+    )
+    monkeypatch.setenv("AGENT_BUNDLE_PATH", str(path))
+
+    bundle = prepare_bundle(feed_by_id("acc"), "192.168.1.42")
+    assert bundle.verified is True
+    page = _PAGE.format(
+        label="ACC", unlocks="RPM", filename=bundle.filename,
+        sha256=bundle.sha256, version="v0.1.2",
+        warning="" if bundle.verified else _UNVERIFIED_BANNER,
+    )
+    assert "Unverified build" not in page
+
+
+def test_override_with_a_bad_signature_is_refused(tmp_path, monkeypatch):
+    # Present-and-wrong is never a development convenience.
+    path = _bundle(tmp_path)
+    path.with_name(path.name + ".sig").write_bytes(b"\x00" * 64)
+    monkeypatch.setenv("AGENT_BUNDLE_PATH", str(path))
+    with pytest.raises(AgentUnavailable, match="does not verify"):
+        prepare_bundle(feed_by_id("acc"), "192.168.1.42")
 
 
 def test_local_override_with_a_bad_path_says_so(monkeypatch):

@@ -46,6 +46,10 @@ class AgentBundle:
     path: Path
     filename: str
     sha256: str
+    # False only for a local override with no signature beside it. Carried all
+    # the way to the download page, because the person who needs to know is the
+    # one about to run a .bat on their gaming PC.
+    verified: bool = True
 
 
 class AgentUnavailable(Exception):
@@ -55,10 +59,17 @@ class AgentUnavailable(Exception):
 def _local_override() -> Path | None:
     """A locally built bundle to serve instead of the release asset.
 
-    Development affordance: the agent half of a feed lands in a release only
-    after it is merged and tagged, so without this the pairing screen cannot be
-    exercised until the very last step. Point ``AGENT_BUNDLE_PATH`` at a zip
-    built from the feed's repo to drive the whole flow beforehand.
+    Development affordance: it exists so a change to a feed's agent can be
+    exercised through this screen before it is merged and tagged.
+
+    It is deliberately *not* a way to skip verification. A ``<bundle>.sig`` next
+    to the file is verified exactly as a release asset would be; only when there
+    is no signature at all does the bundle travel as unverified, and then it
+    says so on the screen and on the download page.
+
+    Worth being careful with regardless of who can set the variable: this server
+    hands a Windows executable to another machine, under the appliance's own
+    name. That is a good thing to be trusted for and a bad thing to lend out.
     """
     raw = os.environ.get("AGENT_BUNDLE_PATH", "").strip()
     if not raw:
@@ -67,6 +78,41 @@ def _local_override() -> Path | None:
     if not path.is_file():
         raise AgentUnavailable(f"AGENT_BUNDLE_PATH is not a file: {path}")
     return path
+
+
+def _prepare_override(
+    override: Path, descriptor: FeedDescriptor, cluster_ip: str
+) -> AgentBundle:
+    """Serve a local bundle, verifying it when a signature sits beside it."""
+    signature_file = override.with_name(override.name + ".sig")
+    verified = False
+    if signature_file.is_file():
+        if not verify_signature(
+            override.read_bytes(),
+            signature_file.read_bytes(),
+            descriptor.signing_pubkey_b64,
+        ):
+            # A signature that is present and wrong is never a development
+            # convenience; it is the one case worth refusing outright.
+            raise AgentUnavailable(f"{signature_file.name} does not verify")
+        verified = True
+        LOGGER.info("AGENT_BUNDLE_PATH set — %s verified against %s's key",
+                    override.name, descriptor.id)
+    else:
+        LOGGER.warning(
+            "AGENT_BUNDLE_PATH set — serving %s UNVERIFIED (no %s beside it). "
+            "This hands an unsigned executable to the game PC.",
+            override.name, signature_file.name,
+        )
+
+    tmp_dir = Path(tempfile.mkdtemp(prefix="agent-bundle-"))
+    local = tmp_dir / override.name
+    shutil.copy(override, local)
+    digest = sha256_file(local)
+    _write_config(local, cluster_ip)
+    return AgentBundle(
+        path=local, filename=override.name, sha256=digest, verified=verified
+    )
 
 
 def prepare_bundle(descriptor: FeedDescriptor, cluster_ip: str) -> AgentBundle:
@@ -84,16 +130,7 @@ def prepare_bundle(descriptor: FeedDescriptor, cluster_ip: str) -> AgentBundle:
 
     override = _local_override()
     if override is not None:
-        LOGGER.warning(
-            "AGENT_BUNDLE_PATH set — serving %s unverified (development only)",
-            override.name,
-        )
-        tmp_dir = Path(tempfile.mkdtemp(prefix="agent-bundle-"))
-        local = tmp_dir / override.name
-        shutil.copy(override, local)
-        digest = sha256_file(local)
-        _write_config(local, cluster_ip)
-        return AgentBundle(path=local, filename=override.name, sha256=digest)
+        return _prepare_override(override, descriptor, cluster_ip)
 
     try:
         url = resolve_pinned_agent_url(descriptor)
@@ -232,6 +269,7 @@ def _make_handler(server: AgentHandoffServer):
                 filename=html.escape(bundle.filename),
                 sha256=bundle.sha256,
                 version=html.escape(descriptor.version),
+                warning="" if bundle.verified else _UNVERIFIED_BANNER,
             ).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -254,6 +292,15 @@ def _make_handler(server: AgentHandoffServer):
     return Handler
 
 
+# Shown in place of nothing when the served bundle carries no valid signature.
+# Not escaped/formatted with user input — it is a constant.
+_UNVERIFIED_BANNER = (
+    '<p class="warn"><strong>Unverified build.</strong> This file was supplied '
+    "locally to the cluster and is not signed by the project's release key. "
+    "It contains a program you are about to run on this PC. Do not continue "
+    "unless you built it yourself or you know exactly who did.</p>"
+)
+
 _PAGE = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -267,14 +314,18 @@ _PAGE = """<!doctype html>
         word-break: break-all; }}
  ol {{ padding-left: 1.2rem; }}
  .muted {{ color: #666; font-size: .9rem; }}
+ .warn {{ border: 2px solid #b00; background: #fff0f0; color: #900;
+        padding: 1rem 1.2rem; border-radius: .4rem; margin-bottom: 1.5rem; }}
  @media (prefers-color-scheme: dark) {{
    body {{ background: #111; color: #eee; }}
    a.btn {{ background: #eee; color: #111; }}
    code {{ background: #222; }}
    .muted {{ color: #999; }}
+   .warn {{ background: #2a1010; color: #ff9a9a; border-color: #d33; }}
  }}
 </style></head><body>
 <h1>{label} telemetry agent</h1>
+{warning}
 <p>This adds <strong>{unlocks}</strong> to your instrument cluster. Those channels
 are not on the network — they can only be read on this PC.</p>
 <p><a class="btn" href="/{filename}">Download {filename}</a></p>
