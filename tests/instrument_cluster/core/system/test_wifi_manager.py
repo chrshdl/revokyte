@@ -231,3 +231,39 @@ def test_request_dhcp_noop_without_networkctl(monkeypatch):
         lambda *a, **k: pytest.fail("must not shell out without networkctl"),
     )
     mgr.request_dhcp()  # must not raise
+
+
+def test_has_credentials_true_with_network_block(tmp_path):
+    conf = tmp_path / "wpa_supplicant-wlan0.conf"
+    conf.write_text(WifiManager._build_config("HomeNet", "hunter22", country=""))
+    assert WifiManager(conf_path=str(conf)).has_credentials() is True
+
+
+def test_has_credentials_false_for_header_only_seed(tmp_path):
+    """The first-boot seed (prepare-data-dirs.service) has no network block."""
+    conf = tmp_path / "wpa_supplicant-wlan0.conf"
+    conf.write_text("ctrl_interface=/run/wpa_supplicant\nupdate_config=1\n")
+    assert WifiManager(conf_path=str(conf)).has_credentials() is False
+
+
+def test_has_credentials_false_without_file(tmp_path):
+    assert WifiManager(conf_path=str(tmp_path / "missing.conf")).has_credentials() is False
+
+
+def test_has_credentials_ignores_unedited_flash_template(tmp_path):
+    """The boot-partition template ships a placeholder network block, and
+    wifi-setup.service copies it to /data even when the user never edited
+    it. Counting it as credentials skips the first-boot Wi-Fi setup and
+    leaves the boot polling a network that cannot exist."""
+    conf = tmp_path / "wpa_supplicant-wlan0.conf"
+    conf.write_text(
+        "ctrl_interface=/run/wpa_supplicant\n"
+        "update_config=1\n"
+        "\n"
+        "network={\n"
+        '    ssid="YOUR_WIFI_SSID"\n'
+        '    psk="YOUR_WIFI_PASSWORD"\n'
+        "    key_mgmt=WPA-PSK\n"
+        "}\n"
+    )
+    assert WifiManager(conf_path=str(conf)).has_credentials() is False

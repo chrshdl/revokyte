@@ -34,6 +34,12 @@ DEFAULT_INTERFACE = "wlan0"
 DEFAULT_CONF_PATH = "/etc/wpa_supplicant/wpa_supplicant-wlan0.conf"
 DEFAULT_SERVICE = "wpa_supplicant@wlan0.service"
 
+# The flashable image carries a template config on the boot partition whose
+# network block holds this literal placeholder SSID (see the OS image's
+# board/*/wpa_supplicant-wlan0.conf); wifi-setup.service copies the file
+# onto /data even when the user never edited it.
+_TEMPLATE_PLACEHOLDER_SSID = "YOUR_WIFI_SSID"
+
 # wpa_supplicant's printf_encode() single-character escapes; everything else
 # non-printable arrives as \xHH byte escapes.
 _WPA_ESCAPES = {"n": 0x0A, "r": 0x0D, "t": 0x09, "e": 0x1B, "\\": 0x5C, '"': 0x22}
@@ -250,16 +256,21 @@ class WifiManager:
 
     def has_credentials(self) -> bool:
         """True when the persistent supplicant config provisions at least one
-        network. The seeded first-boot config (prepare-data-dirs.service in
-        the OS image) is header-only, so a merely-present file doesn't count.
-        Distinguishes "association pending" (credentials exist, router may
-        just be off) from "association impossible" (nothing provisioned).
+        network. Distinguishes "association pending" (credentials exist, the
+        router may just be off) from "association impossible" (nothing
+        provisioned). Two well-formed files still count as unprovisioned: the
+        seeded first-boot config (prepare-data-dirs.service in the OS image),
+        which is header-only, and the boot-partition template copied by
+        wifi-setup.service with its placeholder network block unedited —
+        counting that one as credentials would skip the first-boot Wi-Fi
+        setup and leave the boot polling a network that cannot exist.
         """
         try:
             with open(self.conf_path) as f:
-                return "network={" in f.read()
+                content = f.read()
         except OSError:
             return False
+        return "network={" in content and _TEMPLATE_PLACEHOLDER_SSID not in content
 
     def is_associated(self) -> bool:
         """True when wpa_supplicant has completed association, regardless of DHCP state.

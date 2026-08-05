@@ -206,6 +206,8 @@ Press F5 to start debugging.
 
 For a turnkey setup that boots straight into the dash, download the prebuilt Raspberry Pi image from the [instrument-cluster-os releases](https://github.com/chrshdl/instrument-cluster-os/releases) and flash it to an SD card (e.g. with Raspberry Pi Imager).
 
+On first boot the cluster opens an on-screen Wi-Fi setup (scan, pick a network, type the password). To skip it, fill in the `wpa_supplicant-wlan0.conf` template on the SD card's boot partition before booting — with credentials provisioned the device goes straight to the dashboard and shows a small "Connecting to Wi-Fi" pill until it's online. A template left unedited (placeholder SSID) is ignored, so the on-screen setup still appears.
+
 [![Download Raspberry Pi Image](https://img.shields.io/badge/download-pi4--64%20%C2%B7%20pi5-c51d4a?logo=raspberry-pi&logoColor=white)](https://github.com/chrshdl/instrument-cluster-os/releases)
 
 ## Legal

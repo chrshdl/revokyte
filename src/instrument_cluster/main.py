@@ -138,9 +138,11 @@ def run(conf: Config) -> None:
         # it does. This is deliberate for the trackside power-cut case: the
         # router may come up minutes after the dash, and the old blocking
         # connecting screen (15 s poll + 5 s minimum display) held the
-        # dashboard hostage to it. Only a true first boot — no network block
-        # on /data, so association could never succeed — goes to Wi-Fi setup.
-        # On dev machines (no wlan0) neither branch triggers.
+        # dashboard hostage to it. Only a true first boot — nothing
+        # provisioned on /data (no network block, or only the flash
+        # template's unedited placeholder), so association could never
+        # succeed — goes to Wi-Fi setup. On dev machines (no wlan0) neither
+        # branch triggers.
         wifi = WifiManager()
         if wifi.available and not wifi.is_associated() and not wifi.has_credentials():
             logger.info("No Wi-Fi credentials provisioned; showing setup.")
