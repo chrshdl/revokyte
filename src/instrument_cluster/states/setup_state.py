@@ -134,9 +134,29 @@ class SetupState(State):
             ConfigManager.set_telemetry_mode(TelemetryMode.DEMO, persist=False)
         else:
             from ..addons.feeds import feed_by_id
+            from ..peripherals.display import is_raspberry_pi
             from .enter_ip_state import EnterIPState
 
             descriptor = feed_by_id(choice.feed_id)
+            # A feed whose richest channels only exist on the game PC leads
+            # with the pairing screen: it is the option that gives the driver
+            # every gauge, and it needs no IP typed here at all. That screen
+            # offers the network-only path as its fallback. Desktop builds
+            # read the feed in-process and skip this entirely.
+            if (
+                descriptor is not None
+                and descriptor.agent is not None
+                and is_raspberry_pi()
+            ):
+                from .agent_setup_state import AgentSetupState
+
+                self.state_manager.change_state(
+                    AgentSetupState(
+                        state_manager=self.state_manager, descriptor=descriptor
+                    )
+                )
+                return True
+
             self.state_manager.change_state(
                 EnterIPState(
                     state_manager=self.state_manager,

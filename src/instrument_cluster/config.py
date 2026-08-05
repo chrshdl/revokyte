@@ -189,6 +189,20 @@ class ConfigManager:
             cls.persist()
 
     @classmethod
+    def set_udp_host(cls, host: str, persist: bool = True) -> None:
+        """Which interface the NDJSON reader binds.
+
+        127.0.0.1 for a proxy installed on this device: the only sender is
+        local, so nothing off-box should be able to inject frames. A feed's PC
+        agent sends from the game PC instead, and those packets only arrive if
+        the reader is listening on the LAN interface (0.0.0.0).
+        """
+        cfg = cls.get_config()
+        cfg.udp_host = str(host).strip() or "127.0.0.1"
+        if persist:
+            cls.persist()
+
+    @classmethod
     def set_direct_host(cls, host: str, persist: bool = True) -> None:
         cfg = cls.get_config()
         cfg.direct_host = str(host).strip()
