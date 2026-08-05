@@ -36,6 +36,29 @@ ACC_SIGNING_PUBKEY_B64 = "Of2lY9Z9YbtebmGwK5OFcizQTK2gUQjw/+tjTxKdnJo="
 
 
 @dataclass(frozen=True)
+class PcAgent:
+    """A feed whose richest channels can only be read *on the game PC*.
+
+    Some games publish only part of their telemetry over the network. ACC's
+    Broadcasting API, for instance, carries timing and placement but no engine
+    RPM, pedals, tyre temperatures or fuel — those live in the game's shared
+    memory, which is process-local, so no amount of network plumbing reaches
+    them. A feed that declares one of these ships a small program the user runs
+    on the gaming PC, and the appliance hands it over on the LAN rather than
+    sending the user off to find a download.
+
+    Pure data, like the rest of this module: the pairing screen and the little
+    web server are generic over these fields and never branch on which game.
+    """
+
+    asset_prefix: str  # release asset name prefix (…-<version>.zip)
+    port: int  # LAN port the appliance serves the download on
+    # One line naming what the agent adds, shown on the pairing screen.
+    unlocks: str
+    asset_suffix: str = ".zip"
+
+
+@dataclass(frozen=True)
 class FeedDescriptor:
     """Everything the install flow needs to fetch, verify, configure and label
     one telemetry feed. Pure data — no behavior beyond building its env file."""
@@ -59,6 +82,10 @@ class FeedDescriptor:
     # ip -> TelemetryReaderProtocol. None = the feed only exists as an
     # installable proxy program (and is not offered on desktop).
     direct_reader: Callable[[str], TelemetryReaderProtocol] | None = None
+    # Set when the game keeps some channels off the network entirely and a
+    # program on the game PC is the only way to read them. None = everything
+    # this feed can offer arrives over the network.
+    agent: PcAgent | None = None
 
     @property
     def install_dir(self) -> str:
@@ -118,6 +145,11 @@ FEEDS: list[FeedDescriptor] = [
         # Signed with the assettocorsa repo's own Ed25519 release key (ACC_SIGNING_KEY secret)
         signing_pubkey_b64=ACC_SIGNING_PUBKEY_B64,
         direct_reader=_acc_direct_reader,
+        agent=PcAgent(
+            asset_prefix="acc-agent-win-",
+            port=8321,
+            unlocks="RPM, tyre temperatures, pedals and fuel",
+        ),
     ),
 ]
 

@@ -27,6 +27,10 @@ ENTER_IP_DEL_BUTTON_RELEASED = pygame.event.custom_type()
 INSTALL_PRESSED = pygame.event.custom_type()
 INSTALL_RELEASED = pygame.event.custom_type()
 
+# PC-agent pairing (feeds whose richest channels only exist on the game PC)
+AGENT_BASIC_PRESSED = pygame.event.custom_type()
+AGENT_BASIC_RELEASED = pygame.event.custom_type()
+
 CHECK_UPDATES_PRESSED = pygame.event.custom_type()
 CHECK_UPDATES_RELEASED = pygame.event.custom_type()
 

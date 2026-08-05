@@ -18,7 +18,8 @@ from .feeds import ACTIVE_LINK, FeedDescriptor
 _flatten_extract = flatten_extract
 __all__ = ["FeedRateLimited", "FeedUnreachable", "FeedVersionMissing",
            "InstallResult", "install_from_url", "installed_feed_ip",
-           "resolve_pinned_tarball_url", "verify_signature"]
+           "resolve_pinned_agent_url", "resolve_pinned_tarball_url",
+           "verify_signature"]
 
 
 class FeedUnreachable(Exception):
@@ -74,6 +75,13 @@ def resolve_pinned_tarball_url(descriptor: FeedDescriptor) -> str | None:
     of installing something unexpected, and raises :class:`FeedUnreachable`
     when the API could not be reached at all.
     """
+    return _pick_asset(_fetch_release(descriptor), descriptor.asset_prefix,
+                       ASSET_SUFFIX)
+
+
+def _fetch_release(descriptor: FeedDescriptor) -> dict:
+    """The pinned release's GitHub API payload, with the error taxonomy the UI
+    relies on to tell "offline" apart from "packaging mistake"."""
     api_url = (
         f"https://api.github.com/repos/{descriptor.github_repo}"
         f"/releases/tags/{descriptor.version}"
@@ -87,7 +95,7 @@ def resolve_pinned_tarball_url(descriptor: FeedDescriptor) -> str | None:
     )
     try:
         with urllib.request.urlopen(req, timeout=30) as response:
-            data = json.load(response)
+            return json.load(response)
     except urllib.error.HTTPError as e:
         # A reply — even a refusal — proves the link works, so never report
         # these as "no network".
@@ -105,13 +113,31 @@ def resolve_pinned_tarball_url(descriptor: FeedDescriptor) -> str | None:
     except Exception as e:
         raise FeedUnreachable(str(e) or e.__class__.__name__) from e
 
-    for asset in data.get("assets", []):
+
+def _pick_asset(release: dict, prefix: str, suffix: str) -> str | None:
+    for asset in release.get("assets", []):
         name = asset.get("name", "")
-        if name.startswith(descriptor.asset_prefix) and name.endswith(ASSET_SUFFIX):
+        if name.startswith(prefix) and name.endswith(suffix):
             url = asset.get("browser_download_url")
             if url:
                 return url
     return None
+
+
+def resolve_pinned_agent_url(descriptor: FeedDescriptor) -> str | None:
+    """Download URL of the feed's pinned PC-agent asset, or None.
+
+    The agent ships in the *same* pinned release as the proxy tarball, so the
+    two halves of a feed can never be a version apart. That matters more here
+    than usual: the agent produces frames directly, so a mismatched one would
+    speak a TelemetryFrame shape this image was never tested against.
+    """
+    if descriptor.agent is None:
+        return None
+    release = _fetch_release(descriptor)
+    return _pick_asset(
+        release, descriptor.agent.asset_prefix, descriptor.agent.asset_suffix
+    )
 
 
 def installed_feed_ip() -> str:
