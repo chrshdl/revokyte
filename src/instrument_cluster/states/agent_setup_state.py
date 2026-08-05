@@ -115,7 +115,13 @@ class AgentSetupState(State):
         # may be running on their PC before they return to this screen, and a
         # cluster that is not yet bound would drop those first frames.
         self.apply_full_mode()
-        self.view.set_status("Ready - open the address above on your PC")
+        if bundle.verified:
+            self.view.set_status("Ready - open the address above on your PC")
+        else:
+            # Says it here as well as on the download page: whoever is standing
+            # at the cluster should not have to visit the page to find out it
+            # is serving something unsigned.
+            self.view.set_error("UNVERIFIED build - open the address to read why")
 
     def exit(self):
         # The pairing window closes with the screen: nothing keeps listening
