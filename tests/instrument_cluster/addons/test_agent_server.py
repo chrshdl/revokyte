@@ -109,74 +109,44 @@ def test_output_line_shapes(line):
         assert result.splitlines()[1].rstrip().endswith(",")
 
 
-def test_local_override_serves_a_locally_built_bundle(tmp_path, monkeypatch):
-    # The agent half of a feed only reaches a release after merge and tag, so
-    # without this a change to it is untestable through this screen.
-    path = _bundle(tmp_path)
-    monkeypatch.setenv("AGENT_BUNDLE_PATH", str(path))
-    bundle = prepare_bundle(feed_by_id("acc"), "192.168.1.42")
+def test_the_pinned_release_is_the_only_source(monkeypatch, tmp_path):
+    """Regression guard: no environment variable may divert this to a local file.
 
-    assert bundle.filename == path.name
-    # Still personalised — the point is to exercise the real flow.
-    assert _read_config(bundle.path)["output"] == "udp://192.168.1.42:5600"
-    # ...and served from a copy, so the source zip is left alone.
-    assert bundle.path != path
-    assert _read_config(path)["output"] == "udp://127.0.0.1:5600"
+    An earlier revision had an AGENT_BUNDLE_PATH escape hatch for testing an
+    unreleased agent. It was removed because this server hands a Windows
+    executable to another machine under the appliance's own name, and "set this
+    variable, then open that page" is a plausible thing to talk someone into.
+    Test an unreleased agent with a prerelease tag instead.
+    """
+    local = _bundle(tmp_path)
+    for name in ("AGENT_BUNDLE_PATH", "AGENT_BUNDLE", "BUNDLE_PATH"):
+        monkeypatch.setenv(name, str(local))
+    monkeypatch.setattr(
+        "instrument_cluster.addons.agent_server.resolve_pinned_agent_url",
+        lambda descriptor: None,
+    )
+    # Still fails closed on a release with no asset, rather than reaching for
+    # the local file the environment is pointing at.
+    with pytest.raises(AgentUnavailable, match="has no acc-agent-win-"):
+        prepare_bundle(feed_by_id("acc"), "192.168.1.42")
 
 
-def test_unsigned_override_is_flagged_all_the_way_to_the_page(tmp_path, monkeypatch):
-    # The person who needs to know is the one about to run a .bat on their
-    # gaming PC, so "unverified" has to survive to the download page.
-    path = _bundle(tmp_path)
-    monkeypatch.setenv("AGENT_BUNDLE_PATH", str(path))
-    bundle = prepare_bundle(feed_by_id("acc"), "192.168.1.42")
-    assert bundle.verified is False
-
+def test_an_unsigned_release_is_flagged_on_the_download_page():
+    # The signature check is not optional, but a release predating the signing
+    # key still has to be usable — so it is served and labelled, and the label
+    # reaches the person about to run it.
     page = _PAGE.format(
-        label="ACC", unlocks="RPM", filename=bundle.filename,
-        sha256=bundle.sha256, version="v0.1.2",
-        warning="" if bundle.verified else _UNVERIFIED_BANNER,
+        label="ACC", unlocks="RPM", filename="acc-agent-win-0.1.2.zip",
+        sha256="deadbeef", version="v0.1.2", warning=_UNVERIFIED_BANNER,
     )
     assert "Unverified build" in page
     assert "not signed by the project's release key" in page
-
-
-def test_signed_override_is_verified_like_a_release_asset(tmp_path, monkeypatch):
-    # The override is a way to serve a local file, not a way to skip the
-    # signature check: a .sig beside it is checked exactly as CI's would be.
-    path = _bundle(tmp_path)
-    path.with_name(path.name + ".sig").write_bytes(b"a-good-signature")
-    # Stubbed: what is under test is the branch, not Ed25519 itself — the
-    # refusal case below exercises the real verifier.
-    monkeypatch.setattr(
-        "instrument_cluster.addons.agent_server.verify_signature",
-        lambda data, sig, pub: True,
+    # ...and stays out of the way when there is nothing to warn about.
+    clean = _PAGE.format(
+        label="ACC", unlocks="RPM", filename="acc-agent-win-0.1.2.zip",
+        sha256="deadbeef", version="v0.1.2", warning="",
     )
-    monkeypatch.setenv("AGENT_BUNDLE_PATH", str(path))
-
-    bundle = prepare_bundle(feed_by_id("acc"), "192.168.1.42")
-    assert bundle.verified is True
-    page = _PAGE.format(
-        label="ACC", unlocks="RPM", filename=bundle.filename,
-        sha256=bundle.sha256, version="v0.1.2",
-        warning="" if bundle.verified else _UNVERIFIED_BANNER,
-    )
-    assert "Unverified build" not in page
-
-
-def test_override_with_a_bad_signature_is_refused(tmp_path, monkeypatch):
-    # Present-and-wrong is never a development convenience.
-    path = _bundle(tmp_path)
-    path.with_name(path.name + ".sig").write_bytes(b"\x00" * 64)
-    monkeypatch.setenv("AGENT_BUNDLE_PATH", str(path))
-    with pytest.raises(AgentUnavailable, match="does not verify"):
-        prepare_bundle(feed_by_id("acc"), "192.168.1.42")
-
-
-def test_local_override_with_a_bad_path_says_so(monkeypatch):
-    monkeypatch.setenv("AGENT_BUNDLE_PATH", "/nope/not-here.zip")
-    with pytest.raises(AgentUnavailable, match="not a file"):
-        prepare_bundle(feed_by_id("acc"), "192.168.1.42")
+    assert "Unverified" not in clean
 
 
 def test_acc_declares_an_agent_matching_the_feeds_release():
