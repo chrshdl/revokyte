@@ -15,8 +15,10 @@ import pytest
 
 from instrument_cluster.addons.agent_server import (
     CONFIG_NAME,
+    AgentUnavailable,
     _replace_output,
     _write_config,
+    prepare_bundle,
 )
 from instrument_cluster.addons.feeds import feed_by_id
 
@@ -103,6 +105,27 @@ def test_output_line_shapes(line):
     # A trailing comma must survive, or the file stops being valid JSON.
     if line.rstrip().endswith(","):
         assert result.splitlines()[1].rstrip().endswith(",")
+
+
+def test_local_override_serves_a_locally_built_bundle(tmp_path, monkeypatch):
+    # The agent half of a feed only reaches a release after merge and tag, so
+    # without this the pairing screen is untestable until the last step.
+    path = _bundle(tmp_path)
+    monkeypatch.setenv("AGENT_BUNDLE_PATH", str(path))
+    bundle = prepare_bundle(feed_by_id("acc"), "192.168.1.42")
+
+    assert bundle.filename == path.name
+    # Still personalised — the point is to exercise the real flow.
+    assert _read_config(bundle.path)["output"] == "udp://192.168.1.42:5600"
+    # ...and served from a copy, so the source zip is left alone.
+    assert bundle.path != path
+    assert _read_config(path)["output"] == "udp://127.0.0.1:5600"
+
+
+def test_local_override_with_a_bad_path_says_so(monkeypatch):
+    monkeypatch.setenv("AGENT_BUNDLE_PATH", "/nope/not-here.zip")
+    with pytest.raises(AgentUnavailable, match="not a file"):
+        prepare_bundle(feed_by_id("acc"), "192.168.1.42")
 
 
 def test_acc_declares_an_agent_matching_the_feeds_release():
