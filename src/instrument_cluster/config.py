@@ -29,20 +29,8 @@ def _write_config_dict(config_dict: dict, path: Path) -> None:
     os.replace(tmp_path, path)
 
 
-# Map old persisted values (with double spaces) to the corrected single-spaced form.
-_LEGACY_DIFF_MODE_MAP = {
-    "previous  lap": "previous lap",
-    "fastest  lap": "fastest lap",
-}
-
-
 @dataclass
 class Config:
-    # Legacy fields, kept only so existing config.json files still parse.
-    # The render/layout resolution is now the fixed logical design size in
-    # display.py (1280x720); these are ignored. Pick a panel via `display`.
-    width: int = field(default=1280)
-    height: int = field(default=720)
     # Display profile selector: "auto" (detect by panel resolution),
     # "rpi_display_2", "waveshare_7", "waveshare_5", or "dev". See display.py.
     display: str = field(default="auto")
@@ -64,7 +52,7 @@ class Config:
     recent_connected: list[str] = field(default_factory=list)
     udp_host: str = field(default="127.0.0.1")
     udp_port: int = field(default=5600)
-    brightness: int = 50
+    brightness: int = field(default=50)
     # Show the bezel status LEDs (TC/ASM) on the dashboard; off also
     # returns the widget columns to the strip-less layout.
     status_lights: bool = field(default=False)
@@ -96,11 +84,6 @@ class Config:
                     exc_info=e,
                 )
                 config = {}
-
-        if "diff_reference_mode" in config:
-            config["diff_reference_mode"] = _LEGACY_DIFF_MODE_MAP.get(
-                config["diff_reference_mode"], config["diff_reference_mode"]
-            )
 
         # Drop unknown keys so that future config fields don't cause a TypeError.
         known = {f.name for f in fields(Config)}
