@@ -57,11 +57,20 @@ def test_a_feed_without_an_agent_still_goes_to_ip_entry(monkeypatch):
                       EnterIPState)
 
 
-def test_desktop_skips_the_pairing_screen(monkeypatch):
-    # Desktop builds read the feed in-process; there is no appliance to pair
-    # a PC agent with.
+def test_desktop_gets_the_pairing_screen_too(monkeypatch):
+    # Pairing needs nothing a Pi has and a desktop lacks: serve a file on the
+    # LAN, listen on UDP. A laptop cluster beside a Windows gaming PC is as
+    # ordinary a setup as the appliance, and gating this on the hardware made
+    # the flow untestable anywhere but the appliance.
     assert isinstance(_select("acc", on_pi=False, monkeypatch=monkeypatch),
-                      EnterIPState)
+                      AgentSetupState)
+
+
+def test_desktop_can_still_reach_the_in_process_reader(monkeypatch):
+    # Basic setup is the way back to it, on desktop as on the appliance.
+    state = _select("acc", on_pi=False, monkeypatch=monkeypatch)
+    state.on_basic_released()
+    assert isinstance(state.state_manager.changed_to, EnterIPState)
 
 
 def test_basic_setup_falls_back_to_ip_entry(monkeypatch):

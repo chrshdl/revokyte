@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import html
 import io
+import os
 import shutil
 import tempfile
 import threading
@@ -51,6 +52,23 @@ class AgentUnavailable(Exception):
     """The bundle could not be fetched or did not verify."""
 
 
+def _local_override() -> Path | None:
+    """A locally built bundle to serve instead of the release asset.
+
+    Development affordance: the agent half of a feed lands in a release only
+    after it is merged and tagged, so without this the pairing screen cannot be
+    exercised until the very last step. Point ``AGENT_BUNDLE_PATH`` at a zip
+    built from the feed's repo to drive the whole flow beforehand.
+    """
+    raw = os.environ.get("AGENT_BUNDLE_PATH", "").strip()
+    if not raw:
+        return None
+    path = Path(raw).expanduser()
+    if not path.is_file():
+        raise AgentUnavailable(f"AGENT_BUNDLE_PATH is not a file: {path}")
+    return path
+
+
 def prepare_bundle(descriptor: FeedDescriptor, cluster_ip: str) -> AgentBundle:
     """Download, verify, and personalise the agent zip.
 
@@ -63,6 +81,19 @@ def prepare_bundle(descriptor: FeedDescriptor, cluster_ip: str) -> AgentBundle:
     """
     if descriptor.agent is None:
         raise AgentUnavailable(f"{descriptor.label} has no PC agent")
+
+    override = _local_override()
+    if override is not None:
+        LOGGER.warning(
+            "AGENT_BUNDLE_PATH set — serving %s unverified (development only)",
+            override.name,
+        )
+        tmp_dir = Path(tempfile.mkdtemp(prefix="agent-bundle-"))
+        local = tmp_dir / override.name
+        shutil.copy(override, local)
+        digest = sha256_file(local)
+        _write_config(local, cluster_ip)
+        return AgentBundle(path=local, filename=override.name, sha256=digest)
 
     try:
         url = resolve_pinned_agent_url(descriptor)
