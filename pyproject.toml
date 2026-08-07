@@ -25,7 +25,7 @@ dependencies = [
 # this must stay a git reference to chrshdl/granturismo.
 pc = [
     "granturismo @ git+https://github.com/chrshdl/granturismo@v0.3.16",
-    "acc-telemetry @ git+https://github.com/chrshdl/assettocorsa@v0.1.2",
+    "acc-telemetry @ git+https://github.com/chrshdl/assettocorsa@v0.1.3rc1",
 ]
 
 [project.scripts]
@@ -47,7 +47,7 @@ instrument_cluster = ["assets/**/*", "db/cars.json", "db/tracks.json", "db/NOTIC
 dev = [
     # Same pins as the "pc" extra, so dev machines can run direct GT7/ACC mode.
     "granturismo @ git+https://github.com/chrshdl/granturismo@v0.3.16",
-    "acc-telemetry @ git+https://github.com/chrshdl/assettocorsa@v0.1.2",
+    "acc-telemetry @ git+https://github.com/chrshdl/assettocorsa@v0.1.3rc1",
     "matplotlib>=3.11.0",
     "pytest>=9.0.1",
     "pytest-cov>=7.0.0",
