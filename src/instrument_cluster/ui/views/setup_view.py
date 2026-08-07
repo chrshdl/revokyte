@@ -2,11 +2,10 @@ from importlib.metadata import PackageNotFoundError, version
 
 from pygame.sprite import LayeredDirty
 
-from ...addons.feeds import current_choice, telemetry_choices
+from ...addons.feeds import current_choice, feed_needs_reinstall, telemetry_choices
 from ...config import ConfigManager
 from ...extensions import runtime as extensions
 from ...peripherals.display import is_raspberry_pi
-from ...addons.feeds import feed_needs_reinstall
 from ...telemetry.mode import DiffReferenceMode, TelemetryMode
 from ...ui.colors import Color
 from ...ui.constants import (

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from ..peripherals.backlight import Backlight
 from ..config import ConfigManager
-from ..logger import Logger
 from ..extensions import runtime as extensions
-from ..telemetry.mode import TelemetryMode
+from ..logger import Logger
+from ..peripherals.backlight import Backlight
 from ..states.state_manager import StateManager
+from ..telemetry.mode import TelemetryMode
 from ..ui.events import (
     BRIGHTNESS_DOWN_RELEASED,
     BRIGHTNESS_UP_RELEASED,
@@ -107,9 +107,7 @@ class SetupState(State):
         # Rows contributed by extensions (none installed = none shown).
         for entry in extensions.setup_entries:
             if event.type == entry.released:
-                self.state_manager.change_state(
-                    entry.make_state(self.state_manager)
-                )
+                self.state_manager.change_state(entry.make_state(self.state_manager))
                 return True
 
         if event.type == WIFI_SETUP_RELEASED:
