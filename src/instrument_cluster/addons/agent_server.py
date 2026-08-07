@@ -15,6 +15,7 @@ from __future__ import annotations
 import html
 import io
 import shutil
+import socket
 import tempfile
 import threading
 import urllib.request
@@ -117,20 +118,42 @@ def prepare_bundle(descriptor: FeedDescriptor, cluster_ip: str) -> AgentBundle:
             "unsigned executable to the game PC.", filename,
         )
 
-    _write_config(downloaded, cluster_ip)
+    _write_config(downloaded, cluster_ip, _mdns_name())
     return AgentBundle(
         path=downloaded, filename=filename, sha256=digest, verified=verified
     )
 
 
-def _write_config(zip_path: Path, cluster_ip: str) -> None:
+def _mdns_name() -> str | None:
+    """This appliance's mDNS name, e.g. ``instrument-cluster.local``.
+
+    Written into the served config as the *preferred* sink address: the
+    appliance's DHCP lease drifts, and an IP baked in at download time then
+    silently sends telemetry nowhere. The name keeps following the appliance
+    (Windows 10+ resolves .local natively); the IP stays in ``output`` as the
+    agent's fallback for networks that block multicast.
+    """
+    name = socket.gethostname().split(".")[0].strip()
+    return f"{name}.local" if name else None
+
+
+def _write_config(zip_path: Path, cluster_ip: str,
+                  mdns_name: str | None = None) -> None:
     """Point the bundle's ``config.json`` at this appliance.
+
+    ``output`` stays the literal IP — agents released before ``output_mdns``
+    existed use it verbatim, and handing those a hostname would put a
+    blocking resolve in their send path. Newer agents prefer the added
+    ``output_mdns`` line and fall back to the IP on their own.
 
     Rewrites in place by copying the archive: a zip entry cannot be replaced
     without rebuilding, and the bundles are small enough that it does not
     matter.
     """
     target = f'"output": "udp://{cluster_ip}:{JSONL_PORT}"'
+    mdns_target = (
+        f'"output_mdns": "udp://{mdns_name}:{JSONL_PORT}"' if mdns_name else None
+    )
     with zipfile.ZipFile(zip_path) as source:
         entries = source.infolist()
         config_entries = [e for e in entries if e.filename.endswith(CONFIG_NAME)]
@@ -143,20 +166,30 @@ def _write_config(zip_path: Path, cluster_ip: str) -> None:
                 data = source.read(entry.filename)
                 if entry in config_entries:
                     text = data.decode("utf-8")
-                    # The template's output line is the only one to touch; the
-                    # rest of the file is the agent's own defaults.
-                    data = _replace_output(text, target).encode("utf-8")
+                    # The output lines are the only ones to touch; the rest
+                    # of the file is the agent's own defaults.
+                    data = _replace_output(text, target, mdns_target)
+                    data = data.encode("utf-8")
                 out.writestr(entry, data)
     zip_path.write_bytes(buffer.getvalue())
 
 
-def _replace_output(text: str, target: str) -> str:
+def _replace_output(text: str, target: str,
+                    mdns_target: str | None = None) -> str:
     lines = []
     for line in text.splitlines():
+        if '"output_mdns"' in line:
+            continue  # superseded by ours, or dropped when we have none
         if '"output"' in line:
             indent = line[: len(line) - len(line.lstrip())]
             trailing = "," if line.rstrip().endswith(",") else ""
-            lines.append(f"{indent}{target}{trailing}")
+            if mdns_target:
+                # The comma juggling keeps the file valid JSON whether the
+                # output line was mid-object or the last key.
+                lines.append(f"{indent}{target},")
+                lines.append(f"{indent}{mdns_target}{trailing}")
+            else:
+                lines.append(f"{indent}{target}{trailing}")
         else:
             lines.append(line)
     return "\n".join(lines) + "\n"
@@ -282,10 +315,12 @@ are not on the network — they can only be read on this PC.</p>
 <p><a class="btn" href="/{filename}">Download {filename}</a></p>
 <ol>
   <li>Unzip it anywhere. No installation, no admin rights.</li>
-  <li>Double-click <code>run.bat</code>.</li>
+  <li>Double-click <code>run.bat</code> &mdash; once.</li>
 </ol>
-<p>It already knows your cluster's address. Leave the window open while you
-drive; start it before or after the game, it waits for a session.</p>
+<p>It already knows your cluster's address. After that one run the agent keeps
+running in the background and starts again with Windows by itself &mdash;
+nothing to remember before you play. It waits for a session, so start the game
+whenever you like. <code>uninstall.bat</code> in the same folder removes it.</p>
 <p class="muted">Version {version}<br>SHA-256 {sha256}</p>
 </body></html>
 """

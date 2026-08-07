@@ -57,6 +57,31 @@ def test_config_is_pointed_at_this_cluster(tmp_path):
     assert _read_config(path)["output"] == "udp://192.168.1.42:5600"
 
 
+def test_config_gains_the_mdns_name_beside_the_ip(tmp_path):
+    # The IP must stay in "output" — pre-output_mdns agents use that line
+    # verbatim, and a hostname there would put a blocking resolve in their
+    # send path. New agents prefer the added line and fall back on their own.
+    path = _bundle(tmp_path)
+    _write_config(path, "192.168.1.42", "instrument-cluster.local")
+    config = _read_config(path)  # json.loads doubles as a validity check
+    assert config["output"] == "udp://192.168.1.42:5600"
+    assert config["output_mdns"] == "udp://instrument-cluster.local:5600"
+
+
+def test_a_stale_mdns_line_is_replaced_not_duplicated(tmp_path):
+    stale = CONFIG_TEMPLATE.replace(
+        '"title"', '"output_mdns": "udp://old-name.local:5600",\n  "title"'
+    )
+    path = _bundle(tmp_path, config=stale)
+    _write_config(path, "192.168.1.42", "instrument-cluster.local")
+    config = _read_config(path)
+    assert config["output_mdns"] == "udp://instrument-cluster.local:5600"
+    with zipfile.ZipFile(path) as archive:
+        name = next(n for n in archive.namelist() if n.endswith(CONFIG_NAME))
+        text = archive.read(name).decode("utf-8")
+    assert text.count("output_mdns") == 1
+
+
 def test_rewrite_leaves_the_rest_of_the_bundle_alone(tmp_path):
     path = _bundle(tmp_path)
     before = zipfile.ZipFile(path).namelist()
@@ -107,6 +132,28 @@ def test_output_line_shapes(line):
     # A trailing comma must survive, or the file stops being valid JSON.
     if line.rstrip().endswith(","):
         assert result.splitlines()[1].rstrip().endswith(",")
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # output mid-object, trailing comma...
+        '{\n  "output": "udp://127.0.0.1:5600",\n  "title": "acc"\n}\n',
+        # ...and output as the last key, no comma.
+        '{\n  "title": "acc",\n  "output": "udp://127.0.0.1:5600"\n}\n',
+    ],
+)
+def test_the_inserted_mdns_line_keeps_the_json_valid(text):
+    # Wherever the output line sat, inserting a second line must land the
+    # commas so the agent's json.load still succeeds.
+    result = _replace_output(
+        text,
+        '"output": "udp://192.168.1.42:5600"',
+        '"output_mdns": "udp://instrument-cluster.local:5600"',
+    )
+    parsed = json.loads(result)
+    assert parsed["output"] == "udp://192.168.1.42:5600"
+    assert parsed["output_mdns"] == "udp://instrument-cluster.local:5600"
 
 
 def test_the_pinned_release_is_the_only_source(monkeypatch, tmp_path):
