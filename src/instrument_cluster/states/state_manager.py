@@ -28,13 +28,23 @@ class StateManager(SupportsStateChange):
         return self._stack[-1] if self._stack else None
 
     def handle_event(self, event: pygame.event.Event) -> bool:
-        for state in reversed(self._stack):
-            try:
-                if state.handle_event(event):
-                    return True
-            except Exception as e:
-                self.logger.error(f"handle_event error: {e}")
-        return False
+        # Only the current state sees input. Events used to fall through the
+        # stack until some state returned True — but views return False for
+        # raw touches, so every covered state hit-tested taps meant for the
+        # screen above it. On the 7" panel the Wi-Fi keyboard ghost-pressed
+        # the paused Setup screen's rows underneath: a tap on OK could make
+        # Setup push a *second* WifiSetupState (opening on the scan list)
+        # while the first one's connect succeeded into a state nobody polls,
+        # and typing a password flipped Setup's status-lights toggle. A
+        # paused state is covered, and covered widgets must not see taps.
+        state = self.current_state
+        if state is None:
+            return False
+        try:
+            return bool(state.handle_event(event))
+        except Exception as e:
+            self.logger.error(f"handle_event error: {e}")
+            return False
 
     def update(self, dt: float):
         s = self.current_state

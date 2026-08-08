@@ -228,3 +228,40 @@ def test_handle_event_returns_true_when_handled(manager):
     manager.push_state(state)
     event = pygame.event.Event(pygame.USEREVENT)
     assert manager.handle_event(event) is True
+
+
+def test_handle_event_never_reaches_a_covered_state(manager):
+    # A paused state is covered, and covered widgets must not see taps.
+    # Events used to fall through the stack when the top state returned
+    # False; views return False for raw touches, so a tap on the Wi-Fi
+    # keyboard also hit-tested the Setup screen underneath — on the 7"
+    # panel that ghost-pressed Setup's rows (pushing a second Wi-Fi setup
+    # state mid-connect) and flipped its status-lights toggle while a
+    # password was being typed.
+    class RecordingState(MockState):
+        def __init__(self):
+            super().__init__()
+            self.seen = []
+
+        def handle_event(self, event):
+            self.seen.append(event)
+            return False  # decline, like every view does for raw touches
+
+    below, top = RecordingState(), RecordingState()
+    manager.push_state(below)
+    manager.push_state(top)
+
+    event = pygame.event.Event(pygame.FINGERUP, x=0.5, y=0.5)
+    assert manager.handle_event(event) is False
+    assert top.seen == [event]
+    assert below.seen == []  # covered: never offered the event
+
+
+def test_handle_event_survives_a_crashing_state(manager):
+    class CrashingState(MockState):
+        def handle_event(self, event):
+            raise RuntimeError("boom")
+
+    manager.push_state(CrashingState())
+    event = pygame.event.Event(pygame.USEREVENT)
+    assert manager.handle_event(event) is False  # logged, not raised
