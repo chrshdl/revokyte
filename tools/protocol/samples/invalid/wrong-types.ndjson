@@ -1,0 +1,6 @@
+{"car_speed": "fast"}
+{"current_gear": 2.5}
+{"engine_rpm": -100}
+{"track_name": 42}
+{"wheels": {"front_left": {"suspension_height": 0.5}, "front_right": {"suspension_height": 0.5, "radius": 0.33, "rps": 20.0, "ground_speed": 41.5}, "rear_left": {"suspension_height": 0.5, "radius": 0.33, "rps": 20.0, "ground_speed": 41.5}, "rear_right": {"suspension_height": 0.5, "radius": 0.33, "rps": 20.0, "ground_speed": 41.5}}}
+{"v": 2}
