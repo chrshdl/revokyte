@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/chrshdl/revokyte/main/docs/telemetry-frame.v1.schema.json",
+  "title": "Revokyte Telemetry Protocol v1 frame",
+  "description": "Sender-conformance schema for one telemetry frame (one UDP datagram payload). Encodes sender obligations from docs/PROTOCOL.md section 3; receivers are more tolerant (unknown fields ignored, numeric coercion). Every field is optional: omitting a field means 'channel not provided'. Fields marked 'omit, never null' reject explicit null. License: CC0-1.0 (public domain dedication) - see LICENSES/CC0-1.0.txt.",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "v": {
+      "description": "Protocol version. Absent means 1. For v1 conformance, if present it must be 1.",
+      "const": 1
+    },
+    "received_time": {
+      "description": "Receiver-owned arrival stamp; senders may include it, receivers ignore the wire value (PROTOCOL.md 3.4).",
+      "type": "number"
+    },
+    "car_id": {
+      "description": "Game-specific opaque vehicle id; -1 = unknown.",
+      "type": "integer"
+    },
+    "car_speed": {
+      "description": "Ground speed in m/s, non-negative even when reversing.",
+      "type": "number",
+      "minimum": 0
+    },
+    "engine_rpm": {
+      "description": "Engine speed in RPM.",
+      "type": "number",
+      "minimum": 0
+    },
+    "current_gear": {
+      "description": "0 = reverse, -1 = neutral, 1.. = forward. Null is not a valid gear.",
+      "type": "integer",
+      "minimum": -1
+    },
+    "throttle": {
+      "description": "Throttle input fraction.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "brake": {
+      "description": "Brake input fraction.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "steering": {
+      "description": "Steering input, sender-defined calibration. Effectively reserved.",
+      "type": "number"
+    },
+    "gas_level": {
+      "description": "Remaining fuel in sender-defined fuel units (only the ratio to gas_capacity is portable).",
+      "type": "number",
+      "minimum": 0
+    },
+    "gas_capacity": {
+      "description": "Fuel tank capacity in the same sender-defined units; 0 = no fuel model (disables fuel gauges).",
+      "type": "number",
+      "minimum": 0
+    },
+    "lap_count": {
+      "description": "Lap counter as the game defines it; null = not in a lap-counted session.",
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "laps_in_race": {
+      "description": "Total race laps; null = not applicable.",
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "best_lap_time": {
+      "description": "Session-best lap time in milliseconds; null = none yet.",
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "last_lap_time": {
+      "description": "Previous lap time in milliseconds; null = none yet.",
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "current_lap_time": {
+      "description": "Running current-lap clock in milliseconds; null = no timed lap active.",
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "flags": {
+      "$ref": "#/$defs/flags",
+      "description": "Boolean status flags. Omit, never null."
+    },
+    "rpm_alert": {
+      "$ref": "#/$defs/bounds",
+      "description": "Shift-warning band (min = warning RPM, max = limiter RPM). Omit, never null; omit when the source has no meaningful band."
+    },
+    "wheels": {
+      "$ref": "#/$defs/wheels",
+      "description": "Four wheel corners. Omit, never null."
+    },
+    "position": {
+      "description": "World position in meters, game-specific frame (x/z horizontal, y vertical). Nullable.",
+      "oneOf": [
+        { "$ref": "#/$defs/vector" },
+        { "type": "null" }
+      ]
+    },
+    "gear_ratios": {
+      "description": "Reserved; no receiver consumes it. Senders should omit. Omit, never null.",
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "native_delta_ms": {
+      "description": "Source-computed delta to the reference lap, signed milliseconds, negative = ahead. Nullable.",
+      "type": ["integer", "null"]
+    },
+    "track_name": {
+      "description": "Source-provided track name, free text. Nullable.",
+      "type": ["string", "null"]
+    }
+  },
+  "$defs": {
+    "flags": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "car_on_track": { "type": "boolean" },
+        "paused": { "type": "boolean" },
+        "loading_or_processing": { "type": "boolean" },
+        "in_gear": { "type": "boolean" },
+        "has_turbo": { "type": "boolean" },
+        "rev_limiter_alert_active": { "type": "boolean" },
+        "hand_brake_active": { "type": "boolean" },
+        "lights_active": { "type": "boolean" },
+        "lights_high_beams_active": { "type": "boolean" },
+        "lights_low_beams_active": { "type": "boolean" },
+        "asm_active": { "type": "boolean" },
+        "tcs_active": { "type": "boolean" }
+      }
+    },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "min": { "type": "number" },
+        "max": { "type": "number" }
+      }
+    },
+    "wheel": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["suspension_height", "radius", "rps", "ground_speed"],
+      "properties": {
+        "suspension_height": {
+          "description": "Normalized suspension compression; senders must clamp to [0, 1] - out of range invalidates the whole frame at the receiver.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "radius": {
+          "description": "Tyre radius in meters.",
+          "type": "number"
+        },
+        "rps": {
+          "description": "Wheel rotation in revolutions per second (not rad/s); signed.",
+          "type": "number"
+        },
+        "ground_speed": {
+          "description": "Contact-patch speed (omega x r) in m/s.",
+          "type": "number"
+        },
+        "temperature": {
+          "description": "Tyre temperature in degrees C; default 20.",
+          "type": "number"
+        }
+      }
+    },
+    "wheels": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["front_left", "front_right", "rear_left", "rear_right"],
+      "properties": {
+        "front_left": { "$ref": "#/$defs/wheel" },
+        "front_right": { "$ref": "#/$defs/wheel" },
+        "rear_left": { "$ref": "#/$defs/wheel" },
+        "rear_right": { "$ref": "#/$defs/wheel" }
+      }
+    },
+    "vector": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      }
+    }
+  }
+}
