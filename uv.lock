@@ -5,7 +5,7 @@ requires-python = ">=3.12"
 [[package]]
 name = "acc-telemetry"
 version = "0.1.3rc1"
-source = { git = "https://github.com/chrshdl/assettocorsa?rev=v0.1.3rc1#dbe0e2c60a9a7433b5f077332e9aefd78fc01a80" }
+source = { git = "https://github.com/chrshdl/assettocorsa?rev=v0.1.4#9e7e58e1b4f3048c09c3b12d42d2edae04adf788" }
 
 [[package]]
 name = "annotated-types"
@@ -337,7 +337,7 @@ wheels = [
 [[package]]
 name = "granturismo"
 version = "0.3.14"
-source = { git = "https://github.com/chrshdl/granturismo?rev=v0.3.17#a7de4e308d55c2d218fd75376296439793060a47" }
+source = { git = "https://github.com/chrshdl/granturismo?rev=v0.3.18#0584519df2af18d2c04142bc4ed55019e9e0777f" }
 
 [[package]]
 name = "iniconfig"
@@ -378,9 +378,9 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "acc-telemetry", marker = "extra == 'pc'", git = "https://github.com/chrshdl/assettocorsa?rev=v0.1.3rc1" },
+    { name = "acc-telemetry", marker = "extra == 'pc'", git = "https://github.com/chrshdl/assettocorsa?rev=v0.1.4" },
     { name = "cryptography", specifier = ">=44.0.0" },
-    { name = "granturismo", marker = "extra == 'pc'", git = "https://github.com/chrshdl/granturismo?rev=v0.3.17" },
+    { name = "granturismo", marker = "extra == 'pc'", git = "https://github.com/chrshdl/granturismo?rev=v0.3.18" },
     { name = "numpy", specifier = ">=2.4.2" },
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pygame", specifier = ">=2.6.1" },
@@ -390,8 +390,8 @@ provides-extras = ["pc"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "acc-telemetry", git = "https://github.com/chrshdl/assettocorsa?rev=v0.1.3rc1" },
-    { name = "granturismo", git = "https://github.com/chrshdl/granturismo?rev=v0.3.17" },
+    { name = "acc-telemetry", git = "https://github.com/chrshdl/assettocorsa?rev=v0.1.4" },
+    { name = "granturismo", git = "https://github.com/chrshdl/granturismo?rev=v0.3.18" },
     { name = "jsonschema", specifier = ">=4.21" },
     { name = "matplotlib", specifier = ">=3.11.0" },
     { name = "pytest", specifier = ">=9.0.1" },
