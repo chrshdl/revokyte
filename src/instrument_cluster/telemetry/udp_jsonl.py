@@ -26,6 +26,7 @@ class UdpJsonlReader:
         self._latest: TelemetryFrame = TelemetryFrame()
         self._dropped = 0
         self._last_drop_log = 0.0
+        self._newer_protocol_logged = False
 
     def start(self) -> None:
         """Start listening for telemetry frames on the configured UDP socket."""
@@ -65,6 +66,24 @@ class UdpJsonlReader:
                 continue
             try:
                 obj = json.loads(data.decode("utf-8"))
+                # Protocol version marker (PROTOCOL.md §3.2): absent or 1 is
+                # this build's dialect. A higher version is noted once and
+                # then parsed best-effort under v1 rules — the tolerant-reader
+                # contract (unknown fields ignored, invalid frames dropped)
+                # is exactly what makes that safe, and a newer feed must
+                # never take the dash down mid-race.
+                v = obj.get("v") if isinstance(obj, dict) else None
+                if (
+                    isinstance(v, int)
+                    and not isinstance(v, bool)
+                    and v > 1
+                    and not self._newer_protocol_logged
+                ):
+                    self._newer_protocol_logged = True
+                    self.logger.warning(
+                        f"Feed speaks telemetry protocol v{v}; this build "
+                        f"implements v1 — parsing best-effort"
+                    )
                 # The receiver owns received_time, not the feed. It is the
                 # freshness clock every downstream consumer gates on
                 # (DeltaSignal's lap timer, FuelSignal's whole update,

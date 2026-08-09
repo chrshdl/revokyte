@@ -196,3 +196,63 @@ class TestSourceFiltering:
         ]
         reader = self._run_with_packets("127.0.0.1", packets)
         assert reader._latest.car_speed == 33.0
+
+
+# ---------------------------------------------------------------------------
+# Protocol version marker (PROTOCOL.md §3.2)
+# ---------------------------------------------------------------------------
+
+class TestProtocolVersion:
+    """Absent or 1 → normal; higher → log once, keep parsing, never crash.
+
+    Version skew is the normal operating condition: the reader ships in OS
+    images while feeds ship independently, so a feed speaking a newer
+    protocol than the image must degrade to best-effort, not to a dead dash.
+    """
+
+    def _run_with_packets(self, packets):
+        reader = UdpJsonlReader(host="127.0.0.1", port=5600)
+        reader._sock = FakeSocket(packets)
+        reader._running = True
+        reader._run()
+        return reader
+
+    def _frame(self, **fields) -> bytes:
+        return json.dumps(fields).encode()
+
+    def test_v1_and_absent_v_parse_silently(self):
+        reader = self._run_with_packets([
+            (self._frame(car_speed=10.0), ("127.0.0.1", 1)),
+            (self._frame(car_speed=20.0, v=1), ("127.0.0.1", 1)),
+            None,
+        ])
+        assert reader._latest.car_speed == 20.0
+        assert reader._newer_protocol_logged is False
+
+    def test_higher_v_parses_best_effort_and_logs_once(self):
+        reader = UdpJsonlReader(host="127.0.0.1", port=5600)
+        with patch.object(reader, "logger") as logger:
+            reader._sock = FakeSocket([
+                (self._frame(car_speed=42.0, v=2), ("127.0.0.1", 1)),
+                (self._frame(car_speed=43.0, v=2), ("127.0.0.1", 1)),
+                None,
+            ])
+            reader._running = True
+            reader._run()
+        # Frames still land — a newer feed keeps driving the gauges.
+        assert reader._latest.car_speed == 43.0
+        assert reader._dropped == 0
+        # ...and the skew is reported exactly once, not per frame.
+        assert logger.warning.call_count == 1
+        assert "v2" in logger.warning.call_args[0][0]
+
+    def test_nonsense_v_never_crashes_the_reader(self):
+        """`v` is wire input like everything else: garbage must not kill
+        parsing of the frame it rides in (strings/bools are not versions)."""
+        reader = self._run_with_packets([
+            (self._frame(car_speed=7.0, v="two"), ("127.0.0.1", 1)),
+            (self._frame(car_speed=8.0, v=True), ("127.0.0.1", 1)),
+            None,
+        ])
+        assert reader._latest.car_speed == 8.0
+        assert reader._newer_protocol_logged is False
