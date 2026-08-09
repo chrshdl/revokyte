@@ -111,9 +111,11 @@ class AgentSetupState(State):
             self.view.set_error(f"Could not open port: {e}")
             return
         self._server = server
-        # Start listening now rather than when the user gets back: the agent
-        # may be running on their PC before they return to this screen, and a
-        # cluster that is not yet bound would drop those first frames.
+        # Apply the config now, while the user is still at their PC. The
+        # reader itself rebinds when the dashboard resumes and
+        # SignalPipeline.sync_mode() picks up the changed udp_host —
+        # frames the agent sends before then are dropped harmlessly (the
+        # protocol is stateless; the next frame supersedes everything).
         self.apply_full_mode()
         if bundle.verified:
             self.view.set_status("Ready - open the address above on your PC")
@@ -177,7 +179,10 @@ class AgentSetupState(State):
 
         No proxy is installed: the agent produces whole frames itself, so the
         cluster is simply a UDP NDJSON listener — but on the LAN interface,
-        because the sender is another machine.
+        because the sender is another machine. The wildcard bind takes
+        effect on the next dashboard resume via SignalPipeline.sync_mode()
+        (which rebinds the reader when udp_host changed), not at some
+        future reboot.
         """
         ConfigManager.set_telemetry_mode(TelemetryMode.UDP, persist=False)
         ConfigManager.set_telemetry_feed(
