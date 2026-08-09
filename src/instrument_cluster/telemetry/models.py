@@ -41,6 +41,21 @@ class Wheel(BaseModel):
     temperature: float = 20.0
 
 
+class Engine(BaseModel):
+    """Engine-curve summary a sender may supply (PROTOCOL.md §3.5.5).
+
+    Feeds shift-point calculation together with ``gear_ratios``; the redline
+    is not here — it travels as ``rpm_alert.max``. Defaults mirror the
+    receiver's generic fallback profile so a partial object degrades to it
+    instead of invalidating the frame.
+    """
+
+    max_power_kw: float = 300.0
+    max_power_rpm: float = 7000.0
+    max_torque_nm: float = 450.0
+    max_torque_rpm: float = 5000.0
+
+
 class Bounds(BaseModel):
     min: float = Field(
         default=7500.0,
@@ -81,6 +96,10 @@ class TelemetryFrame(BaseModel):
     wheels: Wheels = None
     position: Vector | None = None
     gear_ratios: List[float] = None
+    # Sender-supplied engine curve for shift-point calculation; absent means
+    # the receiver falls back to its own car database (GT7) or a default
+    # profile. Omit-never-null like flags/wheels/rpm_alert.
+    engine: Engine = None
     # Optional values a source may already have computed upstream. When set,
     # the delta/track signals republish them instead of computing (see their
     # native short-circuits). GT7's feed leaves both None; a feed that provides

@@ -25,7 +25,11 @@ class ShiftLights:
 
         self.car_library = CarLibrary(filepath=cars_path)
 
-        self.current_car_id = None
+        # Identity of the specs the current controller was built from:
+        # (car_id, engine-curve tuple or None). Wire-supplied engine data
+        # participates so a sender updating its curve rebuilds the
+        # controller just like a car change does.
+        self._profile_key: tuple | None = None
         self.controller = None
 
         self.colors = [
@@ -49,8 +53,20 @@ class ShiftLights:
         if frame is None or frame.flags is None:
             return
 
-        if frame.car_id != self.current_car_id:
-            self._init_controller(frame.car_id)
+        engine = frame.engine
+        profile_key = (
+            frame.car_id,
+            (
+                engine.max_power_kw,
+                engine.max_power_rpm,
+                engine.max_torque_nm,
+                engine.max_torque_rpm,
+            )
+            if engine is not None
+            else None,
+        )
+        if profile_key != self._profile_key:
+            self._init_controller(frame, profile_key)
 
         lights, is_alert, is_tcs, is_asm = self.controller.calculate_lights(frame, dt)
 
@@ -90,15 +106,43 @@ class ShiftLights:
             self.ledbar.show()
             self._render_cache = target_state
 
-    def _init_controller(self, car_id: int):
-        """Initializes or updates the controller on car change."""
-        car_data = self.car_library.get_specs(car_id)
+    def _init_controller(self, frame: TelemetryFrame, profile_key: tuple):
+        """(Re)builds the controller when the car or its wire specs change.
+
+        Spec precedence (PROTOCOL.md §3.5.5): an engine curve supplied on
+        the wire wins — the sender knows its game's cars, and its data
+        updates with feed releases instead of image releases. The local
+        cars.json is the fallback for senders that cannot supply one (GT7's
+        feed keyed by its car_id space), degrading further to a generic
+        profile for unknown ids.
+        """
+        engine = frame.engine
+        if engine is not None:
+            # Redline arrives separately as rpm_alert.max (and is refreshed
+            # from it every frame); the +1000 mirrors the cars.json pattern
+            # for the frames before the first rpm_alert lands.
+            redline = (
+                frame.rpm_alert.max
+                if frame.rpm_alert is not None and frame.rpm_alert.max > 0
+                else engine.max_power_rpm + 1000.0
+            )
+            car_data = {
+                "name": f"wire profile (car {frame.car_id})",
+                "max_power_kw": engine.max_power_kw,
+                "max_power_rpm": engine.max_power_rpm,
+                "max_torque_nm": engine.max_torque_nm,
+                "max_torque_rpm": engine.max_torque_rpm,
+                "redline_rpm": redline,
+            }
+        else:
+            car_data = self.car_library.get_specs(frame.car_id)
         self.controller = ShiftLightController(**car_data)
-        self.current_car_id = car_id
+        self._profile_key = profile_key
         self._force_render_next_frame()
 
         self.logger.info(
-            f"Controller loaded for car {car_id}: {car_data.get('name', 'Unknown')}"
+            f"Controller loaded for car {frame.car_id}: "
+            f"{car_data.get('name', 'Unknown')}"
         )
 
     def _force_render_next_frame(self):
