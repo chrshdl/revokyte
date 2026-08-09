@@ -5,6 +5,7 @@ import time
 
 import pygame
 
+from .addons.feeds import feed_needs_reinstall
 from .config import Config, ConfigManager
 from .core.plugin_system.plugin_manager import PluginManager
 from .core.system.wifi_manager import WifiManager
@@ -16,7 +17,6 @@ from .signals.signal_pipeline import SignalPipeline
 from .states.gate import entry_state
 from .states.state_manager import StateManager
 from .telemetry.mode import TelemetryMode
-from .addons.feeds import feed_needs_reinstall
 from .ui.feed_update_window import FeedUpdateWindow
 from .ui.no_signal_window import NoSignalWindow
 from .ui.wifi_status_window import WifiStatusWindow
@@ -66,7 +66,7 @@ def run(conf: Config) -> None:
     signal.signal(signal.SIGTERM, handle_exit)
 
     pygame.init()
-    pygame.mouse.set_visible(True)
+    pygame.mouse.set_visible(False)
 
     display = None
     try:
@@ -197,9 +197,9 @@ def run(conf: Config) -> None:
             window_manager.update(dt)
             display.present(window_manager.draw(main_surface))
 
-    except Exception as e:
-        logger.error(f"Critical system error: {e}", exc_info=True)
-        # don't sys.exit here — let finally clean up first
+    except Exception:
+        logger.exception("Critical system error")
+        # don't sys.exit here, let finally clean up first
 
     finally:
         logger.info("Cleaning up resources...")
@@ -222,8 +222,8 @@ def main() -> None:
     try:
         _wait_for_config_volume()
         run(ConfigManager.get_config())
-    except Exception as e:
-        logger.critical(f"Application failed to start: {e}")
+    except Exception:
+        logger.critical("Application failed to start", exc_info=True)
         sys.exit(1)
 
 
