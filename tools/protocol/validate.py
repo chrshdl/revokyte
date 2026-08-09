@@ -125,6 +125,10 @@ def _validate(value, schema: dict, root: dict, path: str, errors: list[str]) -> 
         errors.append(f"{path or '<root>'}: {value} is below minimum {schema['minimum']}")
     if is_num and "maximum" in schema and value > schema["maximum"]:
         errors.append(f"{path or '<root>'}: {value} exceeds maximum {schema['maximum']}")
+    if is_num and "exclusiveMinimum" in schema and value <= schema["exclusiveMinimum"]:
+        errors.append(
+            f"{path or '<root>'}: {value} is not above {schema['exclusiveMinimum']}"
+        )
 
     if isinstance(value, dict):
         for req in schema.get("required", []):

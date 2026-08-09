@@ -48,6 +48,15 @@ _RAMP_S = 8.0            # seconds to reach the speed profile after launch
 _SHIFT_CUT_S = 0.18      # in_gear drops out this long around a gear change
 # lower speed bound of each gear (m/s); index 0 = 1st gear
 _GEAR_FLOORS = (0.0, 12.0, 22.0, 32.0, 44.0, 58.0)
+# drivetrain ratios (index 0 = 1st gear) and the engine-curve summary —
+# together they light the receiver's shift-point LEDs (PROTOCOL.md §3.5.5)
+_GEAR_RATIOS = (3.2, 2.4, 1.9, 1.5, 1.2, 1.0)
+_ENGINE = {
+    "max_power_kw": 380.0,
+    "max_power_rpm": 7900.0,
+    "max_torque_nm": 650.0,
+    "max_torque_rpm": 5600.0,
+}
 _TYRE_RADIUS = 0.33      # m
 _RPM_IDLE = 900.0
 _RPM_MIN, _RPM_MAX = 2800.0, 8800.0
@@ -158,6 +167,8 @@ def frame_at(t: float) -> dict:
             "z": round(400.0 * math.cos(_TAU * lap_frac), 2),
         },
         "rpm_alert": {"min": _RPM_WARN, "max": _RPM_MAX},
+        "gear_ratios": list(_GEAR_RATIOS),
+        "engine": dict(_ENGINE),
         "flags": {
             "car_on_track": True,
             "in_gear": in_gear,
