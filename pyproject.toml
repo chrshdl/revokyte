@@ -52,4 +52,5 @@ dev = [
     "pytest>=9.0.1",
     "pytest-cov>=7.0.0",
     "snakeviz>=2.2.2",
+    "jsonschema>=4.21",
 ]

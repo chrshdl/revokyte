@@ -1,0 +1,8 @@
+{}
+{"car_speed": 12.0}
+{"car_speed": 61.8, "engine_rpm": 7400.0, "current_gear": 4, "flags": {"car_on_track": true, "in_gear": true}}
+{"car_speed": 0.0, "current_gear": -1, "flags": {"car_on_track": true}}
+{"car_speed": 1.2, "current_gear": 0, "flags": {"car_on_track": true, "in_gear": true}}
+{"car_speed": 40.1, "lap_count": null, "laps_in_race": null, "best_lap_time": null, "last_lap_time": null, "current_lap_time": null, "native_delta_ms": null, "track_name": null, "position": null}
+{"car_speed": 55.0, "gas_level": 0.0, "gas_capacity": 0.0, "flags": {"car_on_track": true}}
+{"flags": {"paused": true}}
