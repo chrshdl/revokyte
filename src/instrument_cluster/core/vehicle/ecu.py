@@ -293,9 +293,10 @@ class ShiftLightController:
         if gear != self._last_gear:
             self._reset_states_on_gear_change(gear)
 
-        # update redline from telemetry; keep the DB redline if the
-        # frame carries no rev-limit (rpm_alert.max == 0)
-        if frame.rpm_alert.max > 0:
+        # update redline from telemetry; keep the DB redline if the frame
+        # carries no rev-limit (rpm_alert absent — a legal omission the ACC
+        # broadcast feed always makes — or max == 0)
+        if frame.rpm_alert is not None and frame.rpm_alert.max > 0:
             self.engine.redline = frame.rpm_alert.max
 
         # build calculator if ratios changed
