@@ -1,6 +1,6 @@
 # Revokyte Telemetry Protocol v1
 
-**Status:** Draft for v1.0 · **License:** [CC-BY 4.0](../LICENSES/CC-BY-4.0.txt) (see [§9](#9-license-and-intellectual-property))
+**Status:** Draft for v1.1 (wire-compatible with 1.0 — see Revision history) · **License:** [CC-BY 4.0](../LICENSES/CC-BY-4.0.txt) (see [§9](#9-license-and-intellectual-property))
 
 The Revokyte Telemetry Protocol carries real-time vehicle telemetry from a
 *sender* (a game-specific feed program) to a *receiver* (a Revokyte instrument
@@ -218,8 +218,9 @@ be omitted instead (§3.1 rule 2).
 | `flags` | object | **no** | all false | Boolean status flags (§3.5.1). Omit, never null. |
 | `rpm_alert` | object | **no** | receiver default (7500/8000) | Shift-warning band (§3.5.2). Omit, never null. Senders SHOULD omit it when the source reports no band (e.g. out of session) rather than sending zeros. |
 | `wheels` | object | **no** | wheel gauges inactive | Four wheel corners (§3.5.3). Omit, never null. |
-| `position` | object | yes | null | Vehicle world position (§3.5.4). |
-| `gear_ratios` | array of number | **no** | — | **Reserved.** No receiver consumes it. Senders SHOULD omit. Omit, never null. |
+| `position` | object | yes | null | Vehicle world position (§3.5.6). |
+| `gear_ratios` | array of number | **no** | shift-point lights inactive | Drivetrain ratios for forward gears 1…N, index 0 = 1st gear (§3.5.5). Consumed by the receiver's shift-point calculation; **relative** values are what matters, so gearbox-only or overall (× final drive) ratios are equally valid. Omit, never null; omit unknown ratios rather than sending 0. |
+| `engine` | object | **no** | receiver's own car database / default profile | Engine curve summary for the shift-point calculation (§3.5.5). Omit, never null. |
 | `native_delta_ms` | integer | yes | null | Source-computed delta to the reference lap, **signed milliseconds, negative = ahead** (§3.6). When present, receivers republish it instead of computing their own delta. |
 | `track_name` | string | yes | null | Source-provided track name, free text. When present, receivers display it instead of running their own track identification. |
 
@@ -295,7 +296,44 @@ When `wheels` is present, all four corners (`front_left`, `front_right`,
 | `ground_speed` | number | yes | Contact-patch speed (ω·r), m/s. Receivers compare it against `car_speed` for wheelspin/lockup. |
 | `temperature` | number | no (default 20.0) | Tyre temperature, °C. |
 
-#### 3.5.4 `position`
+#### 3.5.5 `engine` and `gear_ratios` — shift-point data
+
+The receiver computes per-gear optimal shift points by finding where wheel
+torque in the next gear overtakes the current one. That needs two things a
+sender may know and telemetry alone may not carry: a summary of the engine's
+torque curve, and the drivetrain ratios.
+
+```json
+"engine": { "max_power_kw": 380.0, "max_power_rpm": 7200.0,
+            "max_torque_nm": 650.0, "max_torque_rpm": 5500.0 },
+"gear_ratios": [2.917, 2.31, 1.85, 1.52, 1.30, 1.14]
+```
+
+| Key | Type | Required | Meaning |
+|---|---|---|---|
+| `max_power_kw` | number > 0 | yes | Peak power. Only the *shape* of the curve matters to the receiver (absolute scale cancels out of the gear comparison), so an estimate with the right peaks is useful. |
+| `max_power_rpm` | number > 0 | yes | RPM of peak power. |
+| `max_torque_nm` | number > 0 | yes | Peak torque. |
+| `max_torque_rpm` | number > 0 | yes | RPM of peak torque. |
+
+Notes for senders:
+
+- The redline is **not** part of `engine`; it already travels as
+  `rpm_alert.max`.
+- `gear_ratios` may be sourced from the game (GT7 transmits them), from a
+  per-car table, or **measured live** as `engine_rpm ÷ wheel rpm` while the
+  drivetrain is engaged and not slipping — since only relative ratios
+  matter, overall ratios measured that way are exactly as good. Send the
+  longest known prefix of consecutive gears (a shift point for gear N needs
+  N and N+1); it is normal for the list to grow over the first laps of a
+  session while ratios are being learned.
+- When `engine` is absent the receiver MAY fall back to a car database of
+  its own keyed by `car_id` (the reference receiver does, for GT7) or to a
+  generic profile; when `gear_ratios` is absent the shift-point lights stay
+  inactive. Senders that can provide both SHOULD — it is the only way the
+  feature works for receivers that have no data for the sender's game.
+
+#### 3.5.6 `position`
 
 ```json
 "position": { "x": 12.0, "y": 0.0, "z": 34.5 }
@@ -354,7 +392,7 @@ them invisible to older receivers:
 
 - Adding a new optional top-level field or a new key inside `flags` or another
   nested object.
-- Documenting a previously reserved field (e.g. giving `gear_ratios` or
+- Documenting a previously reserved field (e.g. giving
   `steering` defined semantics), provided the wire type is unchanged.
 - Loosening sender obligations (e.g. widening an accepted range receivers
   already tolerate).
@@ -452,6 +490,18 @@ The ACC feed proxy and the ACC PC agent are conformant as shipped.
   GPL obligation for the interoperating software.
 
 ---
+
+## Revision history
+
+- **1.1 (draft)** — wire-compatible minor revision, `v` stays `1`:
+  - Added the optional `engine` object (§3.5.5) so senders can supply the
+    engine-curve summary the shift-point calculation needs.
+  - **Erratum:** 1.0 marked `gear_ratios` "reserved — no receiver consumes
+    it". That was wrong: the reference receiver's shift-light system has
+    always consumed it (GT7 supplies it). §3.5.5 now documents the real
+    semantics; the wire type is unchanged, so no shipped sender or receiver
+    is affected.
+- **1.0** — initial specification, codifying shipped behavior.
 
 ## Appendix A: recording envelope format (non-normative)
 

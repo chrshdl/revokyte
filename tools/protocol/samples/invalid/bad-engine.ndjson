@@ -1,0 +1,4 @@
+{"engine": null}
+{"engine": {"max_power_kw": 380.0, "max_power_rpm": 7200.0}}
+{"engine": {"max_power_kw": 0, "max_power_rpm": 7200.0, "max_torque_nm": 650.0, "max_torque_rpm": 5500.0}}
+{"gear_ratios": [3.2, 0, 1.9]}
