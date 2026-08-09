@@ -131,6 +131,30 @@ class TelemetrySource:
 
         self.start()
 
+    def set_udp_host(self, host: str) -> None:
+        """Point the UDP reader at a new bind host.
+
+        The bind host is runtime config, not a constant: the agent pairing
+        flow persists ``0.0.0.0`` so a game-PC sender can reach the cluster
+        over the LAN. A reader built from the constructor-time host would
+        keep listening on loopback until the next reboot — the paired agent
+        then streams at a cluster that never hears it.
+
+        Rebuilds the reader in place when UDP is the active mode; otherwise
+        just records the host (discarding any cached reader bound to the
+        old one) so the next switch into UDP binds correctly.
+        """
+        if host == self._host:
+            return
+        self._host = host
+        if self._mode != TelemetryMode.UDP:
+            self._udp_reader = None
+            return
+        self.stop()
+        self._udp_reader = None
+        self._active_reader = self._get_or_create_reader(TelemetryMode.UDP)
+        self.start()
+
     def refresh_direct(self) -> None:
         """Rebuild the direct reader in place (its target address changed).
 

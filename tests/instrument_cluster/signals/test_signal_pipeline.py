@@ -80,6 +80,43 @@ def test_direct_host_change_starts_a_fresh_session(monkeypatch):
     assert pipeline._pending_reset is True
 
 
+def test_udp_bind_host_change_starts_a_fresh_session(monkeypatch):
+    """The agent pairing flow flips udp_host 127.0.0.1 -> 0.0.0.0 while the
+    mode stays UDP. Regression: the reader kept its boot-time loopback bind
+    until the next reboot, so a freshly paired agent streamed at a cluster
+    that never heard it."""
+    pipeline = SignalPipeline()
+    pipeline._last_mode = TelemetryMode.UDP
+    pipeline._last_udp_host = "127.0.0.1"
+    cfg = ConfigManager.get_config()
+    cfg.telemetry_mode = TelemetryMode.UDP.value
+    cfg.udp_host = "0.0.0.0"
+    rebound = []
+    monkeypatch.setattr(
+        pipeline.telemetry, "set_udp_host", lambda host: rebound.append(host)
+    )
+
+    pipeline.sync_mode()
+
+    assert rebound == ["0.0.0.0"]
+    assert pipeline._pending_reset is True
+
+
+def test_switch_into_udp_uses_the_current_bind_host(monkeypatch):
+    """Mode and bind host can change together (pairing from demo mode):
+    the switch must hand the source the current host, not the boot-time one."""
+    pipeline = SignalPipeline()  # boots in demo with udp_host 127.0.0.1
+    cfg = ConfigManager.get_config()
+    cfg.telemetry_mode = TelemetryMode.UDP.value
+    cfg.udp_host = "0.0.0.0"
+
+    pipeline.sync_mode()
+    pipeline.stop()
+
+    assert pipeline.telemetry._host == "0.0.0.0"
+    assert pipeline._last_udp_host == "0.0.0.0"
+
+
 def test_unchanged_mode_does_not_reset():
     pipeline = SignalPipeline()
     pipeline.sync_mode()

@@ -48,6 +48,7 @@ class SignalPipeline:
             direct_reader_factory=self._make_direct_reader,
         )
         self._last_direct_host = cfg.direct_host
+        self._last_udp_host = cfg.udp_host
         self._active = False
         # Set by a source switch; consumed by the next update(), which is
         # where the bus is in hand (main loop).
@@ -110,8 +111,26 @@ class SignalPipeline:
                 self._last_direct_host = cfg.direct_host
                 self.telemetry.refresh_direct()
                 self._begin_session(desired)
+            # Same mode, but the UDP bind host changed — the agent pairing
+            # flow flips 127.0.0.1 → 0.0.0.0 so a game-PC sender can reach
+            # the cluster. Without this rebind the reader kept its
+            # boot-time loopback bind until the next reboot, and a freshly
+            # paired agent streamed at a cluster that never heard it.
+            if (
+                desired == TelemetryMode.UDP
+                and cfg.udp_host != self._last_udp_host
+            ):
+                self._last_udp_host = cfg.udp_host
+                self.telemetry.set_udp_host(cfg.udp_host)
+                self._begin_session(desired)
             return
         try:
+            # The bind host may have changed together with the mode (the
+            # pairing flow sets both): hand the source the current host
+            # before the switch builds the reader from it.
+            if desired == TelemetryMode.UDP:
+                self._last_udp_host = cfg.udp_host
+                self.telemetry.set_udp_host(cfg.udp_host)
             self.telemetry.switch_mode(desired)
             self._begin_session(desired)
             self._last_mode = desired
