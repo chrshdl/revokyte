@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import List
-
 from pydantic import BaseModel, Field
 
 
@@ -95,7 +93,7 @@ class TelemetryFrame(BaseModel):
     )
     wheels: Wheels = None
     position: Vector | None = None
-    gear_ratios: List[float] = None
+    gear_ratios: list[float] = None
     # Sender-supplied engine curve for shift-point calculation; absent means
     # the receiver falls back to its own car database (GT7) or a default
     # profile. Omit-never-null like flags/wheels/rpm_alert.
