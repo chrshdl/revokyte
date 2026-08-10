@@ -237,13 +237,13 @@ class WifiNetworkList:
         for button, net in self._network_rows:
             self._draw_signal_bars(surface, button.rect, net.bars)
             if self._current_ssid and net.ssid == self._current_ssid:
-                check = self._icon_font.render("", True, Color.LIGHT_GREEN.rgb())
+                check = self._icon_font.render("\ue876", True, Color.LIGHT_GREEN.rgb())
                 r = check.get_rect()
                 r.right = button.rect.right - sx(108)
                 r.centery = button.rect.centery
                 surface.blit(check, r)
             if net.secured:
-                lock = self._icon_font.render("", True, Color.WHITE.rgb())
+                lock = self._icon_font.render("\ue897", True, Color.WHITE.rgb())
                 r = lock.get_rect()
                 r.right = button.rect.right - sx(72)
                 r.centery = button.rect.centery
