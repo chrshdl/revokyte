@@ -355,7 +355,9 @@ class EditorApp:
                 elif self.modal is not None:
                     self.modal.handle(event)
                 elif event.type == pygame.KEYDOWN:
-                    self._key(event)
+                    # An open inline value entry owns the keyboard.
+                    if not self.props_panel.handle_key(event):
+                        self._key(event)
                 else:
                     if self.toolbar.handle(event):
                         continue

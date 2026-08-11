@@ -335,6 +335,12 @@ class PropertiesPanel:
                 return True
         return any(b.handle(event) for b in self.buttons)
 
+    def handle_key(self, event) -> bool:
+        """Route a KEYDOWN to an inline value entry, if one is open —
+        called by the app *before* its own shortcuts, so typing "44" or
+        pressing Esc edits the value instead of nudging/deselecting."""
+        return any(s.handle_key(event) for s in self.steppers if s.editing)
+
     def update(self, dt):
         for s in self.steppers:
             s.update(dt)

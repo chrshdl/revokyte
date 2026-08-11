@@ -155,20 +155,31 @@ class Button:
 
 
 class Stepper:
-    """`- [value] +` numeric control with click-and-hold repeat."""
+    """`- [value] +` numeric control with click-and-hold repeat.
+
+    Double-clicking the value cell opens inline text entry: type a number,
+    Enter commits (through the same ``apply`` callback, as an absolute
+    set), Esc discards. Only int-valued steppers offer entry — the family
+    cycler's value is a name, not a number.
+    """
 
     REPEAT_DELAY = 0.35
     REPEAT_RATE = 0.045
+    DOUBLE_CLICK_MS = 400
 
     def __init__(self, rect, label, get, apply, step=1):
         self.rect = pygame.Rect(rect)
         self.label = label
         self.get = get
-        self.apply = apply  # apply(delta_steps)
+        self.apply = apply  # apply(delta) — delta is added to the value
         self.step = step
         self._held = 0  # -1 / +1 while a button is held
         self._held_t = 0.0
         self._repeating = False
+        self._editing = False
+        self._buffer = ""
+        self._select_all = False
+        self._last_mid_click = -10_000
 
     def _zones(self):
         h = self.rect.height
@@ -177,9 +188,74 @@ class Stepper:
         mid = pygame.Rect(minus.right, self.rect.y, plus.x - minus.right, h)
         return minus, mid, plus
 
+    # -- inline entry ----------------------------------------------------
+    @property
+    def editing(self) -> bool:
+        return self._editing
+
+    def _begin_edit(self) -> bool:
+        value = self.get()
+        if not isinstance(value, int):
+            return False
+        self._editing = True
+        self._buffer = str(value)
+        # The current value starts selected: the first keystroke replaces
+        # it (double-click-to-retype, the behavior every entry field has).
+        self._select_all = True
+        return True
+
+    def _cancel_edit(self) -> None:
+        self._editing = False
+        self._buffer = ""
+        self._select_all = False
+
+    def _commit_edit(self) -> None:
+        buffer = self._buffer
+        self._cancel_edit()
+        try:
+            target = int(buffer)
+        except ValueError:
+            return  # empty or lone "-": treat like Esc
+        current = self.get()
+        if target != current:
+            self.apply(target - current)
+
+    def handle_key(self, event) -> bool:
+        """Feed a KEYDOWN while editing. Returns True when consumed —
+        every key is, so shortcuts can't fire mid-entry."""
+        if not self._editing or event.type != pygame.KEYDOWN:
+            return False
+        if event.key == pygame.K_ESCAPE:
+            self._cancel_edit()
+        elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+            self._commit_edit()
+        elif event.key == pygame.K_BACKSPACE:
+            self._buffer = "" if self._select_all else self._buffer[:-1]
+            self._select_all = False
+        elif event.unicode.isdigit():
+            if self._select_all:
+                self._buffer = ""
+                self._select_all = False
+            self._buffer += event.unicode
+        elif event.unicode == "-":
+            if self._select_all:
+                self._buffer = ""
+                self._select_all = False
+            if not self._buffer:
+                self._buffer = "-"
+        return True
+
+    # -- mouse -----------------------------------------------------------
     def handle(self, event) -> bool:
-        minus, _mid, plus = self._zones()
+        minus, mid, plus = self._zones()
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self._editing:
+                if mid.collidepoint(event.pos):
+                    return True
+                # Clicking anywhere else discards the entry; the click then
+                # proceeds to whatever it landed on.
+                self._cancel_edit()
+                return False
             if minus.collidepoint(event.pos):
                 self.apply(-self.step)
                 self._held, self._held_t, self._repeating = -1, 0.0, False
@@ -188,11 +264,19 @@ class Stepper:
                 self.apply(+self.step)
                 self._held, self._held_t, self._repeating = +1, 0.0, False
                 return True
+            if mid.collidepoint(event.pos):
+                now = pygame.time.get_ticks()
+                if now - self._last_mid_click <= self.DOUBLE_CLICK_MS:
+                    self._begin_edit()
+                self._last_mid_click = now
+                return True
         if event.type == pygame.MOUSEBUTTONUP and self._held:
             self._held = 0
             return False
-        if event.type == pygame.MOUSEWHEEL and self.rect.collidepoint(
-            pygame.mouse.get_pos()
+        if (
+            not self._editing
+            and event.type == pygame.MOUSEWHEEL
+            and self.rect.collidepoint(pygame.mouse.get_pos())
         ):
             self.apply(self.step * (1 if event.y > 0 else -1))
             return True
@@ -215,8 +299,20 @@ class Stepper:
             pygame.draw.rect(surface, THEME["panel_edge"], zone, 1, border_radius=4)
             text(surface, glyph, zone.center, THEME["accent"], center=True)
         pygame.draw.rect(surface, THEME["panel"], mid)
-        pygame.draw.rect(surface, THEME["panel_edge"], mid, 1)
-        text(surface, self.get(), mid.center, center=True)
+        if self._editing:
+            pygame.draw.rect(surface, THEME["accent"], mid, 2)
+            if self._select_all and self._buffer:
+                # Selected text: highlight bar behind the value.
+                sel = font().render(self._buffer, True, (255, 255, 255))
+                bar = sel.get_rect(center=mid.center).inflate(8, 2)
+                pygame.draw.rect(surface, THEME["accent_down"], bar)
+                surface.blit(sel, sel.get_rect(center=mid.center))
+            else:
+                caret = "|" if (pygame.time.get_ticks() // 500) % 2 == 0 else " "
+                text(surface, self._buffer + caret, mid.center, center=True)
+        else:
+            pygame.draw.rect(surface, THEME["panel_edge"], mid, 1)
+            text(surface, self.get(), mid.center, center=True)
         if self.label:
             text(
                 surface,
