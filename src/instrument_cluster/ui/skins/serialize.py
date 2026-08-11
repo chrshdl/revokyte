@@ -27,8 +27,8 @@ def snap_pixel_font(v: float) -> int:
 
 
 def _scale_scalar(value, axis: str, fx: float, fy: float, fu: float):
-    if axis == "family":
-        return value  # FontFamily member name — resolution-independent
+    if axis in ("family", "color"):
+        return value  # FontFamily / Color member name — resolution-independent
     sign = -1 if value < 0 else 1
     mag = abs(value)
     if axis == "x":

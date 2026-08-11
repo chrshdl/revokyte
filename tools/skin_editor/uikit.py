@@ -373,10 +373,11 @@ class ScrollList:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             i = self._index_at(event.pos)
             if i is not None:
-                key, _label, _depth, kind = self.rows[i]
-                if kind == "leaf":
-                    self.selected_key = key
-                    self.on_select(key)
+                key, _label, _depth, _kind = self.rows[i]
+                # Groups select too (the widget inspector); the consumer
+                # distinguishes by key shape.
+                self.selected_key = key
+                self.on_select(key)
                 return True
         return False
 
@@ -390,9 +391,9 @@ class ScrollList:
             key, label, depth, kind = self.rows[i]
             y = self.rect.y + i * self.ROW_H - self.offset
             row_rect = pygame.Rect(self.rect.x, y, self.rect.width, self.ROW_H)
-            if kind == "leaf" and key == self.selected_key:
+            if key == self.selected_key:
                 pygame.draw.rect(surface, THEME["row_selected"], row_rect)
-            elif i == self._hover_index and kind == "leaf":
+            elif i == self._hover_index:
                 pygame.draw.rect(surface, THEME["row_hover"], row_rect)
             color = THEME["text_dim"] if kind == "group" else THEME["text"]
             fnt = small_font() if kind == "group" else font(14)

@@ -89,6 +89,7 @@ class EditorApp:
         self.undo = UndoStack()
 
         self.mode = "layout"  # layout | palette | icons
+        self.selected_section: str | None = None
         self.selected_path: str | None = None
         self.selected_color = None
         self.selected_icon = None
@@ -156,6 +157,23 @@ class EditorApp:
     def axis_of(self, path: str) -> str:
         return paths.axis_at(self.skin_doc.skin, path)
 
+    def _section_of(self, path: str) -> str | None:
+        from . import view_tree
+
+        for section, field_paths in view_tree.tree_for(self.viewhost.view_id):
+            if path in field_paths:
+                return section
+        return None
+
+    def section_fields(self) -> list[str]:
+        """The selected widget section's field paths (inspector content)."""
+        from . import view_tree
+
+        for section, field_paths in view_tree.tree_for(self.viewhost.view_id):
+            if section == self.selected_section:
+                return field_paths
+        return []
+
     def request_render(self):
         self._needs_render = True
 
@@ -184,6 +202,8 @@ class EditorApp:
         self.canvas.bindings = bindings_for(view_id)
         self.canvas.selected = None
         self.selected_path = None
+        self.selected_section = None
+        self.props_panel.scroll = 0
         self.tree_panel.view_list.selected_key = view_id
         self.tree_panel.tree.selected_key = None
         self.tree_panel.refresh()  # the tree is scoped to the view
@@ -198,6 +218,15 @@ class EditorApp:
     def toggle_zoom(self):
         self.canvas.zoom_full = not self.canvas.zoom_full
 
+    def select_section(self, name: str):
+        """Inspect a widget: the panel shows all its properties."""
+        if name != self.selected_section:
+            self.props_panel.scroll = 0
+        self.selected_section = name
+        self.selected_path = None
+        self.canvas.selected = None
+        self.props_panel.rebuild()
+
     def select_path(self, key, from_tree: bool = False):
         if self.mode == "palette":
             self.selected_color = key
@@ -207,6 +236,10 @@ class EditorApp:
             self.selected_icon = key
             self.props_panel.rebuild()
             return
+        section = self._section_of(key)
+        if section != self.selected_section:
+            self.props_panel.scroll = 0
+        self.selected_section = section
         self.selected_path = key
         if from_tree:
             match = next(
@@ -216,11 +249,14 @@ class EditorApp:
         self.props_panel.rebuild()
 
     def _canvas_selected(self, binding):
-        self.selected_path = binding.path if binding else None
-        if binding:
-            self.tree_panel.tree.selected_key = binding.path
-            self.tree_panel.tree.scroll_to_key(binding.path)
-        self.props_panel.rebuild()
+        if binding is None:
+            self.selected_path = None
+            self.props_panel.rebuild()
+            return
+        self.select_path(binding.path)
+        # Reveal the owning widget in the tree (expands the section).
+        if self.selected_section:
+            self.tree_panel.reveal(self.selected_section, binding.path)
 
     # -- edits ----------------------------------------------------------
     def _live_edit(self, path: str, value):
@@ -236,6 +272,39 @@ class EditorApp:
         self.skin_doc.set(path, old + delta)
         self.undo.push(self.skin_doc, path, old, self.skin_doc.get(path))
         self.request_render()
+
+    def edit_color(self, path: str, delta: int):
+        """Cycle a palette-reference field through the Color members."""
+        from instrument_cluster.ui.colors import Color
+
+        names = list(Color.__members__)
+        old = self.skin_doc.get(path)
+        index = (names.index(old) + delta) % len(names)
+        self.skin_doc.set(path, names[index])
+        self.undo.push(self.skin_doc, path, old, self.skin_doc.get(path))
+        self.props_panel.rebuild()
+        self.request_render()
+
+    def open_color_picker(self, path: str | None = None):
+        # The inspector's per-field buttons pass their own path; the bare
+        # call falls back to the current selection.
+        path = path or self.selected_path
+        if path is None or self.axis_of(path) != "color":
+            return
+
+        from .color_picker import ColorPicker
+
+        def pick(name):
+            old = self.skin_doc.get(path)
+            if name != old:
+                self.skin_doc.set(path, name)
+                self.undo.push(self.skin_doc, path, old, name)
+                self.props_panel.rebuild()
+                self.request_render()
+
+        self.modal = ColorPicker(
+            self.screen.get_rect(), self.skin_doc.get(path), pick, self._close_modal
+        )
 
     def edit_family(self, path: str, delta: int):
         """Cycle a font-family field through the FontFamily members."""

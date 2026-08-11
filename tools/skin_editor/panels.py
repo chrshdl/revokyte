@@ -116,6 +116,8 @@ class TreePanel:
     def __init__(self, app, rect):
         self.app = app
         self.rect = pygame.Rect(rect)
+        #: expanded widget sections, per EB-GUIDE-style collapsible tree.
+        self.expanded: set[str] = set()
         rect = self.rect
         view_h = len(viewhost.VIEWS) * uikit.ScrollList.ROW_H + 6
         self.view_list = uikit.ScrollList(
@@ -134,8 +136,25 @@ class TreePanel:
     def _pick_view(self, view_id):
         self.app.select_view(view_id)
 
-    def _pick_field(self, path):
-        self.app.select_path(path, from_tree=True)
+    def _pick_field(self, key):
+        if isinstance(key, str) and key.startswith("#"):
+            # A widget section: toggle its fields open and inspect it.
+            name = key[1:]
+            if name in self.expanded:
+                self.expanded.discard(name)
+            else:
+                self.expanded.add(name)
+            self.refresh()
+            self.app.select_section(name)
+        else:
+            self.app.select_path(key, from_tree=True)
+
+    def reveal(self, section: str, path: str | None) -> None:
+        """Expand ``section`` and highlight ``path`` (canvas selection)."""
+        self.expanded.add(section)
+        self.refresh()
+        self.tree.selected_key = path if path else f"#{section}"
+        self.tree.scroll_to_key(self.tree.selected_key)
 
     def refresh(self):
         a = self.app
@@ -150,11 +169,16 @@ class TreePanel:
         )
         if a.mode == "layout":
             # The widget tree of the *selected view*: sections are the
-            # view's widgets, leaves the skin fields that style them.
+            # view's widgets (collapsible), leaves the skin fields that
+            # style them. Clicking a widget shows all its properties in
+            # the inspector.
             rows = []
             skin = a.skin_doc.skin
             for section, field_paths in view_tree.tree_for(a.viewhost.view_id):
-                rows.append((f"#{section}", section, 0, "group"))
+                marker = "−" if section in self.expanded else "+"
+                rows.append((f"#{section}", f"{marker}  {section}", 0, "group"))
+                if section not in self.expanded:
+                    continue
                 for path in field_paths:
                     leaf = path.rsplit(".", 1)[-1]
                     axis = axis_at(skin, path)
@@ -232,28 +256,56 @@ class TreePanel:
 
 
 class PropertiesPanel:
-    """Axis-aware editors for the selection (right side)."""
+    """The inspector (right side).
+
+    Layout mode shows the *selected widget's* full property sheet — every
+    field of the tree section (rect, fonts, families, colors) as stacked
+    editors, scrollable when it outgrows the panel, with the field picked
+    on the canvas highlighted. Palette / Icons modes keep their focused
+    single-selection editors.
+    """
+
+    FIELDS_TOP = 56  # fixed header band (title + subtitle)
 
     def __init__(self, app, rect):
         self.app = app
         self.rect = pygame.Rect(rect)
         self.steppers: list[uikit.Stepper] = []
         self.buttons: list[uikit.Button] = []
+        #: per-field metadata: dicts with path/axis/label_y/block/steppers/button
+        self._editors: list[dict] = []
+        self.scroll = 0
+        self._content_h = 0
         self._title = ""
         self._subtitle = ""
+
+    # -- lookup ----------------------------------------------------------
+    def steppers_for(self, path: str) -> list:
+        for ed in self._editors:
+            if ed["path"] == path:
+                return ed["steppers"]
+        return []
+
+    def button_for(self, path: str):
+        for ed in self._editors:
+            if ed["path"] == path:
+                return ed["button"]
+        return None
+
+    def _viewport(self) -> pygame.Rect:
+        return pygame.Rect(
+            self.rect.x,
+            self.rect.y + self.FIELDS_TOP,
+            self.rect.width,
+            self.rect.height - self.FIELDS_TOP,
+        )
 
     # -- building -------------------------------------------------------
     def rebuild(self):
         a = self.app
-        self.steppers, self.buttons = [], []
+        self.steppers, self.buttons, self._editors = [], [], []
         x = self.rect.x + 14
         w = self.rect.width - 28
-        # Controls start below the title + dotted-path block draw() paints
-        # at rect.y+26/+50. The rects placed here are BOTH the hit-targets
-        # and the drawn positions — draw() must never shift them (a
-        # draw-time offset once left every stepper hit-tested 40px above
-        # where it was painted: single steppers dead, stacked ones hitting
-        # their neighbour below).
         y = self.rect.y + 74
 
         if a.mode == "palette" and a.selected_color is not None:
@@ -283,57 +335,131 @@ class PropertiesPanel:
             )
             return
 
-        path = a.selected_path
-        if path is None:
+        fields = a.section_fields()
+        if not fields:
             self._title, self._subtitle = "", ""
             return
-        axis = a.axis_of(path)
-        self._title = path.rsplit(".", 1)[-1]
-        self._subtitle = f"{path}   ({axis})"
-        value = a.skin_doc.get(path)
-        if axis == "family":
-            # -/+ cycles through the FontFamily members; the middle cell
-            # shows the current face name.
-            self.steppers.append(
-                uikit.Stepper(
-                    (x, y + 20, w, 30),
-                    "font family",
-                    lambda: a.skin_doc.get(path),
-                    lambda d: a.edit_family(path, d),
-                    step=1,
-                )
-            )
-            return
-        step = 8 if axis == "font_pixel" else 2 if axis == "font" else 1
-        if isinstance(value, tuple):
-            names = COMPONENTS.get(axis, tuple(f"[{i}]" for i in range(len(value))))
-            for i, name in enumerate(names):
-                self.steppers.append(
+        self._title = a.selected_section or ""
+        self._subtitle = f"{len(fields)} properties"
+
+        skin = a.skin_doc.skin
+        cursor = self.rect.y + self.FIELDS_TOP + 8 - self.scroll
+        for path in fields:
+            axis = a.axis_of(path)
+            value = a.skin_doc.get(path)
+            block_top = cursor
+            label_y = cursor
+            cursor += 20
+            steppers, button = [], None
+            step = 8 if axis == "font_pixel" else 2 if axis == "font" else 1
+
+            if axis == "color":
+                steppers.append(
                     uikit.Stepper(
-                        (x, y + 20 + i * 56, w, 30),
-                        name,
-                        lambda i=i: a.skin_doc.get(path)[i],
-                        lambda d, i=i: a.edit_component(path, i, d),
+                        (x, cursor, w, 30),
+                        None,
+                        lambda p=path: a.skin_doc.get(p),
+                        lambda d, p=path: a.edit_color(p, d),
+                        step=1,
+                    )
+                )
+                cursor += 36
+                button = uikit.Button(
+                    (x, cursor, w, 26),
+                    "Choose color…",
+                    lambda p=path: a.open_color_picker(p),
+                )
+                cursor += 32
+            elif axis == "family":
+                steppers.append(
+                    uikit.Stepper(
+                        (x, cursor, w, 30),
+                        None,
+                        lambda p=path: a.skin_doc.get(p),
+                        lambda d, p=path: a.edit_family(p, d),
+                        step=1,
+                    )
+                )
+                cursor += 36
+            elif isinstance(value, tuple):
+                names = COMPONENTS.get(
+                    axis, tuple(f"[{i}]" for i in range(len(value)))
+                )
+                for i, name in enumerate(names):
+                    steppers.append(
+                        uikit.Stepper(
+                            (x + 24, cursor, w - 24, 30),
+                            None,
+                            lambda p=path, i=i: a.skin_doc.get(p)[i],
+                            lambda d, p=path, i=i: a.edit_component(p, i, d),
+                            step=step,
+                        )
+                    )
+                    steppers[-1].prefix = name  # drawn left of the row
+                    cursor += 36
+            else:
+                steppers.append(
+                    uikit.Stepper(
+                        (x, cursor, w, 30),
+                        None,
+                        lambda p=path: a.skin_doc.get(p),
+                        lambda d, p=path: a.edit_scalar(p, d),
                         step=step,
                     )
                 )
-        else:
-            self.steppers.append(
-                uikit.Stepper(
-                    (x, y + 20, w, 30),
-                    "value",
-                    lambda: a.skin_doc.get(path),
-                    lambda d: a.edit_scalar(path, d),
-                    step=step,
-                )
+                cursor += 36
+
+            cursor += 10
+            self.steppers.extend(steppers)
+            if button is not None:
+                self.buttons.append(button)
+            self._editors.append(
+                {
+                    "path": path,
+                    "axis": axis,
+                    "label_y": label_y,
+                    "block": pygame.Rect(
+                        self.rect.x + 4, block_top - 4, self.rect.width - 8,
+                        cursor - block_top,
+                    ),
+                    "steppers": steppers,
+                    "button": button,
+                }
             )
 
+        self._content_h = (cursor + self.scroll) - (
+            self.rect.y + self.FIELDS_TOP + 8
+        )
+
     # -- events / drawing ----------------------------------------------
+    @property
+    def max_scroll(self) -> int:
+        viewport_h = self.rect.height - self.FIELDS_TOP - 8
+        return max(0, self._content_h - viewport_h)
+
     def handle(self, event) -> bool:
+        viewport = self._viewport()
+        in_layout = self.app.mode == "layout"
         for s in self.steppers:
+            if in_layout and not viewport.colliderect(s.rect):
+                continue  # scrolled out of view: no ghost hits
             if s.handle(event):
                 return True
-        return any(b.handle(event) for b in self.buttons)
+        for b in self.buttons:
+            if in_layout and not viewport.colliderect(b.rect):
+                continue
+            if b.handle(event):
+                return True
+        if (
+            in_layout
+            and event.type == pygame.MOUSEWHEEL
+            and self.rect.collidepoint(pygame.mouse.get_pos())
+            and self.max_scroll
+        ):
+            self.scroll = max(0, min(self.max_scroll, self.scroll - event.y * 40))
+            self.rebuild()
+            return True
+        return False
 
     def handle_key(self, event) -> bool:
         """Route a KEYDOWN to an inline value entry, if one is open —
@@ -347,34 +473,89 @@ class PropertiesPanel:
 
     def draw(self, screen):
         uikit.panel(screen, self.rect, "PROPERTIES")
+        a = self.app
         if not self._title:
             uikit.text(
                 screen,
-                "Select a field in the tree\nor an element on the canvas.",
+                "Click a widget in the tree",
                 (self.rect.x + 14, self.rect.y + 40),
                 uikit.THEME["text_dim"],
             )
+            uikit.text(
+                screen,
+                "or an element on the canvas.",
+                (self.rect.x + 14, self.rect.y + 62),
+                uikit.THEME["text_dim"],
+            )
             return
+
+        if a.mode != "layout":
+            self._draw_focused(screen)
+            return
+
+        # Fixed header band.
+        uikit.text(screen, self._title, (self.rect.x + 14, self.rect.y + 24), uikit.THEME["text"], uikit.font(17))
+        uikit.text(screen, self._subtitle, (self.rect.x + 14, self.rect.y + 46), uikit.THEME["text_dim"], uikit.small_font())
+
+        viewport = self._viewport()
+        prev_clip = screen.get_clip()
+        screen.set_clip(viewport)
+
+        for ed in self._editors:
+            if not viewport.colliderect(ed["block"]):
+                continue
+            if ed["path"] == a.selected_path:
+                pygame.draw.rect(screen, uikit.THEME["row_selected"], ed["block"], border_radius=4)
+            leaf = ed["path"].rsplit(".", 1)[-1]
+            uikit.text(
+                screen,
+                f"{leaf}  ({ed['axis']})",
+                (self.rect.x + 14, ed["label_y"]),
+                uikit.THEME["text_dim"],
+                uikit.small_font(),
+            )
+            if ed["axis"] == "color":
+                rgb = Color[a.skin_doc.get(ed["path"])].rgb()
+                sw = pygame.Rect(self.rect.right - 46, ed["label_y"], 30, 16)
+                pygame.draw.rect(screen, rgb, sw)
+                pygame.draw.rect(screen, uikit.THEME["panel_edge"], sw, 1)
+            for s in ed["steppers"]:
+                prefix = getattr(s, "prefix", None)
+                if prefix:
+                    uikit.text(
+                        screen,
+                        prefix,
+                        (self.rect.x + 14, s.rect.y + 6),
+                        uikit.THEME["text_dim"],
+                        uikit.small_font(),
+                    )
+                s.draw(screen)
+            if ed["button"] is not None:
+                ed["button"].draw(screen)
+
+        screen.set_clip(prev_clip)
+        if self.max_scroll:
+            frac = (self.rect.height - self.FIELDS_TOP) / self._content_h
+            thumb_h = max(24, int((self.rect.height - self.FIELDS_TOP) * frac))
+            thumb_y = viewport.y + int(
+                (viewport.height - thumb_h) * (self.scroll / self.max_scroll)
+            )
+            pygame.draw.rect(
+                screen,
+                uikit.THEME["panel_edge"],
+                (self.rect.right - 6, thumb_y, 4, thumb_h),
+                border_radius=2,
+            )
+
+    def _draw_focused(self, screen):
+        """Palette / Icons single-selection view (unchanged behavior)."""
+        a = self.app
         uikit.text(screen, self._title, (self.rect.x + 14, self.rect.y + 26), uikit.THEME["text"], uikit.font(17))
         uikit.text(screen, self._subtitle, (self.rect.x + 14, self.rect.y + 50), uikit.THEME["text_dim"], uikit.small_font())
         for s in self.steppers:
             s.draw(screen)
         for b in self.buttons:
             b.draw(screen)
-        a = self.app
-        if (
-            a.mode == "layout"
-            and a.selected_path
-            and a.axis_of(a.selected_path) == "family"
-        ):
-            family = FontFamily[a.skin_doc.get(a.selected_path)]
-            sample = load_font_px(30, family).render(
-                "AaBbGg 0123", True, uikit.THEME["text"]
-            )
-            self.rect and screen.blit(
-                sample,
-                sample.get_rect(midtop=(self.rect.centerx, self.rect.y + 150)),
-            )
         if a.mode == "icons" and a.selected_icon is not None:
             glyph = a.icons_doc.get(a.selected_icon)
             big = load_font_px(96, FontFamily.MATERIAL_SYMBOLS)

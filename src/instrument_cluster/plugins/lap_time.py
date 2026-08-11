@@ -1,6 +1,7 @@
 """Previous lap time — right column."""
 
 from ..core.plugin_system.sdk import WidgetPlugin
+from ..ui.colors import Color
 from ..ui.skins import active_skin
 from ..ui.utils import FontFamily
 from ..ui.widgets.lap_time_widget import LapTimeWidget
@@ -19,6 +20,7 @@ class LapTimePlugin(WidgetPlugin):
                 rect=(x - self.layout.shift_r, y, w, h),
                 font_value_size=d.fonts.lap_time,
                 font_value_family=FontFamily[d.fonts.lap_time_family],
+                value_color=Color[d.lap_time_color].rgb(),
                 header_font_size=skin.style.header_font_size,
             )
         ]

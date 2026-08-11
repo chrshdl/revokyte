@@ -148,6 +148,7 @@ class DashboardView(View):
             ),
             font_value_size=d.fonts.slot_name,
             font_value_family=FontFamily[d.fonts.slot_name_family],
+            value_color=Color[d.slot_name_color].rgb(),
             header_font_size=skin.style.header_font_size,
         )
         self.slot_name.set_value(self._slot_name)

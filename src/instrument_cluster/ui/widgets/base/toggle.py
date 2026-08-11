@@ -40,11 +40,14 @@ class Toggle(AbstractButton):
         self._checked = bool(checked)
         self.pill_align = pill_align
         self.pill_pad = int(pill_pad)
-        self.on_color = Color.BLUE.rgb() if on_color is None else on_color
+        style = active_skin().style.toggle
+        self.on_color = Color[style.on_color].rgb() if on_color is None else on_color
         self.off_color = (
-            Color.DROPDOWN_LIGHT_GREY.rgb() if off_color is None else off_color
+            Color[style.off_color].rgb() if off_color is None else off_color
         )
-        self.knob_color = Color.WHITE.rgb() if knob_color is None else knob_color
+        self.knob_color = (
+            Color[style.knob_color].rgb() if knob_color is None else knob_color
+        )
         # Fills the whole rect while pressed (like a row control's pressed
         # glow); None disables the feedback.
         self.pressed_bg_color = (

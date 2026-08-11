@@ -77,7 +77,7 @@ class SetupView(View):
         return Label(
             text=text,
             font=load_font_px(s.row_font_size, FontFamily[s.row_font_family]),
-            color=Color.WHITE.rgb(),
+            color=Color[s.row_text_color].rgb(),
             pos=(s.label_x, s.label_dy),
             center=False,
             bg_color=Color.BLACK.rgb(),
@@ -89,7 +89,7 @@ class SetupView(View):
         return Label(
             text=glyph,
             font=load_font_px(s.icon_size, FontFamily.MATERIAL_SYMBOLS),
-            color=Color.WHITE.rgb(),
+            color=Color[s.row_text_color].rgb(),
             pos=(s.icon_x, s.row_height // 2 + 4),
             center=True,
             bg_color=Color.BLACK.rgb(),

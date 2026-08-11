@@ -26,6 +26,9 @@ value maps between resolutions, not how it is used at runtime:
 * ``font_pixel`` — pixel-font size (Pixeltype): snapped to a multiple of 8
 * ``family``     — a font family, stored as the ``FontFamily`` member name
   (a string); resolution-independent, copied verbatim
+* ``color``      — a palette reference, stored as the ``Color`` member name
+  (a string); widgets pick *which* palette color they wear, the palette
+  itself stays global (edited in the editor's Palette mode)
 * ``const``      — resolution-independent (counts, ratios); copied verbatim
 """
 
@@ -156,6 +159,29 @@ class DashboardSkin:
     swipe_min_dx: int = _px("x")
     swipe_max_dy: int = _px("y")
 
+    # Per-widget palette references. The *_color entries recolor each
+    # gauge's value text (headers keep the shared style.text_color).
+    gear_color: str = _px("color")
+    speed_color: str = _px("color")
+    fastest_lap_color: str = _px("color")
+    predicted_lap_color: str = _px("color")
+    lap_time_color: str = _px("color")
+    lap_counter_color: str = _px("color")
+    track_color: str = _px("color")
+    slot_name_color: str = _px("color")
+    fuel_per_lap_color: str = _px("color")
+    fuel_laps_color: str = _px("color")
+    delta_gain_color: str = _px("color")
+    delta_loss_color: str = _px("color")
+    tire_gradient_top: str = _px("color")
+    tire_gradient_bottom: str = _px("color")
+    rpm_scale_color: str = _px("color")
+    rpm_redline_color: str = _px("color")
+    status_light_tc_color: str = _px("color")
+    status_light_asm_color: str = _px("color")
+    slot_dot_active_color: str = _px("color")
+    slot_dot_inactive_color: str = _px("color")
+
 
 @dataclass(frozen=True)
 class DeltaStyle:
@@ -185,6 +211,7 @@ class RpmStyle:
 
 @dataclass(frozen=True)
 class ScrollbarStyle:
+    thumb_color: str = _px("color")
     track_width: int = _px("u")
     track_margin_right: int = _px("x")
     min_thumb_height: int = _px("y")
@@ -197,6 +224,9 @@ class ToggleStyle:
     track_w: int = _px("x")
     track_h: int = _px("y")
     knob_margin: int = _px("u")
+    on_color: str = _px("color")
+    off_color: str = _px("color")
+    knob_color: str = _px("color")
 
 
 @dataclass(frozen=True)
@@ -207,6 +237,9 @@ class WidgetStyle:
 
     header_font_size: int = _px("font_pixel")
     header_font_family: str = _px("family")
+    bg_color: str = _px("color")
+    text_color: str = _px("color")
+    border_color: str = _px("color")
     header_margin: int = _px("u")
     value_offset_y: int = _px("u")
     border_width: int = _px("u")
@@ -225,7 +258,9 @@ class HeaderSkin:
     title_topleft: Pos = _px("pos")
     title_font_size: int = _px("font")
     title_font_family: str = _px("family")
+    title_color: str = _px("color")
     line_y: int = _px("y")
+    line_color: str = _px("color")
     back_button_size: Size = _px("size")
     back_button_y: int = _px("y")
     back_button_gap: int = _px("x")
@@ -251,6 +286,8 @@ class SetupSkin:
     separator_width: int = _px("u")
     separator_clearance: int = _px("u")
     chevron_icon_size: int = _px("font")  # row-button trailing chevron
+    row_text_color: str = _px("color")
+    separator_color: str = _px("color")
     visible_network_cells: int = _px("const")
 
 
@@ -271,6 +308,8 @@ class KeyboardSkin:
     key_font_family: str = _px("family")
     small_font: int = _px("font")
     small_font_family: str = _px("family")
+    key_text_color: str = _px("color")
+    ok_color: str = _px("color")
     pw_font: int = _px("font")  # password field text
     pw_font_family: str = _px("family")
     # Scan-phase chrome and the manual-SSID form.
@@ -309,6 +348,8 @@ class NumpadSkin:
     ok_rect: Rect = _px("rect")
     recent_label_font: int = _px("font")  # Pixeltype, but 46 by design
     recent_label_font_family: str = _px("family")
+    ok_color: str = _px("color")
+    del_color: str = _px("color")
 
 
 @dataclass(frozen=True)
@@ -336,6 +377,9 @@ class OverlaySkin:
     feed_body_line_pitch: int = _px("y")
     feed_button_size: Size = _px("size")
     feed_button_bottom_margin: int = _px("y")
+    no_signal_accent_color: str = _px("color")
+    wifi_pill_border_color: str = _px("color")
+    feed_accent_color: str = _px("color")
 
 
 @dataclass(frozen=True)

@@ -48,7 +48,7 @@ def _type(app, *keys):
 
 def _open_entry(app, path, component=0):
     app.select_path(path, from_tree=True)
-    stepper = app.props_panel.steppers[component]
+    stepper = app.props_panel.steppers_for(path)[component]
     _double_click(app, stepper._zones()[1].center)
     assert stepper.editing
     return stepper
@@ -121,6 +121,6 @@ def test_empty_entry_on_enter_discards(app):
 def test_family_cycler_does_not_offer_entry(app):
     app.select_view("setup")
     app.select_path("header.title_font_family", from_tree=True)
-    stepper = app.props_panel.steppers[0]
+    stepper = app.props_panel.steppers_for("header.title_font_family")[0]
     _double_click(app, stepper._zones()[1].center)
     assert not stepper.editing  # names cycle; they are not typed

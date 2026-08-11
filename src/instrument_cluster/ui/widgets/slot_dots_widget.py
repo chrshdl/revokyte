@@ -39,9 +39,12 @@ class SlotDotsWidget(DirtySprite):
         height = 2 * r + 2
         self.image = pygame.Surface((width, height), pygame.SRCALPHA)
         for i in range(self._count):
-            color = (
-                Color.WHITE.rgb() if i == self._active else Color.DARKER_GREY.rgb()
-            )
+            d = active_skin().dashboard
+            color = Color[
+                d.slot_dot_active_color
+                if i == self._active
+                else d.slot_dot_inactive_color
+            ].rgb()
             pygame.draw.circle(
                 self.image, color, (r + 1 + i * pitch, height // 2), r
             )

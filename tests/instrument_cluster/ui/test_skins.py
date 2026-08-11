@@ -64,7 +64,7 @@ def _walk(obj, path=""):
 @pytest.mark.parametrize("skin", ALL_SKINS, ids=lambda s: s.name)
 def test_all_values_are_ints(skin):
     for where, axis, value in _walk(skin):
-        if where == "name" or axis == "family":
+        if where == "name" or axis in ("family", "color"):
             continue
         values = value if isinstance(value, tuple) else (value,)
         for v in values:
@@ -79,6 +79,17 @@ def test_font_families_are_valid(skin):
         if axis == "family":
             assert value in FontFamily.__members__, (
                 f"{skin.name}: {where} = {value!r} is not a FontFamily"
+            )
+
+
+@pytest.mark.parametrize("skin", ALL_SKINS, ids=lambda s: s.name)
+def test_color_references_are_valid(skin):
+    from instrument_cluster.ui.colors import Color
+
+    for where, axis, value in _walk(skin):
+        if axis == "color":
+            assert value in Color.__members__, (
+                f"{skin.name}: {where} = {value!r} is not a palette Color"
             )
 
 

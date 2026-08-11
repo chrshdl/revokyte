@@ -24,7 +24,7 @@ def header_title(text: str) -> Label:
         font=load_font_px(
             hd.title_font_size, FontFamily[hd.title_font_family]
         ),
-        color=Color.WHITE.rgb(),
+        color=Color[hd.title_color].rgb(),
         pos=hd.title_topleft,
         center=False,
     )
@@ -32,7 +32,11 @@ def header_title(text: str) -> Label:
 
 def header_line() -> Line:
     skin = active_skin()
-    return Line(start_pos=(0, skin.header.line_y), length=skin.width)
+    return Line(
+        start_pos=(0, skin.header.line_y),
+        length=skin.width,
+        color=Color[skin.header.line_color].rgb(),
+    )
 
 
 def corner_button_rect() -> tuple[int, int, int, int]:

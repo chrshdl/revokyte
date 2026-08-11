@@ -33,9 +33,9 @@ class ListItem(Container):
 
     @classmethod
     def separator_color(cls) -> tuple:
-        # Resolved per call so palette overrides (skin editor) reach a
-        # rebuilt list.
-        return Color.MID_GREY.rgb()
+        # Resolved per call so palette overrides and per-skin assignment
+        # (skin editor) reach a rebuilt list.
+        return Color[active_skin().setup.separator_color].rgb()
 
     def __init__(
         self,

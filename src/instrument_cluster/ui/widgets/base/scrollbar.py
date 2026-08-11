@@ -68,7 +68,10 @@ class Scrollbar:
         self.viewport_height = viewport_height
         self.content_height = content_height
         self.track_color = track_color
-        self.thumb_color = thumb_color or Color.BLUE.rgb()
+        self.thumb_color = (
+            thumb_color
+            or Color[active_skin().style.scrollbar.thumb_color].rgb()
+        )
         # Shortens only the visual track (and its hit/thumb geometry) at the
         # bottom, in native px — the scroll viewport and range are untouched.
         # Lets the track keep the same breathing room from the screen bottom

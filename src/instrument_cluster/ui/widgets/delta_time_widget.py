@@ -6,6 +6,7 @@ from ...core.vehicle.vehicle_bus import VehicleBus
 from ...signals.signal_keys import DeltaState, SignalKey
 from ...telemetry.mode import DiffReferenceMode
 from ..colors import Color
+from ..skins import active_skin
 from ..skins.schema import DeltaStyle
 from ..utils import FontFamily, load_font_px, su
 from ..widgets import Widget
@@ -94,6 +95,12 @@ class DeltaTimeWidget(Widget):
 
         self._lap_index = -1
 
+        # Which palette colors gain/loss wear comes from the skin; the
+        # palette itself stays global.
+        d = active_skin().dashboard
+        self._gain_color = Color[d.delta_gain_color].rgb()
+        self._loss_color = Color[d.delta_loss_color].rgb()
+
         if delta_style is not None:
             # Skinned construction: native pixels straight from the skin.
             self._seg_width = delta_style.seg_width
@@ -142,6 +149,12 @@ class DeltaTimeWidget(Widget):
         """
         self.set_value()
         self._lap_index = -1
+
+        # Which palette colors gain/loss wear comes from the skin; the
+        # palette itself stays global.
+        d = active_skin().dashboard
+        self._gain_color = Color[d.delta_gain_color].rgb()
+        self._loss_color = Color[d.delta_loss_color].rgb()
 
     def update(self, bus: VehicleBus, dt: float):
         packet = bus.frame
@@ -251,7 +264,7 @@ class DeltaTimeWidget(Widget):
             return "", self.text_color
 
         # Text color: Green for negative (gain), Red for positive (loss)
-        color = Color.GREEN.rgb() if value < 0.0 else Color.LIGHT_RED.rgb()
+        color = self._gain_color if value < 0.0 else self._loss_color
         txt = f"{abs(value):05.2f}"
         return txt, color
 
@@ -294,7 +307,7 @@ class DeltaTimeWidget(Widget):
         is_gain = current_value < 0.0
 
         # Select base color
-        base_color = Color.GREEN.rgb() if is_gain else Color.LIGHT_RED.rgb()
+        base_color = self._gain_color if is_gain else self._loss_color
 
         # Start Y-position: right below the value text. The text is drawn
         # centered in the value area and lifted by value_offset_y, so the

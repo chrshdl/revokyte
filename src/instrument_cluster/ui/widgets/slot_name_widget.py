@@ -23,6 +23,7 @@ class SlotNameWidget(Widget):
         anchor: str = "topleft",
         font_value_size: int = 40,
         font_value_family: FontFamily | None = None,
+        value_color: tuple[int, int, int] | None = None,
         show_border: bool = True,
         antialias: bool = True,
         font_scale: float = 1.0,
@@ -34,6 +35,7 @@ class SlotNameWidget(Widget):
             anchor=anchor,
             font_value_size=font_value_size,
             font_value_family=font_value_family,
+            value_color=value_color,
             show_border=show_border,
             antialias=antialias,
             font_scale=font_scale,
@@ -63,7 +65,9 @@ class SlotNameWidget(Widget):
         if not text:
             return
 
-        surf = self.font_value.render(text, self.antialias, self.text_color)
+        surf = self.font_value.render(
+            text, self.antialias, self.value_color or self.text_color
+        )
 
         # Value area below the header.
         inner_top = max(self._header_bottom + self.header_margin, self.border_width)

@@ -74,10 +74,15 @@ class Widget(DirtySprite, ABC):
         self.font_value_size = font_value_size
         self.header_text = header_text
         self.value_offset_y = style.value_offset_y
-        # Palette colors resolve at construction (not signature defaults),
-        # so a rebuilt view sees live palette overrides (skin editor).
-        self.bg_color = Color.BLACK.rgb() if bg_color is None else bg_color
-        self.text_color = Color.WHITE.rgb() if text_color is None else text_color
+        # Colors resolve at construction (not signature defaults): the
+        # skin says *which* palette color each role wears, and a rebuilt
+        # view sees live palette overrides (skin editor).
+        self.bg_color = (
+            Color[style.bg_color].rgb() if bg_color is None else bg_color
+        )
+        self.text_color = (
+            Color[style.text_color].rgb() if text_color is None else text_color
+        )
         self.value_color = value_color
         self.header_margin = (
             style.header_margin if header_margin is None else header_margin
@@ -97,7 +102,7 @@ class Widget(DirtySprite, ABC):
             # reuse top gradient color as border
             self.border_color = bg_gradient_bottom
         else:
-            self.border_color = Color.LIGHT_GREY.rgb()
+            self.border_color = Color[style.border_color].rgb()
 
         self.border_width = (
             style.border_width if border_width is None else border_width

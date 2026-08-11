@@ -37,10 +37,13 @@ class TireTempWidget(Widget):
         # Resolve the heat-gradient defaults at construction so palette
         # overrides (skin editor) reach a rebuilt gauge; None must not fall
         # through to the base class, where it means "no gradient".
+        from ..skins import active_skin
+
+        d = active_skin().dashboard
         if bg_gradient_top is None:
-            bg_gradient_top = Color.DARK_GREY.rgb()
+            bg_gradient_top = Color[d.tire_gradient_top].rgb()
         if bg_gradient_bottom is None:
-            bg_gradient_bottom = Color.RPM_RED.rgb()
+            bg_gradient_bottom = Color[d.tire_gradient_bottom].rgb()
 
         super().__init__(
             rect=rect,

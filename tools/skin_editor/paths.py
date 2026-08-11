@@ -89,6 +89,12 @@ def clamp(skin: Skin, path: str, axis: str, value: Any) -> Any:
         if value not in FontFamily.__members__:
             raise ValueError(f"unknown font family {value!r}")
         return value
+    if axis == "color":
+        from instrument_cluster.ui.colors import Color
+
+        if value not in Color.__members__:
+            raise ValueError(f"unknown palette color {value!r}")
+        return value
     return int(round(value)) if isinstance(value, (int, float)) else value
 
 

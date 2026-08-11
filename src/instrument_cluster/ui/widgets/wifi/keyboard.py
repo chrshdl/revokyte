@@ -144,7 +144,7 @@ class WifiKeyboard:
                 events=ButtonEvents(
                     pressed=WIFI_CONNECT_PRESSED, released=WIFI_CONNECT_RELEASED
                 ),
-                text_color=Color.GREEN.rgb(),
+                text_color=Color[kb.ok_color].rgb(),
                 pressed_gradient=(Color.DARK_GREEN.rgb(), Color.BLACK.rgb()),
             )
         )
@@ -175,7 +175,7 @@ class WifiKeyboard:
             antialias=True,
             events=ButtonEvents(pressed=WIFI_KEY_PRESSED, released=WIFI_KEY_RELEASED),
             event_data={"label": display},
-            text_color=Color.WHITE.rgb(),
+            text_color=Color[kb.key_text_color].rgb(),
         )
 
     @staticmethod

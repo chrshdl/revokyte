@@ -49,8 +49,9 @@ def test_single_stepper_minus_decrements(app):
     app.select_path("header.title_font_size", from_tree=True)
     before = app.skin_doc.get("header.title_font_size")
 
-    assert len(app.props_panel.steppers) == 1
-    _press_minus(app, app.props_panel.steppers[0])
+    steppers = app.props_panel.steppers_for("header.title_font_size")
+    assert len(steppers) == 1
+    _press_minus(app, steppers[0])
 
     assert app.skin_doc.get("header.title_font_size") == before - 2  # font step
 
@@ -62,7 +63,7 @@ def test_rect_stepper_edits_only_its_component(app):
     app.select_path("dashboard.predicted_lap_rect", from_tree=True)
     before = app.skin_doc.get("dashboard.predicted_lap_rect")
 
-    steppers = app.props_panel.steppers
+    steppers = app.props_panel.steppers_for("dashboard.predicted_lap_rect")
     assert len(steppers) == 4  # x / y / w / h
 
     _press_minus(app, steppers[0])
@@ -85,7 +86,7 @@ def test_stepper_ink_is_inside_its_hit_zone(app):
 
     app.select_view("setup")
     app.select_path("header.title_font_size", from_tree=True)
-    stepper = app.props_panel.steppers[0]
+    stepper = app.props_panel.steppers_for("header.title_font_size")[0]
 
     app.props_panel.draw(app.screen)
     minus, _mid, _plus = stepper._zones()
@@ -110,7 +111,7 @@ def test_steppers_do_not_overlap_each_other_or_the_title(app):
     app.select_view("dashboard")
     app.select_path("dashboard.predicted_lap_rect", from_tree=True)
     rects = [s.rect for s in app.props_panel.steppers]
-    title_block_bottom = app.props_panel.rect.y + 66
+    title_block_bottom = app.props_panel.rect.y + app.props_panel.FIELDS_TOP
     for r in rects:
         assert r.top > title_block_bottom
     for i, r1 in enumerate(rects):

@@ -1,6 +1,7 @@
 """Gear indicator — center dial."""
 
 from ..core.plugin_system.sdk import WidgetPlugin
+from ..ui.colors import Color
 from ..ui.skins import active_skin
 from ..ui.utils import FontFamily
 from ..ui.widgets.gear_widget import GearWidget
@@ -18,6 +19,7 @@ class GearPlugin(WidgetPlugin):
                 rect=d.gear_rect,
                 font_value_size=d.fonts.gear,
                 font_value_family=FontFamily[d.fonts.gear_family],
+                value_color=Color[d.gear_color].rgb(),
                 header_font_size=skin.style.header_font_size,
             )
         ]

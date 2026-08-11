@@ -60,6 +60,12 @@ class RpmWidget(Widget):
             header_font_size=header_font_size,
         )
         self._style = rpm_style if rpm_style is not None else _SPEC_STYLE
+        # Which palette colors the scale wears comes from the skin.
+        from ..skins import active_skin
+
+        d = active_skin().dashboard
+        self._scale_color = Color[d.rpm_scale_color].rgb()
+        self._redline_color = Color[d.rpm_redline_color].rgb()
 
         # RPM configuration
         self._max_rpm = int(max_rpm)
@@ -261,7 +267,7 @@ class RpmWidget(Widget):
             start_x = _rpm_to_x(self._redline_rpm)
             segments.append(
                 (
-                    Color.LIGHT_RED.rgb(),
+                    self._redline_color,
                     (
                         start_x,
                         bar_top,
@@ -306,9 +312,9 @@ class RpmWidget(Widget):
                 self._style.tick_major_w if is_major else self._style.tick_minor_w
             )
             tick_color = (
-                Color.LIGHT_RED.rgb()
+                self._redline_color
                 if tick_rpm >= self._redline_rpm
-                else Color.LIGHT_GREY.rgb()
+                else self._scale_color
             )
             pygame.draw.line(surf, tick_color, (tick_x, y1), (tick_x, y2), width)
 
@@ -323,7 +329,9 @@ class RpmWidget(Widget):
         label_y = ticks_y1 + self._style.label_gap
 
         # 1) Left-most label: 0
-        zero_surf = self._label_font.render("0", self.antialias, Color.LIGHT_GREY.rgb())
+        zero_surf = self._label_font.render(
+            "0", self.antialias, self._scale_color
+        )
         zero_rect = zero_surf.get_rect()
         # left-aligned to bar start to avoid clipping
         zero_rect.midtop = (bar_left, label_y)
@@ -337,9 +345,9 @@ class RpmWidget(Widget):
                 txt = str(self._normalize(tick_rpm))
 
                 color = (
-                    Color.LIGHT_RED.rgb()
+                    self._redline_color
                     if tick_rpm >= self._redline_rpm
-                    else Color.LIGHT_GREY.rgb()
+                    else self._scale_color
                 )
 
                 label_surf = self._label_major_font.render(txt, self.antialias, color)
@@ -352,7 +360,7 @@ class RpmWidget(Widget):
 
         # 3) Right-most label: max (in thousands)
         max_surf = self._label_font.render(
-            str(self._normalize(self._max_rpm)), self.antialias, Color.LIGHT_RED.rgb()
+            str(self._normalize(self._max_rpm)), self.antialias, self._redline_color
         )
         max_rect = max_surf.get_rect()
         # right-aligned to bar end to avoid clipping

@@ -54,7 +54,7 @@ def _build_pill() -> pygame.sprite.DirtySprite:
     # Colors resolve here (not at module scope) so palette overrides
     # (skin editor) reach a rebuilt pill.
     bg_color = (*Color.DARKER_GREY.rgb(), PILL_BG_ALPHA)
-    border_color = Color.MID_GREY.rgb()
+    border_color = Color[o.wifi_pill_border_color].rgb()
     text = font.render(PILL_TEXT, True, Color.WHITE.rgb())
 
     width = text.get_width() + 2 * o.wifi_pill_pad_x

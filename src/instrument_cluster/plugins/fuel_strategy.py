@@ -6,6 +6,7 @@ custom dashboard builder for layouts that prefer it.
 """
 
 from ..core.plugin_system.sdk import WidgetPlugin
+from ..ui.colors import Color
 from ..ui.skins import active_skin
 from ..ui.utils import FontFamily
 from ..ui.widgets.fuel_laps_widget import FuelLapsWidget
@@ -28,6 +29,14 @@ class FuelStrategyPlugin(WidgetPlugin):
             header_font_size=skin.style.header_font_size,
         )
         return [
-            FuelPerLapWidget(rect=(px + sl, py, pw, ph), **common),
-            FuelLapsWidget(rect=(lx + sl, ly, lw, lh), **common),
+            FuelPerLapWidget(
+                rect=(px + sl, py, pw, ph),
+                value_color=Color[d.fuel_per_lap_color].rgb(),
+                **common,
+            ),
+            FuelLapsWidget(
+                rect=(lx + sl, ly, lw, lh),
+                value_color=Color[d.fuel_laps_color].rgb(),
+                **common,
+            ),
         ]

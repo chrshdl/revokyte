@@ -77,9 +77,10 @@ def build_card(descriptor: FeedDescriptor, installed_version: str) -> pygame.Sur
     pygame.draw.rect(
         card, _card_color(), card.get_rect(), border_radius=radius
     )
+    accent = Color[o.feed_accent_color].rgb()
     pygame.draw.rect(
         card,
-        Color.ORANGE.rgb(),
+        accent,
         card.get_rect(),
         CARD_BORDER_WIDTH,
         border_radius=radius,
@@ -90,7 +91,7 @@ def build_card(descriptor: FeedDescriptor, installed_version: str) -> pygame.Sur
     title_font = load_font_px(
         o.feed_title_font, FontFamily[o.feed_title_font_family]
     )
-    title = title_font.render(TITLE_TEXT, True, Color.ORANGE.rgb())
+    title = title_font.render(TITLE_TEXT, True, accent)
     card.blit(title, title.get_rect(midtop=(centre_x, o.feed_title_top)))
 
     body_font = load_font_px(

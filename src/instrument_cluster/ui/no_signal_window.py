@@ -64,7 +64,8 @@ def _banner_fill() -> tuple:
 # the band in instead of ruling it off, and would split the eye between two
 # reds 100 px apart.
 def _banner_border() -> tuple:
-    return Color.GREY.rgb(), Color.LIGHT_RED.rgb()
+    accent = active_skin().overlays.no_signal_accent_color
+    return Color.GREY.rgb(), Color[accent].rgb()
 
 
 BANNER_BORDER_WIDTH = 2

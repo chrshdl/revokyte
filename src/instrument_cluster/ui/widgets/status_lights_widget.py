@@ -36,8 +36,8 @@ class StatusLightsWidget(DirtySprite):
         # LED sprites are pre-rendered once; pygame has no radial gradient
         # primitive, so they're built from concentric circles.
         self._dot_unlit = self._make_dot(None)
-        self._dot_tc = self._make_dot(Color.YELLOW.rgb())
-        self._dot_asm = self._make_dot(Color.BLUE.rgb())
+        self._dot_tc = self._make_dot(Color[skin.status_light_tc_color].rgb())
+        self._dot_asm = self._make_dot(Color[skin.status_light_asm_color].rgb())
 
         self._tc_hold = 0.0
         self._asm_hold = 0.0
