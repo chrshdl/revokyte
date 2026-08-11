@@ -100,6 +100,8 @@ class EditorApp:
 
         self._needs_render = True
         self._render_cooldown = 0.0
+        # Transient status-bar feedback ("Saved …", "Undid …").
+        self._flash: tuple[str, int] = ("", 0)
 
         self._build_layout()
         self.canvas.bindings = bindings_for(self.viewhost.view_id)
@@ -156,6 +158,15 @@ class EditorApp:
 
     def request_render(self):
         self._needs_render = True
+
+    def flash(self, message: str) -> None:
+        self._flash = (message, pygame.time.get_ticks())
+
+    def flash_text(self) -> str:
+        message, born = self._flash
+        if message and pygame.time.get_ticks() - born < 3000:
+            return message
+        return ""
 
     # ------------------------------------------------------------------
     # actions (toolbar / tree / canvas callbacks)
@@ -295,11 +306,18 @@ class EditorApp:
         entry = self.undo.undo()
         if entry:
             self._after_history(entry[0])
+            self.flash(f"Undid {self._describe_key(entry[1])}")
 
     def redo_once(self):
         entry = self.undo.redo()
         if entry:
             self._after_history(entry[0])
+            self.flash(f"Redid {self._describe_key(entry[1])}")
+
+    @staticmethod
+    def _describe_key(key) -> str:
+        # Skin paths are strings; palette/icon keys are enum members.
+        return getattr(key, "name", key)
 
     def _after_history(self, doc):
         if isinstance(doc, SkinDocument):
@@ -309,13 +327,16 @@ class EditorApp:
         self.request_render()
 
     def save_all(self):
+        saved = []
         for doc in self.skin_docs:
             if doc.dirty:
-                persist.save_skin(doc)
+                saved.append(persist.save_skin(doc).name)
         if self.palette_doc.dirty:
-            persist.save_palette(self.palette_doc)
+            saved.append(persist.save_palette(self.palette_doc).name)
         if self.icons_doc.dirty:
-            persist.save_icons(self.icons_doc)
+            saved.append(persist.save_icons(self.icons_doc).name)
+        if saved:
+            self.flash("Saved " + ", ".join(saved))
 
     # ------------------------------------------------------------------
     # main loop

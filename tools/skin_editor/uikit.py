@@ -10,7 +10,7 @@ SCALED, so no mapping is needed).
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 import pygame
 
@@ -45,6 +45,19 @@ def small_font() -> pygame.font.Font:
     return font(13)
 
 
+def icon_font(size: int = 18) -> pygame.font.Font:
+    return load_font_px(size, FontFamily.MATERIAL_SYMBOLS)
+
+
+# Editor-chrome glyphs (material symbols). Deliberately NOT in the HMI's
+# ui/icons.py registry: that file is the *cluster's* iconography and is
+# designer-editable; the editor's own chrome must stay stable while it is
+# being used to restyle the app.
+ICON_SAVE = "\ue161"
+ICON_UNDO = "\ue166"
+ICON_REDO = "\ue15a"
+
+
 def text(surface, s, pos, color=None, fnt=None, right=False, center=False):
     surf = (fnt or font()).render(str(s), True, color or THEME["text"])
     rect = surf.get_rect()
@@ -66,14 +79,31 @@ def panel(surface, rect, title=None):
 
 
 class Button:
-    def __init__(self, rect, label, on_click: Callable, *, toggle_state=None,
-                 enabled: Callable[[], bool] | None = None):
+    def __init__(
+        self,
+        rect,
+        label,
+        on_click: Callable,
+        *,
+        toggle_state=None,
+        enabled: Callable[[], bool] | None = None,
+        accent: bool = False,
+        icon: str | None = None,
+    ):
         self.rect = pygame.Rect(rect)
-        self.label = label
+        self.label = label  # str or Callable[[], str]
         self.on_click = on_click
         self.toggle_state = toggle_state  # optional Callable[[], bool]
         self.enabled = enabled or (lambda: True)
+        #: accent buttons (Save) light up in the accent color when enabled,
+        #: so an actionable button never reads as inert chrome.
+        self.accent = accent
+        #: optional material-symbols glyph drawn left of the label.
+        self.icon = icon
         self._hover = False
+
+    def label_text(self) -> str:
+        return self.label() if callable(self.label) else self.label
 
     def handle(self, event) -> bool:
         if event.type == pygame.MOUSEMOTION:
@@ -93,6 +123,9 @@ class Button:
         active = self.toggle_state() if self.toggle_state else False
         if not self.enabled():
             bg, fg = THEME["panel"], THEME["text_dim"]
+        elif self.accent:
+            bg = THEME["accent_down"] if not self._hover else THEME["accent"]
+            fg = (255, 255, 255)
         elif active:
             bg, fg = THEME["row_selected"], THEME["text"]
         elif self._hover:
@@ -101,7 +134,24 @@ class Button:
             bg, fg = THEME["row"], THEME["text"]
         pygame.draw.rect(surface, bg, self.rect, border_radius=4)
         pygame.draw.rect(surface, THEME["panel_edge"], self.rect, 1, border_radius=4)
-        text(surface, self.label, self.rect.center, fg, center=True)
+        label_surf = font().render(self.label_text(), True, fg)
+        if self.icon:
+            icon_surf = icon_font().render(self.icon, True, fg)
+            gap = 6
+            total = icon_surf.get_width() + gap + label_surf.get_width()
+            x = self.rect.centerx - total // 2
+            surface.blit(
+                icon_surf,
+                icon_surf.get_rect(midleft=(x, self.rect.centery)),
+            )
+            surface.blit(
+                label_surf,
+                label_surf.get_rect(
+                    midleft=(x + icon_surf.get_width() + gap, self.rect.centery)
+                ),
+            )
+        else:
+            surface.blit(label_surf, label_surf.get_rect(center=self.rect.center))
 
 
 class Stepper:
@@ -204,7 +254,9 @@ class ScrollList:
             if row[0] == key:
                 y = i * self.ROW_H
                 if y < self.offset or y > self.offset + self.rect.height - self.ROW_H:
-                    self.offset = max(0, min(self.max_offset, y - self.rect.height // 2))
+                    self.offset = max(
+                        0, min(self.max_offset, y - self.rect.height // 2)
+                    )
                 return
 
     def _index_at(self, pos):

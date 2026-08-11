@@ -56,20 +56,28 @@ class Toolbar:
             x += 92
         x += 16
         self.buttons.append(
-            uikit.Button((x, 8, 76, TOOLBAR_H - 16), "Save", a.save_all,
-                         enabled=lambda: a.any_dirty)
+            uikit.Button(
+                (x, 8, 104, TOOLBAR_H - 16),
+                lambda: "Save •" if a.any_dirty else "Save",
+                a.save_all,
+                enabled=lambda: a.any_dirty,
+                accent=True,
+                icon=uikit.ICON_SAVE,
+            )
         )
-        x += 82
+        x += 110
         self.buttons.append(
-            uikit.Button((x, 8, 70, TOOLBAR_H - 16), "Undo", a.undo_once,
-                         enabled=lambda: a.undo.can_undo)
+            uikit.Button((x, 8, 90, TOOLBAR_H - 16), "Undo", a.undo_once,
+                         enabled=lambda: a.undo.can_undo,
+                         icon=uikit.ICON_UNDO)
         )
-        x += 76
+        x += 96
         self.buttons.append(
-            uikit.Button((x, 8, 70, TOOLBAR_H - 16), "Redo", a.redo_once,
-                         enabled=lambda: a.undo.can_redo)
+            uikit.Button((x, 8, 90, TOOLBAR_H - 16), "Redo", a.redo_once,
+                         enabled=lambda: a.undo.can_redo,
+                         icon=uikit.ICON_REDO)
         )
-        x += 76
+        x += 96
         self.buttons.append(
             uikit.Button(
                 (x, 8, 84, TOOLBAR_H - 16),
@@ -388,8 +396,14 @@ class StatusBar:
         pygame.draw.line(
             screen, uikit.THEME["panel_edge"], rect.topleft, rect.topright
         )
+        flash = a.flash_text()
+        if flash:
+            uikit.text(
+                screen, flash, (10, h - STATUS_H + 4),
+                uikit.THEME["accent"], uikit.small_font(),
+            )
         parts = []
-        if a.mode == "layout":
+        if not flash and a.mode == "layout":
             if a.selected_path:
                 axis = a.axis_of(a.selected_path)
                 parts.append(f"{a.selected_path}  ({axis})  {a.skin_doc.get(a.selected_path)!r}")
@@ -397,9 +411,9 @@ class StatusBar:
                     parts.append(f"[{a.canvas.selected.note}]")
             else:
                 parts.append("click a gauge on the canvas, or pick a field in the tree")
-        elif a.mode == "palette":
+        elif not flash and a.mode == "palette":
             parts.append("palette edits apply to all skins; Save rewrites ui/colors.py")
-        else:
+        elif not flash:
             parts.append("icon edits apply to all skins; Save rewrites ui/icons.py")
         zoom = "100%" if a.canvas.zoom_full else f"fit {a.canvas.scale:.0%}"
         dirty = " ● unsaved" if a.any_dirty else ""
