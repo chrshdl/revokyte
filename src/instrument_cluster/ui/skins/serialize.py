@@ -81,8 +81,21 @@ def _emit(
             out[-1] += ","
         else:
             scaled = _scale_value(value, axis, scale)
-            out.append(f"{pad}    {f.name}={scaled!r},{mark}")
+            out.append(f"{pad}    {f.name}={_format_value(scaled)},{mark}")
     out.append(f"{pad})")
+
+
+def _format_value(value) -> str:
+    """Emit a field value as source text.
+
+    Strings (font-family names) are written with **double quotes** to match
+    the hand-written skin files — plain ``repr()`` would emit single quotes
+    and churn every family line on the first editor save.
+    """
+    if isinstance(value, str):
+        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
+    return repr(value)
 
 
 def _merge_nested(lines: list[str]) -> str:

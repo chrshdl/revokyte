@@ -43,6 +43,17 @@ def test_verbatim_round_trip(skin, tmp_path):
     assert rebuilt == skin
 
 
+def test_strings_emit_with_double_quotes():
+    # Family names must be written "..." like the hand-written skin files —
+    # repr()'s single quotes would churn every family line on the first
+    # editor save of an otherwise-untouched skin.
+    text = emit_skin_module(SKIN_800)
+    assert 'gear_family="D_DIN_EXP_BOLD",' in text
+    assert 'name="800x480",' in text
+    body = text.split("SKIN_", 1)[1]
+    assert "'" not in body, "single-quoted string leaked into the emission"
+
+
 def test_skin_override_hook(force_profile):
     from dataclasses import replace
 
