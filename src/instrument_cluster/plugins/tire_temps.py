@@ -1,7 +1,8 @@
 """Tire temperature quad — right column, top."""
 
 from ..core.plugin_system.sdk import WidgetPlugin
-from ..ui.utils import srect
+from ..ui.skins import active_skin
+from ..ui.utils import FontFamily
 from ..ui.widgets.tire_temp_widget import TireTempWidget
 
 
@@ -10,26 +11,31 @@ class TireTempsPlugin(WidgetPlugin):
     version = "1.0.0"
 
     def build_widgets(self):
+        skin = active_skin()
+        d = skin.dashboard
+        grid = d.tire_grid
         sr = self.layout.shift_r
+        ox, oy = grid.origin
+        cw, ch = grid.cell
+        cells = [
+            (0, 0, "front_left", "T  FL"),
+            (1, 0, "front_right", "T  FR"),
+            (0, 1, "rear_left", "T  RL"),
+            (1, 1, "rear_right", "T  RR"),
+        ]
         return [
             TireTempWidget(
-                rect=srect(1014 - sr, 22, 122, 92),
-                wheel_attr="front_left",
-                header_text="T  FL",
-            ),
-            TireTempWidget(
-                rect=srect(1140 - sr, 22, 122, 92),
-                wheel_attr="front_right",
-                header_text="T  FR",
-            ),
-            TireTempWidget(
-                rect=srect(1014 - sr, 118, 122, 92),
-                wheel_attr="rear_left",
-                header_text="T  RL",
-            ),
-            TireTempWidget(
-                rect=srect(1140 - sr, 118, 122, 92),
-                wheel_attr="rear_right",
-                header_text="T  RR",
-            ),
+                rect=(
+                    ox - sr + col * grid.col_step,
+                    oy + row * grid.row_step,
+                    cw,
+                    ch,
+                ),
+                wheel_attr=attr,
+                header_text=header,
+                font_value_size=d.fonts.tire,
+                font_value_family=FontFamily[d.fonts.tire_family],
+                header_font_size=skin.style.header_font_size,
+            )
+            for col, row, attr, header in cells
         ]

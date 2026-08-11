@@ -1,6 +1,7 @@
 import pygame
 
 from ...core.vehicle.vehicle_bus import VehicleBus
+from ..utils import FontFamily
 from ..widgets import Widget
 
 
@@ -21,18 +22,22 @@ class SlotNameWidget(Widget):
         header_text: str = "Slot",
         anchor: str = "topleft",
         font_value_size: int = 40,
+        font_value_family: FontFamily | None = None,
         show_border: bool = True,
         antialias: bool = True,
         font_scale: float = 1.0,
+        header_font_size: int | None = None,
     ):
         super().__init__(
             rect=rect,
             header_text=header_text,
             anchor=anchor,
             font_value_size=font_value_size,
+            font_value_family=font_value_family,
             show_border=show_border,
             antialias=antialias,
             font_scale=font_scale,
+            header_font_size=header_font_size,
         )
         # Start hidden: DashboardState pushes the active name via set_value.
         self.visible = 0

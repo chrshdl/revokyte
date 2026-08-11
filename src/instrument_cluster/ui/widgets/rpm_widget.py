@@ -10,8 +10,22 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ...telemetry.models import TelemetryFrame
 from ..colors import Color
-from ..utils import FontFamily, load_font
+from ..skins.schema import RpmStyle
+from ..utils import FontFamily, load_font_px
 from ..widgets import Widget
+
+# Spec-space (1280x720) bar internals, used by the custom-dashboard path
+# where font_scale carries the panel scale. Skinned construction passes the
+# active skin's style.rpm instead.
+_SPEC_STYLE = RpmStyle(
+    padding_x=6,
+    padding_y=2,
+    tick_major_len=7,
+    tick_minor_len=3,
+    tick_major_w=3,
+    tick_minor_w=2,
+    label_gap=6,
+)
 
 
 class RpmWidget(Widget):
@@ -29,6 +43,10 @@ class RpmWidget(Widget):
         show_border: bool = False,
         antialias: bool = True,
         font_scale: float = 1.0,
+        rpm_style: RpmStyle | None = None,
+        label_font_size: int | None = None,
+        label_font_family: FontFamily = FontFamily.D_DIN_EXP_BOLD,
+        header_font_size: int | None = None,
     ):
         super().__init__(
             rect=rect,
@@ -39,7 +57,9 @@ class RpmWidget(Widget):
             show_border=show_border,
             antialias=antialias,
             font_scale=font_scale,
+            header_font_size=header_font_size,
         )
+        self._style = rpm_style if rpm_style is not None else _SPEC_STYLE
 
         # RPM configuration
         self._max_rpm = int(max_rpm)
@@ -57,12 +77,13 @@ class RpmWidget(Widget):
         self._tick_count = 0
 
         # for 0---.---.---.---max labels (follow the widget's font scale)
-        label_size = max(1, round(18 * self.font_scale))
-        self._label_font = load_font(
-            size=label_size, family=FontFamily.D_DIN_EXP_BOLD
+        if label_font_size is None:
+            label_font_size = max(1, round(18 * self.font_scale))
+        self._label_font = load_font_px(
+            label_font_size, label_font_family
         )  # FIXME: was 22
-        self._label_major_font = load_font(
-            size=label_size, family=FontFamily.D_DIN_EXP_BOLD
+        self._label_major_font = load_font_px(
+            label_font_size, label_font_family
         )
 
         # Cached ticks+labels layer and last-drawn segment rects: the scale
@@ -170,8 +191,8 @@ class RpmWidget(Widget):
         value_area = self._compute_value_area()
 
         # Layout inside value_area
-        padding_x = 6
-        padding_y = 2
+        padding_x = self._style.padding_x
+        padding_y = self._style.padding_y
 
         bar_left = value_area.left + padding_x
         bar_right = value_area.right - padding_x
@@ -278,8 +299,12 @@ class RpmWidget(Widget):
             tick_x = _rpm_to_x(tick_rpm)
             is_end = tick_rpm >= self._max_rpm
             is_major = is_end or ((tick_rpm % self._major_step_rpm) == 0)
-            y2 = y1 + (7 if is_major else 3)
-            width = 3 if is_major else 2
+            y2 = y1 + (
+                self._style.tick_major_len if is_major else self._style.tick_minor_len
+            )
+            width = (
+                self._style.tick_major_w if is_major else self._style.tick_minor_w
+            )
             tick_color = (
                 Color.LIGHT_RED.rgb()
                 if tick_rpm >= self._redline_rpm
@@ -295,7 +320,7 @@ class RpmWidget(Widget):
             _draw_tick(self._max_rpm, ticks_y1)
 
         # --- Labels ---
-        label_y = ticks_y1 + 6
+        label_y = ticks_y1 + self._style.label_gap
 
         # 1) Left-most label: 0
         zero_surf = self._label_font.render("0", self.antialias, Color.LIGHT_GREY.rgb())

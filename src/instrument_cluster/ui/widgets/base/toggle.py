@@ -5,7 +5,7 @@ from typing import Literal
 import pygame
 
 from ...colors import Color
-from ...utils import su
+from ...skins import active_skin
 from .button import AbstractButton, ButtonEvents, ButtonState
 
 
@@ -19,10 +19,6 @@ class Toggle(AbstractButton):
     via AbstractButton.
     """
 
-    # Pill geometry in design px (scaled with su() at render time).
-    TRACK_W = 104
-    TRACK_H = 48
-    KNOB_MARGIN = 6
 
     def __init__(
         self,
@@ -33,21 +29,29 @@ class Toggle(AbstractButton):
         *,
         pill_align: Literal["left", "center", "right"] = "right",
         pill_pad: int = 20,
-        on_color: tuple[int, int, int] = Color.BLUE.rgb(),
-        off_color: tuple[int, int, int] = Color.DROPDOWN_LIGHT_GREY.rgb(),
-        knob_color: tuple[int, int, int] = Color.WHITE.rgb(),
-        pressed_bg_color: tuple[int, int, int] | None = Color.DARKER_GREY.rgb(),
+        on_color: tuple[int, int, int] | None = None,
+        off_color: tuple[int, int, int] | None = None,
+        knob_color: tuple[int, int, int] | None = None,
+        # None disables the pressed feedback; the sentinel resolves to the
+        # palette default at construction (live palette overrides).
+        pressed_bg_color: tuple[int, int, int] | None | str = "default",
     ):
         super().__init__(rect, events, event_data)
         self._checked = bool(checked)
         self.pill_align = pill_align
         self.pill_pad = int(pill_pad)
-        self.on_color = on_color
-        self.off_color = off_color
-        self.knob_color = knob_color
+        self.on_color = Color.BLUE.rgb() if on_color is None else on_color
+        self.off_color = (
+            Color.DROPDOWN_LIGHT_GREY.rgb() if off_color is None else off_color
+        )
+        self.knob_color = Color.WHITE.rgb() if knob_color is None else knob_color
         # Fills the whole rect while pressed (like a row control's pressed
         # glow); None disables the feedback.
-        self.pressed_bg_color = pressed_bg_color
+        self.pressed_bg_color = (
+            Color.DARKER_GREY.rgb()
+            if pressed_bg_color == "default"
+            else pressed_bg_color
+        )
 
         self._rebuild_image()
 
@@ -90,8 +94,9 @@ class Toggle(AbstractButton):
 
     def _pill_rect(self) -> pygame.Rect:
         w, h = self.rect.size
-        tw, th = su(self.TRACK_W), su(self.TRACK_H)
-        pad = su(self.pill_pad)
+        style = active_skin().style.toggle
+        tw, th = style.track_w, style.track_h
+        pad = self.pill_pad
         if self.pill_align == "left":
             x = pad
         elif self.pill_align == "center":
@@ -112,7 +117,7 @@ class Toggle(AbstractButton):
         track_color = self.on_color if self._checked else self.off_color
         pygame.draw.rect(surf, track_color, pill, border_radius=pill.height // 2)
 
-        knob_r = pill.height // 2 - su(self.KNOB_MARGIN)
+        knob_r = pill.height // 2 - active_skin().style.toggle.knob_margin
         cy = pill.centery
         cx = (
             pill.right - pill.height // 2

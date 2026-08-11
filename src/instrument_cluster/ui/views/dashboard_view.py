@@ -2,19 +2,16 @@ import pygame
 from pygame.sprite import LayeredDirty
 
 from ...config import ConfigManager
-from ...core.plugin_system.plugin_layout import STATUS_STRIP_W, LayoutContext
-from ...peripherals.display import DESIGN_WIDTH
+from ...core.plugin_system.plugin_layout import LayoutContext
 from ...ui.colors import Color
-from ...ui.constants import (
-    BUTTON_HEIGHT,
-    FOOTER_BUTTONGROUP_Y,
-)
+from ...ui.icons import Icon
 from ...ui.events import (
     BUTTON_SETUP_LONGPRESSED,
     BUTTON_SETUP_PRESSED,
     BUTTON_SETUP_RELEASED,
 )
-from ...ui.utils import FontFamily, load_font, srect, su
+from ...ui.skins import active_skin
+from ...ui.utils import FontFamily, load_font_px
 from ...ui.widgets.base.button import Button, ButtonEvents
 from ...ui.widgets.slot_dots_widget import SlotDotsWidget
 from ...ui.widgets.slot_name_widget import SlotNameWidget
@@ -36,10 +33,6 @@ class DashboardView(View):
     ``update(bus, dt)`` from the main loop, which avoids the signature
     clash with ``ui_layer.update(dt)``.
     """
-
-    # Kept as a class attribute for layout tests; the value now lives in
-    # core/plugin_layout.py so gauge plugins shift by the same amount.
-    _STATUS_STRIP_W = STATUS_STRIP_W
 
     def __init__(self):
         self.ui_layer = LayeredDirty()
@@ -74,16 +67,17 @@ class DashboardView(View):
     def _apply_shifts(self):
         # The bezel status LEDs are optional (Setup toggle). With them off
         # no strip is reserved and both widget columns return to the
-        # strip-less layout (shifts 0, i.e. margins of 10 design-px on the
-        # left and 18 on the right). Gauge plugins derive their shifts from
-        # the same LayoutContext (see DashboardState.on_resume).
+        # strip-less layout (shifts 0). Gauge plugins derive their shifts
+        # from the same LayoutContext (see DashboardState.on_resume).
         layout = LayoutContext(status_lights=self.status_lights_enabled)
         self._SHIFT_L = layout.shift_l
         self._SHIFT_R = layout.shift_r
 
-        # Design-space rect of the Track widget (a plugin, but the footer
-        # buttons still align to its left edge).
-        self._TRACK_RECT = (186 + self._SHIFT_L, 454, 352, 94)
+        # Rect of the Track widget (a plugin, but the footer buttons still
+        # align to its left edge), in the skin's native px.
+        skin = active_skin().dashboard
+        x, y, w, h = skin.track_rect
+        self._TRACK_RECT = (x + self._SHIFT_L, y, w, h)
         # Left edge of the track widget; the footer buttons align to it.
         self._COLUMN_LEFT = self._TRACK_RECT[0] - self._TRACK_RECT[2] // 2
 
@@ -108,8 +102,10 @@ class DashboardView(View):
         self._init_widgets()  # rebuilds the chrome incl. the LED strips
 
     def _init_ui_elements(self):
+        skin = active_skin()
+        d = skin.dashboard
         self.setup_button = Button(
-            rect=srect(self._COLUMN_LEFT, FOOTER_BUTTONGROUP_Y, 110, BUTTON_HEIGHT),
+            rect=(self._COLUMN_LEFT, d.footer_y, d.setup_button_w, d.button_h),
             text="Setup",
             text_color=Color.WHITE.rgb(),
             text_gap=0,
@@ -120,16 +116,21 @@ class DashboardView(View):
                 released=BUTTON_SETUP_RELEASED,
                 long_pressed=BUTTON_SETUP_LONGPRESSED,
             ),
-            font=load_font(size=32, family=FontFamily.PIXEL_TYPE),
+            font=load_font_px(
+                d.setup_button_font, FontFamily[d.setup_button_font_family]
+            ),
             antialias=True,
-            icon="\ue8b8",
+            icon=Icon.SETTINGS_GEAR.glyph(),
             icon_color=Color.WHITE.rgb(),
-            icon_size=34,
+            icon_size=d.setup_button_icon,
+            icon_font=load_font_px(
+                d.setup_button_icon, FontFamily.MATERIAL_SYMBOLS
+            ),
             icon_position="center",
             icon_gap=0,
             content_align="center",
-            padding=(0, su(8), 0, 0),
-            icon_cell_width=su(34),
+            padding=(0, d.setup_button_pad_top, 0, 0),
+            icon_cell_width=d.setup_button_icon,
         )
         self.ui_layer.add(self.setup_button)
 
@@ -137,14 +138,17 @@ class DashboardView(View):
         # button to the track column's right edge (its right edge == the
         # Track widget's right edge).
         track_right = self._COLUMN_LEFT + self._TRACK_RECT[2]
-        name_left = self._COLUMN_LEFT + 120
+        name_left = self._COLUMN_LEFT + d.slot_name_left_inset
         self.slot_name = SlotNameWidget(
             rect=(
                 name_left,
-                FOOTER_BUTTONGROUP_Y,
+                d.footer_y,
                 track_right - name_left,
-                BUTTON_HEIGHT,
-            )
+                d.button_h,
+            ),
+            font_value_size=d.fonts.slot_name,
+            font_value_family=FontFamily[d.fonts.slot_name_family],
+            header_font_size=skin.style.header_font_size,
         )
         self.slot_name.set_value(self._slot_name)
         self.ui_layer.add(self.slot_name)
@@ -153,12 +157,11 @@ class DashboardView(View):
         # Bezel status LEDs at the screen edges (amber TC / blue ASM),
         # unless disabled in Setup.
         if self.status_lights_enabled:
-            strip_w = self._STATUS_STRIP_W
+            d = active_skin().dashboard
+            x, y, w, h = d.status_light_rect
             self.widget_layer.add(
-                StatusLightsWidget(rect=srect(0, 54, strip_w, 224)),
-                StatusLightsWidget(
-                    rect=srect(DESIGN_WIDTH - strip_w, 54, strip_w, 224)
-                ),
+                StatusLightsWidget(rect=(x, y, w, h)),
+                StatusLightsWidget(rect=(active_skin().width - w - x, y, w, h)),
             )
 
     def set_slot_pages(self, count: int, active: int) -> None:

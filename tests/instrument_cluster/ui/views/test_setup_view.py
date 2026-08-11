@@ -2,13 +2,8 @@ import pytest
 
 from instrument_cluster.config import ConfigManager
 from instrument_cluster.extensions import SetupEntry, runtime as extensions
-from instrument_cluster.ui.constants import (
-    HEADER_LINE_TOPLEFT,
-    SCREEN_HEIGHT,
-    SCREEN_WIDTH,
-)
+from instrument_cluster.ui.skins import active_skin
 from instrument_cluster.ui.views.setup_view import SetupView
-from instrument_cluster.ui.widgets.base.list_item import ListItem
 
 
 @pytest.fixture
@@ -67,41 +62,40 @@ def extension_entries():
 
 
 def test_rows_place_controls_on_the_grid(view):
-    row_top = ListItem.ROW_TOP
-    pitch = ListItem.ROW_PITCH
+    s = active_skin().setup
+    row_top = s.row_top
+    pitch = s.row_pitch
     # Dropdown headers and row action buttons are stretched vertically to
     # fill the row's grid cell, minus a small clearance that keeps the
     # separator lines visible (see SetupView._row_dropdown and ._row_button);
     # the brightness widget is not, and sits at the row's natural top.
-    dropdown_offset = (
-        ListItem.ROW_PITCH - ListItem.DEFAULT_HEIGHT
-    ) // 2 - ListItem.SEPARATOR_CLEARANCE
+    dropdown_offset = (s.row_pitch - s.row_height) // 2 - s.separator_clearance
 
     assert view.telemetry_mode_dropdown.rect.topleft == (
-        ListItem.DROPDOWN_X,
+        s.dropdown_x,
         row_top + 0 * pitch - dropdown_offset,
     )
     assert view.diff_reference_mode_dropdown.rect.topleft == (
-        ListItem.DROPDOWN_X,
+        s.dropdown_x,
         row_top + 2 * pitch - dropdown_offset,
     )
     # The status-lights toggle shares the stretched dropdown-header rect.
     assert view.status_lights_toggle.rect.topleft == (
-        ListItem.DROPDOWN_X,
+        s.dropdown_x,
         row_top + 3 * pitch - dropdown_offset,
     )
     assert view.wifi_button.rect.topleft == (
-        ListItem.DROPDOWN_X,
+        s.dropdown_x,
         row_top + 4 * pitch - dropdown_offset,
     )
     # BrightnessWidget centers its stepper buttons within the row band, with
     # its own small internal offset from the row's natural top.
     assert view.brightness_widget.minus_button.rect.topleft == (
-        ListItem.VALUE_X,
+        s.value_x,
         row_top + 1 * pitch + 2,
     )
     assert view.brightness_widget.plus_button.rect.topleft == (
-        ListItem.VALUE_X + 434,
+        s.value_x + 434,
         row_top + 1 * pitch + 2,
     )
 
@@ -112,8 +106,10 @@ def test_open_dropdown_menu_lists_every_option_full_row_width(view):
     # header and extending to the row's right edge — not the header's
     # narrower width, but never reaching left of it (that would cover the
     # row's caption label).
-    expected_x = ListItem.DROPDOWN_X
-    expected_width = SCREEN_WIDTH - ListItem.SEPARATOR_INSET - ListItem.DROPDOWN_X
+    skin = active_skin()
+    s = skin.setup
+    expected_x = s.dropdown_x
+    expected_width = skin.width - s.separator_inset - s.dropdown_x
 
     for dropdown in (
         view.telemetry_mode_dropdown,
@@ -139,7 +135,8 @@ def test_max_scroll_brings_the_last_rows_full_cell_into_view(view, extension_ent
     view = SetupView()
     assert view.scrollbar.is_scrollable
     last_row = view.rows.rows[-1]
-    cell_bottom = last_row.design_bottom + (ListItem.ROW_PITCH - last_row.height) / 2
+    pitch = active_skin().setup.row_pitch
+    cell_bottom = last_row.base_bottom + (pitch - last_row.height) / 2
     viewport_bottom = view.scrollbar.viewport_top + view.scrollbar.viewport_height
 
     assert cell_bottom - view.scrollbar.max_offset <= viewport_bottom
@@ -150,12 +147,14 @@ def test_scrollbar_track_has_equal_top_and_bottom_margins(view):
     # it must keep the same breathing room from the screen bottom instead of
     # running flush to the edge. Only the track shrinks — the scroll range
     # (max_offset) still spans the full viewport.
-    top_margin = ListItem.ROW_TOP - HEADER_LINE_TOPLEFT[1]
+    skin = active_skin()
+    s = skin.setup
+    top_margin = s.row_top - skin.header.line_y
     track = view.scrollbar._track_rect()
 
-    assert track.top == ListItem.ROW_TOP
-    assert SCREEN_HEIGHT - track.bottom == top_margin
-    assert view.scrollbar.viewport_rect().bottom == SCREEN_HEIGHT
+    assert track.top == s.row_top
+    assert skin.height - track.bottom == top_margin
+    assert view.scrollbar.viewport_rect().bottom == skin.height
 
 
 def test_status_lights_toggle_reflects_config_default(view):

@@ -1,8 +1,8 @@
 """RPM bar — center dial, under the speed readout."""
 
 from ..core.plugin_system.sdk import WidgetPlugin
-from ..peripherals.display import DESIGN_WIDTH
-from ..ui.utils import srect
+from ..ui.skins import active_skin
+from ..ui.utils import FontFamily
 from ..ui.widgets.rpm_widget import RpmWidget
 
 
@@ -11,5 +11,14 @@ class RpmPlugin(WidgetPlugin):
     version = "1.0.0"
 
     def build_widgets(self):
-        cx = DESIGN_WIDTH // 2
-        return [RpmWidget(rect=srect(cx, 186, 196, 74))]
+        skin = active_skin()
+        d = skin.dashboard
+        return [
+            RpmWidget(
+                rect=d.rpm_rect,
+                rpm_style=skin.style.rpm,
+                label_font_size=d.fonts.rpm_label,
+                label_font_family=FontFamily[d.fonts.rpm_label_family],
+                header_font_size=skin.style.header_font_size,
+            )
+        ]

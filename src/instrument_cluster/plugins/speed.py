@@ -1,8 +1,8 @@
 """Speed readout — center dial, top."""
 
 from ..core.plugin_system.sdk import WidgetPlugin
-from ..peripherals.display import DESIGN_WIDTH
-from ..ui.utils import srect
+from ..ui.skins import active_skin
+from ..ui.utils import FontFamily
 from ..ui.widgets.speed_widget import SpeedWidget
 
 
@@ -11,5 +11,13 @@ class SpeedPlugin(WidgetPlugin):
     version = "1.0.0"
 
     def build_widgets(self):
-        cx = DESIGN_WIDTH // 2
-        return [SpeedWidget(rect=srect(cx, 92, 220, 140))]
+        skin = active_skin()
+        d = skin.dashboard
+        return [
+            SpeedWidget(
+                rect=d.speed_rect,
+                font_value_size=d.fonts.speed,
+                font_value_family=FontFamily[d.fonts.speed_family],
+                header_font_size=skin.style.header_font_size,
+            )
+        ]

@@ -1,19 +1,18 @@
 from pygame.sprite import LayeredDirty
 
-from ...peripherals.display import DESIGN_HEIGHT, DESIGN_WIDTH
 from ...ui.colors import Color
-from ...ui.constants import HEADER_TITLE_FONT_SIZE, HEADER_TITLE_TOPLEFT
 from ...ui.events import (
     AGENT_BASIC_PRESSED,
     AGENT_BASIC_RELEASED,
     BUTTON_BACK_PRESSED,
     BUTTON_BACK_RELEASED,
 )
-from ...ui.utils import FontFamily, load_font, spos, srect
+from ...ui.skins import active_skin
+from ...ui.utils import FontFamily, load_font, su
 from ...ui.widgets.base.button import Button, ButtonEvents, ButtonGroup
 from ...ui.widgets.base.label import Label
-from ...ui.widgets.base.line import Line
 from .base import View
+from .header import header_line, header_title
 
 
 class AgentSetupView(View):
@@ -29,23 +28,15 @@ class AgentSetupView(View):
         self.ui_layer = LayeredDirty()
         self.background_color = Color.BLACK.rgb()
 
-        self._w, self._h = DESIGN_WIDTH, DESIGN_HEIGHT
+        self._w, self._h = active_skin().size
         self._feed_label = feed_label or "your game"
         self._unlocks = unlocks or "the remaining channels"
 
         self._init_ui_elements()
 
     def _init_ui_elements(self):
-        self.title_label = Label(
-            text="Full telemetry setup",
-            font=load_font(
-                size=HEADER_TITLE_FONT_SIZE, family=FontFamily.NOTOSANS_LIGHT
-            ),
-            color=Color.WHITE.rgb(),
-            pos=spos(*HEADER_TITLE_TOPLEFT),
-            center=False,
-        )
-        self.horizontal_line = Line()
+        self.title_label = header_title("Full telemetry setup")
+        self.horizontal_line = header_line()
 
         info_font = load_font(size=44, family=FontFamily.PIXEL_TYPE)
         info_lines = [
@@ -57,9 +48,9 @@ class AgentSetupView(View):
         ]
 
         self.info_labels = []
-        x = self._w // 8 - 4
-        y = self._h // 4 - 40
-        line_spacing = 32
+        x = self._w // 8 - su(4)
+        y = self._h // 4 - su(40)
+        line_spacing = su(32)
 
         for line in info_lines:
             if line == "":
@@ -69,7 +60,7 @@ class AgentSetupView(View):
                 text=line,
                 font=info_font,
                 color=Color.WHITE.rgb(),
-                pos=spos(x, y),
+                pos=(x, y),
                 center=False,
             )
             self.info_labels.append(lbl)
@@ -81,7 +72,7 @@ class AgentSetupView(View):
             text="",
             font=load_font(size=72, family=FontFamily.NOTOSANS_REGULAR),
             color=Color.WHITE.rgb(),
-            pos=spos(self._w // 2, self._h // 2 + 40),
+            pos=(self._w // 2, self._h // 2 + su(40)),
             center=True,
             antialias=True,
         )
@@ -91,26 +82,26 @@ class AgentSetupView(View):
             text="Preparing download...",
             font=status_font,
             color=Color.LIGHT_GREEN.rgb(),
-            pos=spos(self._w // 2, self._h // 2 + 130),
+            pos=(self._w // 2, self._h // 2 + su(130)),
             center=True,
         )
         self.error_label = Label(
             text="",
             font=status_font,
             color=Color.LIGHT_RED.rgb(),
-            pos=spos(self._w // 2, self._h // 2 + 130),
+            pos=(self._w // 2, self._h // 2 + su(130)),
             center=True,
         )
 
-        button_width = 220
-        button_height = 70
-        button_gap = 60
+        button_width = su(220)
+        button_height = su(70)
+        button_gap = su(60)
         total_width = button_width * 2 + button_gap
         start_x = (self._w - total_width) // 2
-        btn_y = self._h // 2 + 200
+        btn_y = self._h // 2 + su(200)
 
         self.cancel_button = Button(
-            rect=srect(start_x, btn_y, button_width, button_height),
+            rect=(start_x, btn_y, button_width, button_height),
             text="Cancel",
             text_visible=True,
             font=load_font(size=40, family=FontFamily.PIXEL_TYPE),
@@ -124,7 +115,7 @@ class AgentSetupView(View):
         # some gauges inactive. Nobody should be stuck on this screen because
         # they cannot get to their PC right now.
         self.basic_button = Button(
-            rect=srect(
+            rect=(
                 start_x + button_width + button_gap,
                 btn_y,
                 button_width,

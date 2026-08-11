@@ -7,14 +7,17 @@ import pygame
 import pytest
 
 from instrument_cluster.ui.no_signal_window import (
-    BANNER_BORDER_BOTTOM_COLOR,
-    BANNER_BORDER_TOP_COLOR,
-    BANNER_BOTTOM_COLOR,
-    BANNER_TOP_COLOR,
+    _banner_border,
+    _banner_fill,
     NoSignalWindow,
     banner_rect,
     build_banner,
 )
+
+# The palette resolves at build time now (skin-editor live preview); the
+# tests keep the old constant names as locals.
+BANNER_TOP_COLOR, BANNER_BOTTOM_COLOR = _banner_fill()
+BANNER_BORDER_TOP_COLOR, BANNER_BORDER_BOTTOM_COLOR = _banner_border()
 from instrument_cluster.ui.utils import vertical_gradient
 from instrument_cluster.ui.window_layering import WindowLayer, WindowManager
 
@@ -224,8 +227,10 @@ def test_a_dead_link_withdraws_the_stale_feed_notice(window):
 def test_the_notice_comes_back_when_the_link_recovers(window):
     """And actually repaints: its card and dimming are static sprites, so a
     return that forgot to re-dirty them would composite nothing."""
-    from instrument_cluster.ui.feed_update_window import CARD_COLOR
+    from instrument_cluster.ui.feed_update_window import _card_color
     from instrument_cluster.ui.window_layering import WindowManager
+
+    CARD_COLOR = _card_color()
 
     win, bus, manager = window
     manager.current_state = _DashboardState()

@@ -20,26 +20,26 @@ from __future__ import annotations
 
 import pygame
 
-from ..peripherals.display import DESIGN_WIDTH
 from ..signals.signal_keys import SignalKey
 from .colors import Color
-from .utils import FontFamily, load_font, su, sx, sy, vertical_gradient
+from .skins import active_skin
+from .utils import FontFamily, load_font_px, vertical_gradient
 from .window_layering import OverlayWindow, WindowLayer
 
-# Banner geometry, in design px (topleft, w, h). Full width, in the strip
-# between the Track Name / Previous Lap row and the footer — not along the
-# top edge, which would sit on top of the Fastest Lap and Speed gauges. The
-# banner must not hide the very readings it is marking as stale.
+# Banner geometry and font come from the active skin (overlays group):
+# full width, in the strip between the Track Name / Previous Lap row and
+# the footer — not along the top edge, which would sit on top of the
+# Fastest Lap and Speed gauges. The banner must not hide the very readings
+# it is marking as stale.
 #
-# It runs from 514 to 614, clear of everything either side: the gear widget's
-# rect ends at 504, and the footer row's first ink is at 630. Overlapping the
-# gear digit was tried and dropped — the band has to be legible at a glance
-# without costing a reading, and the strip is tall enough without borrowing
-# from the gauge above it.
-BANNER_RECT = (0, 514, DESIGN_WIDTH, 100)
+# On the 1280 skin it runs from 514 to 614, clear of everything either
+# side: the gear widget's rect ends at 504, and the footer row's first ink
+# is at 630. Every skin must keep that relationship — the band lives in
+# the gap its dashboard layout leaves free. Overlapping the gear digit was
+# tried and dropped — the band has to be legible at a glance without
+# costing a reading, and the strip is tall enough without borrowing from
+# the gauge above it.
 BANNER_TEXT = "NO SIGNAL"
-BANNER_FONT_SIZE = 56
-BANNER_FONT_FAMILY = FontFamily.D_DIN_EXP_BOLD
 
 # Same ramp *and* the same colours the gauge panels use (see
 # ui/utils.vertical_gradient and the tyre temp widget): dark grey at the top
@@ -48,8 +48,10 @@ BANNER_FONT_FAMILY = FontFamily.D_DIN_EXP_BOLD
 # Keeping the band neutral is what ties it to the rest of the dash and leaves
 # the red border rule below as the single accent, rather than competing with
 # it across 1280 px.
-BANNER_TOP_COLOR = Color.DARK_GREY.rgb()
-BANNER_BOTTOM_COLOR = Color.BLACK.rgb()
+# Resolved inside build_banner so palette overrides (skin editor)
+# reach a rebuilt banner.
+def _banner_fill() -> tuple:
+    return Color.DARK_GREY.rgb(), Color.BLACK.rgb()
 
 # Thin outline so the band has a defined edge instead of bleeding into the
 # panel. It ramps rather than being one flat colour because the two rules do
@@ -61,8 +63,10 @@ BANNER_BOTTOM_COLOR = Color.BLACK.rgb()
 # low-chroma step over the fill; a second saturated line up there would box
 # the band in instead of ruling it off, and would split the eye between two
 # reds 100 px apart.
-BANNER_BORDER_TOP_COLOR = Color.GREY.rgb()
-BANNER_BORDER_BOTTOM_COLOR = Color.LIGHT_RED.rgb()
+def _banner_border() -> tuple:
+    return Color.GREY.rgb(), Color.LIGHT_RED.rgb()
+
+
 BANNER_BORDER_WIDTH = 2
 
 # Rounded on the top corners only — the band stops just short of the footer
@@ -77,19 +81,18 @@ BANNER_CORNER_RADIUS = 2
 # band by ~18%. The clear value only needs alpha 0; its RGB is irrelevant,
 # so it takes the palette's black.
 _MASK_OPAQUE = (255, 255, 255, 255)
-_MASK_CLEAR = (*Color.BLACK.rgb(), 0)
+_MASK_CLEAR = (0, 0, 0, 0)
 
 
 def banner_rect() -> pygame.Rect:
-    """Screen-space rect of the banner."""
-    x, y, w, h = BANNER_RECT
-    return pygame.Rect(sx(x), sy(y), sx(w), sy(h))
+    """Screen-space rect of the banner (native px from the active skin)."""
+    return pygame.Rect(active_skin().overlays.no_signal_rect)
 
 
 def build_banner(size: tuple[int, int]) -> pygame.Surface:
     """Gradient band, rounded at the top, with the warning text centred."""
     width, height = size
-    radius = max(1, su(BANNER_CORNER_RADIUS))
+    radius = BANNER_CORNER_RADIUS
 
     # Mask first: opaque where the band shows, clear outside the rounded top
     # corners. Multiplying the gradient through it keeps those corners
@@ -103,13 +106,15 @@ def build_banner(size: tuple[int, int]) -> pygame.Surface:
         border_top_left_radius=radius,
         border_top_right_radius=radius,
     )
+    fill_top, fill_bottom = _banner_fill()
     banner.blit(
-        vertical_gradient(size, BANNER_TOP_COLOR, BANNER_BOTTOM_COLOR),
+        vertical_gradient(size, fill_top, fill_bottom),
         (0, 0),
         special_flags=pygame.BLEND_RGB_MULT,
     )
 
-    font = load_font(size=BANNER_FONT_SIZE, family=BANNER_FONT_FAMILY)
+    o = active_skin().overlays
+    font = load_font_px(o.no_signal_font, FontFamily[o.no_signal_font_family])
     text = font.render(BANNER_TEXT, True, Color.WHITE.rgb())
     banner.blit(text, text.get_rect(center=(width // 2, height // 2)))
 
@@ -117,7 +122,7 @@ def build_banner(size: tuple[int, int]) -> pygame.Surface:
     # so the left/right sides land on the screen edges and it reads as a top
     # and bottom rule. Same mask trick as the corners: the outline is drawn
     # opaque, then its own gradient is multiplied through it.
-    width_px = max(1, su(BANNER_BORDER_WIDTH))
+    width_px = BANNER_BORDER_WIDTH
     outline = pygame.Surface(size, pygame.SRCALPHA)
     pygame.draw.rect(
         outline,
@@ -135,8 +140,9 @@ def build_banner(size: tuple[int, int]) -> pygame.Surface:
     outline.fill(_MASK_CLEAR, side)
     outline.fill(_MASK_CLEAR, side.move(width - width_px, 0))
 
+    border_top, border_bottom = _banner_border()
     outline.blit(
-        vertical_gradient(size, BANNER_BORDER_TOP_COLOR, BANNER_BORDER_BOTTOM_COLOR),
+        vertical_gradient(size, border_top, border_bottom),
         (0, 0),
         special_flags=pygame.BLEND_RGB_MULT,
     )

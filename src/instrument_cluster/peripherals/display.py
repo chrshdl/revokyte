@@ -1,26 +1,34 @@
-"""Display profiles and the render/input bridge between the fixed *logical*
-design resolution and the *physical* panel the cluster runs on.
+"""Display profiles and the render/input bridge between the *logical*
+render surface and the *physical* panel the cluster runs on.
 
-The whole HMI is laid out against a single logical design resolution of
-``1280 x 720`` (landscape). Each supported panel is described by a
-:class:`DisplayProfile` that knows how to:
+Every supported panel renders at its **native** resolution: the HMI's
+geometry comes from a per-resolution skin (``ui/skins/``) matching the
+profile's ``logical_size``, so nothing is stretched at present time. Each
+panel is described by a :class:`DisplayProfile` that knows how to:
 
 * create the on-screen surface (GPU vs. software),
-* present the logical surface onto the physical panel (rotate and/or scale),
+* present the logical surface onto the physical panel (rotation only —
+  no resampling on any shipped profile),
 * map raw input events back into logical coordinates.
 
 Supported panels:
 
-* **Raspberry Pi Display 2** – 720 x 1280 portrait panel mounted in landscape.
-  The logical surface is rotated 270 deg onto the panel via the GPU renderer.
-* **Waveshare 7" DSI** – 1024 x 600 landscape panel, rendered natively (no
-  rotation).
-* **Waveshare 5" DSI** – 800 x 480 landscape panel, rendered natively (no
-  rotation).
-* **Dev** – a resizable desktop window (also the PC app). The window opens at
-  1280 x 720 and pygame's SCALED mode stretches the logical surface to
+* **Raspberry Pi Display 2** – 720 x 1280 portrait panel mounted in
+  landscape. Logical 1280 x 720, rotated 270 deg onto the panel by the GPU
+  renderer (1:1 pixels, no resampling).
+* **Waveshare 7" DSI** – 1024 x 600 landscape panel, rendered natively.
+* **Waveshare 5" DSI** – 800 x 480 landscape panel, rendered natively.
+* **Dev** – a resizable desktop window (also the PC app). The window opens
+  at 1280 x 720 and pygame's SCALED mode stretches the logical surface to
   whatever size the user drags it to (aspect preserved, input mapped back
-  automatically).
+  automatically). Set ``display`` in the config to a panel profile name to
+  preview that panel's skin in a native-sized window.
+
+``DESIGN_WIDTH``/``DESIGN_HEIGHT`` (1280 x 720) survive as the
+**custom-dashboard spec space**: user layouts are authored against it on
+every panel (see ``ui/widgets/registry.py``), and ``scale_factors()`` /
+``scale_uniform()`` map it to the active logical size. Skinned code never
+uses them.
 """
 
 from __future__ import annotations
@@ -270,13 +278,15 @@ class Display:
     """Owns the on-screen surface and presents the logical surface to it.
 
     Constructing a Display resolves the physical panel to drive (from the
-    optional ``configured`` profile name, otherwise auto-detected) and registers
-    it as the process-wide active display, so input mapping and the scaling
-    helpers can translate physical input into logical 1280x720 coordinates.
-    Call :meth:`close` on teardown to clear that registration.
+    optional ``configured`` profile name, otherwise auto-detected) and
+    registers it as the process-wide active display, so input mapping can
+    translate physical input into logical coordinates and ``active_skin()``
+    resolves the matching per-resolution skin. Call :meth:`close` on
+    teardown to clear that registration.
 
-    Callers render every frame into :attr:`surface` (a logical 1280x720
-    surface) and then call :meth:`present` to push it to the panel.
+    Callers render every frame into :attr:`surface` (at the profile's
+    native logical size) and then call :meth:`present` to push it to the
+    panel.
     """
 
     def __init__(self, configured: str | None = None):

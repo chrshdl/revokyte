@@ -5,7 +5,15 @@ from pygame.sprite import DirtySprite
 
 from ...core.vehicle.vehicle_bus import VehicleBus
 from ..colors import Color
-from ..utils import FontFamily, load_font, vertical_gradient
+from ..skins import active_skin
+from ..utils import FontFamily, load_font_px, vertical_gradient
+
+# Spec-space (1280x720) header caption size, used when no explicit
+# header_font_size is given: the custom-dashboard path authors in spec
+# space and its font_scale carries both the rect ratio and the panel scale
+# (see registry.py). Skinned construction passes the active skin's
+# style.header_font_size instead.
+_SPEC_HEADER_FONT_SIZE = 32
 
 
 class Widget(DirtySprite, ABC):
@@ -14,25 +22,27 @@ class Widget(DirtySprite, ABC):
         rect: tuple[int, int, int, int],
         header_text: str,
         anchor: str = "center",  # "topleft" or "center"
-        header_margin: int = 8,  # brings `header_text` down by x pixels
+        header_margin: int | None = None,  # brings `header_text` down by x px
         font_value_size: int = 32,
-        font_value_family: FontFamily = FontFamily.D_DIN_EXP_BOLD,
+        font_value_family: FontFamily | None = None,
         show_border: bool = True,
         antialias: bool = True,
         *,
-        bg_color: tuple[int, int, int] = Color.BLACK.rgb(),
-        text_color: tuple[int, int, int] = Color.WHITE.rgb(),
+        header_font_size: int | None = None,
+        bg_color: tuple[int, int, int] | None = None,
+        text_color: tuple[int, int, int] | None = None,
         # Custom-layout text color for the *value only* — the header
         # always renders in text_color (white). None keeps text_color.
         value_color: tuple[int, int, int] | None = None,
         border_color: tuple[int, int, int] | None = None,
-        border_width: int = 2,
-        border_radius: int = 4,
+        border_width: int | None = None,
+        border_radius: int | None = None,
         bg_gradient_top: tuple[int, int, int] | None = None,
         bg_gradient_bottom: tuple[int, int, int] | None = None,
         font_scale: float = 1.0,
     ):
         super().__init__()
+        style = active_skin().style
         px, py, self.w, self.h = rect
 
         # place widget based on anchor
@@ -46,21 +56,32 @@ class Widget(DirtySprite, ABC):
             raise ValueError(f"Unsupported anchor: {anchor}")
 
         # Typography follows the widget's size: custom dashboard layouts
-        # build widgets at arbitrary rects with font_scale = rect size /
-        # design size, so a resized gauge reads proportionally — matching
-        # the builder's stretched preview. 1.0 everywhere else.
+        # build widgets at arbitrary rects with font_scale = (rect size /
+        # spec size) * panel scale, so a resized gauge reads proportionally —
+        # matching the builder's stretched preview. 1.0 everywhere else;
+        # sizes are then native pixels straight from the skin.
         self.font_scale = float(font_scale)
         font_value_size = max(1, round(font_value_size * self.font_scale))
-        header_size = max(1, round(32 * self.font_scale))
-        self.font_header = load_font(size=header_size, family=FontFamily.PIXEL_TYPE)
-        self.font_value = load_font(size=font_value_size, family=font_value_family)
+        if header_font_size is None:
+            header_font_size = max(
+                1, round(_SPEC_HEADER_FONT_SIZE * self.font_scale)
+            )
+        header_family = FontFamily[style.header_font_family]
+        self.font_header = load_font_px(header_font_size, header_family)
+        if font_value_family is None:
+            font_value_family = FontFamily.D_DIN_EXP_BOLD
+        self.font_value = load_font_px(font_value_size, font_value_family)
         self.font_value_size = font_value_size
         self.header_text = header_text
-        self.value_offset_y = 4
-        self.bg_color = bg_color
-        self.text_color = text_color
+        self.value_offset_y = style.value_offset_y
+        # Palette colors resolve at construction (not signature defaults),
+        # so a rebuilt view sees live palette overrides (skin editor).
+        self.bg_color = Color.BLACK.rgb() if bg_color is None else bg_color
+        self.text_color = Color.WHITE.rgb() if text_color is None else text_color
         self.value_color = value_color
-        self.header_margin = header_margin
+        self.header_margin = (
+            style.header_margin if header_margin is None else header_margin
+        )
         self.antialias = antialias
 
         # create gradient surface or None
@@ -78,8 +99,12 @@ class Widget(DirtySprite, ABC):
         else:
             self.border_color = Color.LIGHT_GREY.rgb()
 
-        self.border_width = border_width
-        self.border_radius = border_radius
+        self.border_width = (
+            style.border_width if border_width is None else border_width
+        )
+        self.border_radius = (
+            style.border_radius if border_radius is None else border_radius
+        )
         self.show_border = show_border
 
         self.image = pygame.Surface((self.w, self.h), pygame.SRCALPHA).convert_alpha()
@@ -91,7 +116,7 @@ class Widget(DirtySprite, ABC):
         # _last_value_str (initial state, or invalidated after set_header)
         # overrides the skip so the value is repainted onto the fresh base.
         self._last_raw_value = None
-        self.digit_gap = -2
+        self.digit_gap = style.digit_gap
 
         # cache for digits keyed by
         # (font_id, antialias, color, chars, punct_scale)

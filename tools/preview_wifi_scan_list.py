@@ -47,6 +47,7 @@ CONNECTED_SSID = "Pit Wall 5G"
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--display", default="dev", help="display profile")
     parser.add_argument(
         "--boot",
         action="store_true",
@@ -62,7 +63,7 @@ def main() -> None:
     args = parser.parse_args()
 
     pygame.init()
-    display = Display("dev")
+    display = Display(args.display)
     surface = display.surface
 
     # Mirror WifiSetupState: Back when entered from settings, Skip on the

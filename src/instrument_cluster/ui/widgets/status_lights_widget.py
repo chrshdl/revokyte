@@ -3,7 +3,7 @@ from pygame.sprite import DirtySprite
 
 from ...core.vehicle.vehicle_bus import VehicleBus
 from ..colors import Color
-from ..utils import su
+from ..skins import active_skin
 
 
 class StatusLightsWidget(DirtySprite):
@@ -18,10 +18,6 @@ class StatusLightsWidget(DirtySprite):
     """
 
     _HOLD_S = 0.12
-    # Design-px between adjacent dot centers. The column stays centered in
-    # the strip rect; keep spacing + radius within half the rect height or
-    # the outer dots clip.
-    _DOT_SPACING = 90  # 75
 
     def __init__(self, rect: tuple[int, int, int, int]):
         super().__init__()
@@ -29,8 +25,12 @@ class StatusLightsWidget(DirtySprite):
         self.image = pygame.Surface((w, h), pygame.SRCALPHA).convert_alpha()
         self.rect = self.image.get_rect(topleft=(x, y))
 
-        self._radius = su(13)
-        step = su(self._DOT_SPACING)
+        # The column stays centered in the strip rect; the skin must keep
+        # spacing + radius within half the rect height or the outer dots
+        # clip.
+        skin = active_skin().dashboard
+        self._radius = skin.status_light_dot_radius
+        step = skin.status_light_dot_spacing
         self._centers = [(w // 2, h // 2 + dy) for dy in (-step, 0, step)]
 
         # LED sprites are pre-rendered once; pygame has no radial gradient

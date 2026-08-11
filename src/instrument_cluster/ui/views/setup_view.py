@@ -8,15 +8,7 @@ from ...extensions import runtime as extensions
 from ...peripherals.display import is_raspberry_pi
 from ...telemetry.mode import DiffReferenceMode, TelemetryMode
 from ...ui.colors import Color
-from ...ui.constants import (
-    HEADER_BACKBUTTON_POSITION,
-    HEADER_BACKBUTTON_SIZE,
-    HEADER_LINE_TOPLEFT,
-    HEADER_TITLE_FONT_SIZE,
-    HEADER_TITLE_TOPLEFT,
-    SCREEN_HEIGHT,
-    SCREEN_WIDTH,
-)
+from ...ui.icons import Icon
 from ...ui.events import (
     BUTTON_BACK_PRESSED,
     BUTTON_BACK_RELEASED,
@@ -32,16 +24,17 @@ from ...ui.events import (
     WIFI_SETUP_PRESSED,
     WIFI_SETUP_RELEASED,
 )
-from ...ui.utils import FontFamily, load_font, spos, srect, su, sy
+from ...ui.skins import active_skin
+from ...ui.utils import FontFamily, load_font_px, su
 from ...ui.widgets.base.button import Button, ButtonEvents
 from ...ui.widgets.base.dropdown import Dropdown
 from ...ui.widgets.base.label import Label
-from ...ui.widgets.base.line import Line
 from ...ui.widgets.base.list_item import ListItem, ListItemGroup
 from ...ui.widgets.base.scrollbar import Scrollbar
 from ...ui.widgets.base.toggle import Toggle
 from ...ui.widgets.settings.brightness_widget import BrightnessWidget
 from .base import View
+from .header import corner_button, header_line, header_title
 
 
 class SetupView(View):
@@ -79,25 +72,25 @@ class SetupView(View):
             self.app_version = "dev"
 
     def _row_label(self, text: str) -> Label:
-        """Standard row caption at row-local (LABEL_X, LABEL_DY)."""
+        """Standard row caption at row-local (label_x, label_dy)."""
+        s = active_skin().setup
         return Label(
             text=text,
-            font=load_font(
-                size=ListItem.ROW_FONT_SIZE, family=FontFamily.NOTOSANS_REGULAR
-            ),
+            font=load_font_px(s.row_font_size, FontFamily[s.row_font_family]),
             color=Color.WHITE.rgb(),
-            pos=spos(ListItem.LABEL_X, ListItem.LABEL_DY),
+            pos=(s.label_x, s.label_dy),
             center=False,
             bg_color=Color.BLACK.rgb(),
         )
 
     def _row_icon(self, glyph: str) -> Label:
-        """Material-symbols row icon, centered in the icon cell at ICON_X."""
+        """Material-symbols row icon, centered in the icon cell at icon_x."""
+        s = active_skin().setup
         return Label(
             text=glyph,
-            font=load_font(size=ListItem.ICON_SIZE, family=FontFamily.MATERIAL_SYMBOLS),
+            font=load_font_px(s.icon_size, FontFamily.MATERIAL_SYMBOLS),
             color=Color.WHITE.rgb(),
-            pos=spos(ListItem.ICON_X, ListItem.DEFAULT_HEIGHT / 2 + 4),
+            pos=(s.icon_x, s.row_height // 2 + 4),
             center=True,
             bg_color=Color.BLACK.rgb(),
             antialias=True,
@@ -106,36 +99,39 @@ class SetupView(View):
     def _row_button(self, text: str, icon: str, events: ButtonEvents) -> Button:
         """Standard row action button, styled like a closed dropdown header:
         same rect (DROPDOWN_X to the row's right edge, stretched to touch
-        the separator lines), text on the VALUE_X column, the arrow icon in
+        the separator lines), text on the value_x column, the arrow icon in
         the chevron's spot, and the dropdown's pressed-grey glow instead of
-        a border. Stops SEPARATOR_CLEARANCE short of the separator lines so
+        a border. Stops separator_clearance short of the separator lines so
         the pressed fill never covers them."""
-        width = SCREEN_WIDTH - ListItem.SEPARATOR_INSET - ListItem.DROPDOWN_X
-        gap = ListItem.ROW_PITCH - ListItem.DEFAULT_HEIGHT
-        clearance = ListItem.SEPARATOR_CLEARANCE
+        skin = active_skin()
+        s = skin.setup
+        width = skin.width - s.separator_inset - s.dropdown_x
+        gap = s.row_pitch - s.row_height
+        clearance = s.separator_clearance
         return Button(
-            rect=srect(
-                ListItem.DROPDOWN_X,
-                -gap / 2 + clearance,
+            rect=(
+                s.dropdown_x,
+                round(-gap / 2 + clearance),
                 width,
-                ListItem.DEFAULT_HEIGHT + gap - 2 * clearance,
+                round(s.row_height + gap - 2 * clearance),
             ),
             text=text,
             text_visible=True,
-            font=load_font(
-                size=ListItem.ROW_FONT_SIZE, family=FontFamily.NOTOSANS_REGULAR
-            ),
+            font=load_font_px(s.row_font_size, FontFamily[s.row_font_family]),
             antialias=True,
             events=events,
             icon=icon,
-            icon_size=46,
+            icon_size=s.chevron_icon_size,
+            icon_font=load_font_px(
+                s.chevron_icon_size, FontFamily.MATERIAL_SYMBOLS
+            ),
             icon_offset_y=su(4),
             icon_position="right",
             icon_fixed_right=True,
             text_color=Color.WHITE.rgb(),
             content_align="left",
             padding=(
-                su(ListItem.VALUE_X - ListItem.DROPDOWN_X),
+                s.value_x - s.dropdown_x,
                 su(20),
                 su(20),
                 su(20),
@@ -148,17 +144,19 @@ class SetupView(View):
     def _row_toggle(self, checked: bool, events: ButtonEvents) -> Toggle:
         """Standard row toggle switch, sharing the stretched rect of a
         closed dropdown header (whole control column as touch target, same
-        pressed-grey glow, same SEPARATOR_CLEARANCE) with the switch pill
+        pressed-grey glow, same separator_clearance) with the switch pill
         right-aligned where the chevron sits."""
-        width = SCREEN_WIDTH - ListItem.SEPARATOR_INSET - ListItem.DROPDOWN_X
-        gap = ListItem.ROW_PITCH - ListItem.DEFAULT_HEIGHT
-        clearance = ListItem.SEPARATOR_CLEARANCE
+        skin = active_skin()
+        s = skin.setup
+        width = skin.width - s.separator_inset - s.dropdown_x
+        gap = s.row_pitch - s.row_height
+        clearance = s.separator_clearance
         return Toggle(
-            rect=srect(
-                ListItem.DROPDOWN_X,
-                -gap / 2 + clearance,
+            rect=(
+                s.dropdown_x,
+                round(-gap / 2 + clearance),
                 width,
-                ListItem.DEFAULT_HEIGHT + gap - 2 * clearance,
+                round(s.row_height + gap - 2 * clearance),
             ),
             checked=checked,
             events=events,
@@ -167,64 +165,47 @@ class SetupView(View):
     def _row_dropdown(
         self, options, selected, events: ButtonEvents, labels=None
     ) -> Dropdown:
-        """Standard row dropdown at row-local (DROPDOWN_X, 0), extending to
+        """Standard row dropdown at row-local (dropdown_x, 0), extending to
         the row's right edge (matching the separator lines) with no margin.
         Also stretched vertically to fill the row's grid cell (rather than
         leaving the row's natural top/bottom gap as black bands), stopping
-        SEPARATOR_CLEARANCE short of the separator lines so the closed
+        separator_clearance short of the separator lines so the closed
         background and pressed fill never cover them — the open menu's
         option rows share this same sizing automatically, see
         Dropdown.get_option_rects()."""
-        width = SCREEN_WIDTH - ListItem.SEPARATOR_INSET - ListItem.DROPDOWN_X
-        gap = ListItem.ROW_PITCH - ListItem.DEFAULT_HEIGHT
-        clearance = ListItem.SEPARATOR_CLEARANCE
+        skin = active_skin()
+        s = skin.setup
+        width = skin.width - s.separator_inset - s.dropdown_x
+        gap = s.row_pitch - s.row_height
+        clearance = s.separator_clearance
         return Dropdown(
-            rect=srect(
-                ListItem.DROPDOWN_X,
-                -gap / 2 + clearance,
+            rect=(
+                s.dropdown_x,
+                round(-gap / 2 + clearance),
                 width,
-                ListItem.DEFAULT_HEIGHT + gap - 2 * clearance,
+                round(s.row_height + gap - 2 * clearance),
             ),
             options=options,
             events=events,
             labels=labels,
-            font=load_font(
-                size=ListItem.ROW_FONT_SIZE, family=FontFamily.NOTOSANS_REGULAR
-            ),
+            font=load_font_px(s.row_font_size, FontFamily[s.row_font_family]),
             selected_index=options.index(selected),
-            menu_pitch=sy(ListItem.ROW_PITCH),
-            text_left_pad=ListItem.VALUE_X - ListItem.DROPDOWN_X,
-            menu_separator_color=ListItem.SEPARATOR_COLOR,
-            menu_separator_width=ListItem.SEPARATOR_WIDTH,
+            menu_pitch=s.row_pitch,
+            text_left_pad=s.value_x - s.dropdown_x,
+            menu_separator_color=ListItem.separator_color(),
+            menu_separator_width=s.separator_width,
         )
 
     def _init_ui_elements(self):
-        self.title_label = Label(
-            text="System settings",
-            font=load_font(
-                size=HEADER_TITLE_FONT_SIZE, family=FontFamily.NOTOSANS_LIGHT
-            ),
-            color=Color.WHITE.rgb(),
-            pos=spos(*HEADER_TITLE_TOPLEFT),
-            center=False,
-        )
-        self.back_button = Button(
-            rect=srect(*HEADER_BACKBUTTON_POSITION, *HEADER_BACKBUTTON_SIZE),
-            text="x",
-            text_color=Color.WHITE.rgb(),
-            text_visible=False,
+        self.title_label = header_title("System settings")
+        self.back_button = corner_button(
+            icon=Icon.BACK.glyph(),
             events=ButtonEvents(
                 pressed=BUTTON_BACK_PRESSED,
                 released=BUTTON_BACK_RELEASED,
             ),
-            font=load_font(size=50, family=FontFamily.NOTOSANS_REGULAR),
-            antialias=True,
-            icon="",
-            icon_color=Color.WHITE.rgb(),
-            icon_size=54,
-            icon_position="center",
         )
-        self.horizontal_line = Line()
+        self.horizontal_line = header_line()
 
         config = ConfigManager.get_config()
         # Desktop builds have no proxy installer, so only feeds that can be
@@ -241,7 +222,7 @@ class SetupView(View):
                 selected=TELEMETRY_MODE_SELECTED,
             ),
         )
-        self.brightness_widget = BrightnessWidget(x=ListItem.VALUE_X)
+        self.brightness_widget = BrightnessWidget(x=active_skin().setup.value_x)
         self.diff_reference_mode_dropdown = self._row_dropdown(
             options=self.DIFF_REFERENCE_OPTIONS,
             selected=DiffReferenceMode(config.diff_reference_mode),
@@ -267,7 +248,7 @@ class SetupView(View):
         # the dashboard itself — there is no slot row in Setup.
         self.wifi_button = self._row_button(
             text="Wi-Fi Setup",
-            icon="\ue5cc",
+            icon=Icon.CHEVRON_RIGHT.glyph(),
             events=ButtonEvents(
                 pressed=WIFI_SETUP_PRESSED,
                 released=WIFI_SETUP_RELEASED,
@@ -288,15 +269,17 @@ class SetupView(View):
         telemetry_label = "Telemetry Mode"
         if config.telemetry_mode != TelemetryMode.DEMO.value and stale is not None:
             telemetry_label = "Telemetry (update)"
-        row_contents = [("\ue51e", telemetry_label, self.telemetry_mode_dropdown)]
-        if on_pi:
-            row_contents.append(("\ue518", "Brightness", self.brightness_widget))
-        row_contents += [
-            ("\ue425", "Reference Lap", self.diff_reference_mode_dropdown),
-            ("\ue0f0", "Status Lights", self.status_lights_toggle),
+        row_contents = [
+            (Icon.TELEMETRY_MODE.glyph(), telemetry_label, self.telemetry_mode_dropdown)
         ]
         if on_pi:
-            row_contents.append(("\ue63e", "Network", self.wifi_button))
+            row_contents.append((Icon.BRIGHTNESS.glyph(), "Brightness", self.brightness_widget))
+        row_contents += [
+            (Icon.REFERENCE_LAP.glyph(), "Reference Lap", self.diff_reference_mode_dropdown),
+            (Icon.STATUS_LIGHTS.glyph(), "Status Lights", self.status_lights_toggle),
+        ]
+        if on_pi:
+            row_contents.append((Icon.NETWORK.glyph(), "Network", self.wifi_button))
         for entry in extensions.setup_entries:
             text = (
                 entry.button_text()
@@ -309,7 +292,7 @@ class SetupView(View):
                     entry.label,
                     self._row_button(
                         text=text,
-                        icon="\ue5cc",
+                        icon=Icon.CHEVRON_RIGHT.glyph(),
                         events=ButtonEvents(
                             pressed=entry.pressed,
                             released=entry.released,
@@ -317,9 +300,10 @@ class SetupView(View):
                     ),
                 )
             )
+        s = active_skin().setup
         self.rows = ListItemGroup(
             ListItem(
-                y=ListItem.ROW_TOP + i * ListItem.ROW_PITCH,
+                y=s.row_top + i * s.row_pitch,
                 widgets=[self._row_icon(icon), self._row_label(text), control],
             )
             for i, (icon, text, control) in enumerate(row_contents)
@@ -330,13 +314,14 @@ class SetupView(View):
             self.diff_reference_mode_dropdown,
         ]
 
+        skin = active_skin()
         self.scrollbar = Scrollbar(
-            viewport_top=ListItem.ROW_TOP,
-            viewport_height=SCREEN_HEIGHT - ListItem.ROW_TOP,
+            viewport_top=s.row_top,
+            viewport_height=skin.height - s.row_top,
             content_height=self.rows.content_height,
             # Keep the track the same distance off the screen bottom as its
             # top sits below the header line.
-            track_margin_bottom=ListItem.ROW_TOP - HEADER_LINE_TOPLEFT[1],
+            track_margin_bottom=s.row_top - skin.header.line_y,
         )
 
         self.ui_layer.add(self.title_label, self.back_button)

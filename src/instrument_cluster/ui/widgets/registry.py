@@ -15,8 +15,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from ..constants import LAP_WIDGET_HEIGHT, LAP_WIDGET_Y
+from ...peripherals.display import scale_uniform
 from ..utils import srect
+
+# Spec-space footer-row geometry (the 1280x720 standard layout the spec
+# rects mirror): footer y = 720 - 72 - 2*6, lap widget rides 6 above it.
+_LAP_WIDGET_Y = 630
+_LAP_WIDGET_HEIGHT = 78
 from .current_lap_time_widget import CurrentLapTimeWidget
 from .delta_time_widget import DeltaTimeWidget
 from .fastest_lap_time_widget import FastestLapTimeWidget
@@ -64,8 +69,13 @@ class RegistryEntry:
         ignored otherwise; ``extra`` passes further constructor kwargs
         through (the thumbnail tool renders value-only masks with
         ``header_text=""``)."""
+        # Widget classes take native pixel sizes (skinned construction
+        # passes them straight from the active skin), so this spec-space
+        # path composes the panel scale into font_scale: the rect is
+        # scaled by srect in the factory, the fonts by this factor against
+        # the widget classes' spec-space (1280x720) defaults.
         _, _, dw, dh = self.default_rect
-        scale = min(bbox[2] / dw, bbox[3] / dh)
+        scale = min(bbox[2] / dw, bbox[3] / dh) * scale_uniform()
         merged = {} if border is None else {"show_border": border}
         if color and self.colorable:
             rgb = _hex_rgb(color)
@@ -164,7 +174,7 @@ REGISTRY: dict[str, RegistryEntry] = {
     ),
     "delta": RegistryEntry(_centered(DeltaTimeWidget), (926, 233, 336, 150)),
     "lap-counter": RegistryEntry(
-        _topleft(LapWidget), (1172, LAP_WIDGET_Y, 90, LAP_WIDGET_HEIGHT),
+        _topleft(LapWidget), (1172, _LAP_WIDGET_Y, 90, _LAP_WIDGET_HEIGHT),
         colorable=True,
     ),
     "tire-temps": RegistryEntry(_tire_grid, (1014, 22, 248, 188)),

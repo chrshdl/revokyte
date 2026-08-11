@@ -29,6 +29,7 @@ DEFAULT_TEXT = "Please wait ..."
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--display", default="dev", help="display profile")
     parser.add_argument(
         "--text", default=DEFAULT_TEXT, help="status message to display"
     )
@@ -38,7 +39,7 @@ def main() -> None:
     args = parser.parse_args()
 
     pygame.init()
-    display = Display("dev")
+    display = Display(args.display)
     surface = display.surface
 
     # Mirror WifiConnectingState: status phase with the header shown. Its

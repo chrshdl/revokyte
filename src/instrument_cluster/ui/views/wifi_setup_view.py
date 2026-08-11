@@ -21,17 +21,7 @@ import pygame
 from ...core.system.wifi_manager import Network
 from ...peripherals.display import active_profile
 from ..colors import Color
-from ..constants import (
-    HEADER_BACKBUTTON_POSITION,
-    HEADER_BACKBUTTON_SIZE,
-    HEADER_TITLE_FONT_SIZE,
-    HEADER_TITLE_TOPLEFT,
-    SCREEN_HEIGHT,
-    SCREEN_WIDTH,
-    WIFI_KEY_GAP,
-    WIFI_KEY_W,
-    WIFI_SPECIAL_W,
-)
+from ..icons import Icon
 from ..events import (
     BUTTON_BACK_PRESSED,
     BUTTON_BACK_RELEASED,
@@ -42,20 +32,27 @@ from ..events import (
     WIFI_SKIP_PRESSED,
     WIFI_SKIP_RELEASED,
 )
-from ..utils import FontFamily, load_font, spos, srect, su, sx, sy
+from ..skins import active_skin
+from ..utils import FontFamily, load_font, load_font_px, su
 from ..widgets.base.button import Button, ButtonEvents
 from ..widgets.base.label import Label
-from ..widgets.base.line import Line
 from ..widgets.base.textfield import TextField
 from ..widgets.wifi import WifiKeyboard, WifiNetworkList
 from .base import View
+from .header import corner_button, corner_button_rect, header_line, header_title
 
-# Password-row geometry: field plus delete key span exactly the keyboard's
-# width (the ten-key rows are centered on the screen).
-_KB_LEFT = (SCREEN_WIDTH - (10 * WIFI_KEY_W + 9 * WIFI_KEY_GAP)) / 2
-_PW_ROW_Y = 188
-_PW_ROW_H = 84
-_DEL_X = SCREEN_WIDTH - _KB_LEFT - WIFI_SPECIAL_W
+
+def _kb_left() -> float:
+    # Password-row geometry: field plus delete key span exactly the
+    # keyboard's width (the ten-key rows are centered on the screen).
+    skin = active_skin()
+    kb = skin.keyboard
+    return (skin.width - (10 * kb.key_w + 9 * kb.gap)) / 2
+
+
+def _del_x() -> float:
+    skin = active_skin()
+    return skin.width - _kb_left() - skin.keyboard.special_w
 
 
 class WifiSetupView(View):
@@ -86,16 +83,8 @@ class WifiSetupView(View):
 
         self._connected_ssid: str = ""
 
-        self._line = Line()
-        self._title = Label(
-            text=self._DEFAULT_TITLE,
-            font=load_font(
-                size=HEADER_TITLE_FONT_SIZE, family=FontFamily.NOTOSANS_LIGHT
-            ),
-            color=Color.WHITE.rgb(),
-            pos=spos(*HEADER_TITLE_TOPLEFT),
-            center=False,
-        )
+        self._line = header_line()
+        self._title = header_title(self._DEFAULT_TITLE)
         self._back_button = self._make_back_button()
 
         # currently active drawables
@@ -105,20 +94,12 @@ class WifiSetupView(View):
     # shared widgets
     # ------------------------------------------------------------------
     def _make_back_button(self) -> Button:
-        return Button(
-            rect=srect(*HEADER_BACKBUTTON_POSITION, *HEADER_BACKBUTTON_SIZE),
-            text="x",
-            text_visible=False,
+        return corner_button(
+            icon=Icon.CLOSE.glyph(),
             events=ButtonEvents(
                 pressed=BUTTON_BACK_PRESSED,
                 released=BUTTON_BACK_RELEASED,
             ),
-            font=load_font(size=50, family=FontFamily.PIXEL_TYPE),
-            antialias=True,
-            icon="",
-            icon_color=Color.WHITE.rgb(),
-            icon_size=48,
-            icon_position="center",
         )
 
     def _set_title(self, text: str) -> None:
@@ -161,23 +142,29 @@ class WifiSetupView(View):
 
     def _rescan_button(self) -> Button:
         # Sits left of the back/skip button, or hard right when it is alone.
-        width = 180
+        skin = active_skin()
+        kb = skin.keyboard
+        width, height = kb.rescan_size
+        corner = corner_button_rect()
         if self.show_back or self.show_skip:
-            x = HEADER_BACKBUTTON_POSITION[0] - HEADER_BACKBUTTON_SIZE[0] - width
+            x = corner[0] - corner[2] - width
         else:
-            x = 1280 - 12 - width
+            x = skin.width - skin.header.back_button_gap - width
         return Button(
-            rect=srect(x, 12, width, 70),
+            rect=(x, corner[1], width, height),
             text="Scan",
             text_visible=True,
-            font=load_font(size=40, family=FontFamily.PIXEL_TYPE),
+            font=load_font_px(
+                kb.rescan_font, FontFamily[kb.rescan_font_family]
+            ),
             antialias=True,
             events=ButtonEvents(
                 pressed=WIFI_RESCAN_PRESSED,
                 released=WIFI_RESCAN_RELEASED,
             ),
-            icon="",
-            icon_size=40,
+            icon=Icon.RESCAN.glyph(),
+            icon_size=kb.rescan_font,
+            icon_font=load_font_px(kb.rescan_font, FontFamily.MATERIAL_SYMBOLS),
             icon_position="left",
             icon_gap=su(10),
             text_color=Color.WHITE.rgb(),
@@ -185,20 +172,12 @@ class WifiSetupView(View):
         )
 
     def _skip_button(self) -> Button:
-        return Button(
-            rect=srect(*HEADER_BACKBUTTON_POSITION, *HEADER_BACKBUTTON_SIZE),
-            text="x",
-            text_visible=False,
+        return corner_button(
+            icon=Icon.CLOSE.glyph(),
             events=ButtonEvents(
                 pressed=WIFI_SKIP_PRESSED,
                 released=WIFI_SKIP_RELEASED,
             ),
-            font=load_font(size=50, family=FontFamily.PIXEL_TYPE),
-            antialias=True,
-            icon="",
-            icon_color=Color.WHITE.rgb(),
-            icon_size=48,
-            icon_position="center",
         )
 
     # ------------------------------------------------------------------
@@ -211,7 +190,11 @@ class WifiSetupView(View):
         self.hint_message = ""
         self.keyboard.reset()
 
-        label_font = load_font(size=40, family=FontFamily.PIXEL_TYPE)
+        skin = active_skin()
+        kb = skin.keyboard
+        label_font = load_font_px(
+            kb.manual_label_font, FontFamily[kb.manual_label_font_family]
+        )
 
         self.ssid_field = None
         self.password_field = None
@@ -225,50 +208,54 @@ class WifiSetupView(View):
                     text="Network",
                     font=label_font,
                     color=Color.WHITE.rgb(),
-                    pos=spos(40, 118),
+                    pos=kb.manual_ssid_label_pos,
                     center=False,
                 )
             )
             # SSIDs are arbitrary user text — NotoSans covers accents and
             # non-Latin scripts the pixel font lacks.
+            fx, fy, fw, fh = kb.manual_field_rect
             self.ssid_field = TextField(
                 text="",
-                font=load_font(size=36, family=FontFamily.NOTOSANS_REGULAR),
+                font=load_font_px(
+                    kb.manual_field_font,
+                    FontFamily[kb.manual_field_font_family],
+                ),
                 color=Color.WHITE.rgb(),
-                pos=spos(360, 110),
-                width=sx(560),
-                height=sy(64),
+                pos=(fx, fy),
+                width=fw,
+                height=fh,
             )
             statics.append(
                 Label(
                     text="Password",
                     font=label_font,
                     color=Color.WHITE.rgb(),
-                    pos=spos(40, 206),
+                    pos=kb.manual_pw_label_pos,
                     center=False,
                 )
             )
-            pw_left = 360
+            pw_left = kb.manual_pw_left
         else:
             # The picked network is named in the header, so the password row
             # is the only field chrome on screen.
             self._set_title(f"Enter Password for  {ssid or ''}")
-            pw_left = _KB_LEFT
+            pw_left = _kb_left()
 
         self.password_field = TextField(
             text="",
-            font=load_font(size=44, family=FontFamily.NOTOSANS_REGULAR),
+            font=load_font_px(kb.pw_font, FontFamily[kb.pw_font_family]),
             color=Color.WHITE.rgb(),
-            pos=spos(pw_left, _PW_ROW_Y),
+            pos=(round(pw_left), kb.pw_row_y),
             # Same breathing room to the delete key as between character keys.
-            width=sx(_DEL_X - WIFI_KEY_GAP - pw_left),
-            height=sy(_PW_ROW_H),
+            width=round(_del_x() - kb.gap - pw_left),
+            height=kb.pw_row_h,
             mask=True,
         )
         # Delete sits flush against the field, EnterIPView-style; the
         # password-reveal eye lives on the keyboard where backspace was.
         self._del_button = Button(
-            rect=srect(_DEL_X, _PW_ROW_Y, WIFI_SPECIAL_W, _PW_ROW_H),
+            rect=(round(_del_x()), kb.pw_row_y, kb.special_w, kb.pw_row_h),
             text="<",
             text_visible=False,
             font=label_font,
@@ -277,7 +264,7 @@ class WifiSetupView(View):
                 pressed=WIFI_BACKSPACE_PRESSED,
                 released=WIFI_BACKSPACE_RELEASED,
             ),
-            icon="\ue14a",
+            icon=Icon.BACKSPACE.glyph(),
             icon_size=46,
             icon_position="center",
             icon_color=Color.WHITE.rgb(),
@@ -400,16 +387,17 @@ class WifiSetupView(View):
         self.draw(surface, background)
 
     def _draw_connected(self, surface) -> None:
-        cx = sx(SCREEN_WIDTH // 2)
-        cy = sy(SCREEN_HEIGHT // 2)
+        skin = active_skin()
+        cx = skin.width // 2
+        cy = skin.height // 2
 
         icon_font = load_font(size=160, family=FontFamily.MATERIAL_SYMBOLS)
-        icon = icon_font.render("", True, Color.LIGHT_GREEN.rgb())
-        surface.blit(icon, icon.get_rect(center=(cx, cy - sy(50))))
+        icon = icon_font.render(Icon.CONNECTED.glyph(), True, Color.LIGHT_GREEN.rgb())
+        surface.blit(icon, icon.get_rect(center=(cx, cy - su(50))))
 
         text_font = load_font(size=44, family=FontFamily.NOTOSANS_LIGHT)
         text = text_font.render(self._connected_ssid, True, Color.WHITE.rgb())
-        surface.blit(text, text.get_rect(center=(cx, cy + sy(90))))
+        surface.blit(text, text.get_rect(center=(cx, cy + su(90))))
 
     def _draw_centered_status(self, surface) -> None:
         # NotoSans, not the pixel font: "Connecting to {ssid}" embeds
@@ -417,7 +405,8 @@ class WifiSetupView(View):
         font = load_font(size=48, family=FontFamily.NOTOSANS_LIGHT)
         color = Color.LIGHT_RED.rgb() if self.status_is_error else Color.WHITE.rgb()
         text = font.render(self.status_message, True, color)
-        rect = text.get_rect(center=(sx(SCREEN_WIDTH // 2), sy(SCREEN_HEIGHT // 2)))
+        skin = active_skin()
+        rect = text.get_rect(center=(skin.width // 2, skin.height // 2))
         surface.blit(text, rect)
 
     def _draw_footer_status(self, surface) -> None:
@@ -426,13 +415,15 @@ class WifiSetupView(View):
             Color.LIGHT_RED.rgb() if self.status_is_error else Color.LIGHT_GREY.rgb()
         )
         text = font.render(self.status_message, True, color)
-        rect = text.get_rect(center=(sx(SCREEN_WIDTH // 2), sy(SCREEN_HEIGHT) - sy(40)))
+        skin = active_skin()
+        rect = text.get_rect(center=(skin.width // 2, skin.height - su(40)))
         surface.blit(text, rect)
 
     def _draw_hint(self, surface) -> None:
         font = load_font(size=36, family=FontFamily.PIXEL_TYPE)
         text = font.render(self.hint_message, True, Color.LIGHT_RED.rgb())
-        rect = text.get_rect(center=(sx(SCREEN_WIDTH // 2), sy(SCREEN_HEIGHT) - sy(40)))
+        skin = active_skin()
+        rect = text.get_rect(center=(skin.width // 2, skin.height - su(40)))
         surface.blit(text, rect)
 
     def handle_event(self, event) -> bool:

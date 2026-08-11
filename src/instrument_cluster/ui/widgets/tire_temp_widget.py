@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ...telemetry.models import TelemetryFrame
 from ..colors import Color
+from ..utils import FontFamily
 from ..widgets import Widget
 
 
@@ -22,27 +23,38 @@ class TireTempWidget(Widget):
         header_text: str | None = None,
         anchor: str = "topleft",
         font_value_size: int = 44,
+        font_value_family: FontFamily | None = None,
         show_border: bool = True,
         antialias: bool = True,
-        text_color: tuple[int, int, int] = Color.WHITE.rgb(),
-        bg_gradient_top: tuple[int, int, int] | None = Color.DARK_GREY.rgb(),
-        bg_gradient_bottom: tuple[int, int, int] | None = Color.RPM_RED.rgb(),
+        text_color: tuple[int, int, int] | None = None,
+        bg_gradient_top: tuple[int, int, int] | None = None,
+        bg_gradient_bottom: tuple[int, int, int] | None = None,
         font_scale: float = 1.0,
+        header_font_size: int | None = None,
     ):
         if header_text is None:
             header_text = wheel_attr
+        # Resolve the heat-gradient defaults at construction so palette
+        # overrides (skin editor) reach a rebuilt gauge; None must not fall
+        # through to the base class, where it means "no gradient".
+        if bg_gradient_top is None:
+            bg_gradient_top = Color.DARK_GREY.rgb()
+        if bg_gradient_bottom is None:
+            bg_gradient_bottom = Color.RPM_RED.rgb()
 
         super().__init__(
             rect=rect,
             header_text=header_text,
             anchor=anchor,
             font_value_size=font_value_size,
+            font_value_family=font_value_family,
             text_color=text_color,
             show_border=show_border,
             antialias=antialias,
             bg_gradient_top=bg_gradient_top,
             bg_gradient_bottom=bg_gradient_bottom,
             font_scale=font_scale,
+            header_font_size=header_font_size,
         )
         self.wheel_attr = wheel_attr
         self.set_value(-1)

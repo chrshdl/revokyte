@@ -1,70 +1,8 @@
-from ..peripherals.display import LOGICAL_HEIGHT, LOGICAL_WIDTH
-
 # ------------------------
 #  VALUES
 # ------------------------
 LAP_DEFAULT_VALUE = 0.0
 
-# ------------------------
-# UI
-# ------------------------
-# The UI is laid out against the fixed logical design resolution (1280x720);
-# Display scales/rotates it onto the physical panel. See display.py.
-SCREEN_WIDTH = LOGICAL_WIDTH
-SCREEN_HEIGHT = LOGICAL_HEIGHT
-
-BUTTON_HEIGHT = 72
-
-FOOTER_BUTTONGROUP_MARGIN = 6
-FOOTER_BUTTONGROUP_X = 10
-FOOTER_BUTTONGROUP_Y = (
-    SCREEN_HEIGHT
-    - BUTTON_HEIGHT
-    - (FOOTER_BUTTONGROUP_MARGIN + FOOTER_BUTTONGROUP_MARGIN)
-)
-
-LAP_WIDGET_Y = FOOTER_BUTTONGROUP_Y - FOOTER_BUTTONGROUP_MARGIN
-LAP_WIDGET_HEIGHT = BUTTON_HEIGHT + FOOTER_BUTTONGROUP_MARGIN
-
-# header
-HEADER_TITLE_TOPLEFT = (30, 10)
-HEADER_TITLE_FONT_SIZE = 50
-HEADER_LINE_TOPLEFT = (0, 100)
-HEADER_BACKBUTTON_Y = 12
-HEADER_BACKBUTTON_GAP = 12
-HEADER_BACKBUTTON_SIZE = (74, 74)
-HEADER_BACKBUTTON_POSITION = (
-    SCREEN_WIDTH - HEADER_BACKBUTTON_SIZE[0] - HEADER_BACKBUTTON_GAP,
-    HEADER_BACKBUTTON_Y,
-)
-
-# enter_ip_state
-BUTTONS_PER_ROW = 3
-BUTTON_DIMENSIONS = (114, 78)
-BUTTON_MARGIN = 7
-BUTTON_GRID_OFFSET = (
-    BUTTON_DIMENSIONS[0] + BUTTON_MARGIN,
-    BUTTON_DIMENSIONS[1] + BUTTON_MARGIN,
-)
-NUMPAD_OFFSET = (62, 228)
-RECENT_CONNECTIONS_POSITION = (822, 180)
-RECENT_BUTTONS_PER_ROW = 1
-RECENT_BUTTONS_DIMENSIONS = (280, 74)
-RECENT_BUTTONS_MARGIN = 12
-RECENT_BUTTONS_GRID_OFFSET = (
-    RECENT_BUTTONS_DIMENSIONS[0] + RECENT_BUTTONS_MARGIN,
-    RECENT_BUTTONS_DIMENSIONS[1] + RECENT_BUTTONS_MARGIN,
-)
-RECENT_BUTTONS_OFFSET = (680, 210)
-
-# wifi_setup_state
-# Network list (scan phase) — vertical stack of full-width rows.
-
-# On-screen QWERTY keyboard (password phase).
-WIFI_KEY_W = 112
-WIFI_KEY_H = 78
-WIFI_KEY_GAP = 10
-WIFI_KEYBOARD_TOP = 300
-WIFI_KEY_ROW_STEP = WIFI_KEY_H + 12
-WIFI_SPECIAL_W = 156  # shift / backspace / mode / OK
-WIFI_SPACE_W = 600
+# All layout geometry lives in the per-resolution skins — see ui/skins/.
+# The custom-dashboard spec space (fixed 1280x720) is documented in
+# ui/widgets/registry.py.

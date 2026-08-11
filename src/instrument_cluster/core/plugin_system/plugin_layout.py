@@ -11,26 +11,35 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-# Design-space width of the strip reserved at each screen edge for the
-# bezel status LEDs (StatusLightsWidget).
-STATUS_STRIP_W = 100
-
 
 @dataclass(frozen=True)
 class LayoutContext:
-    """Immutable snapshot of the dashboard layout inputs."""
+    """Immutable snapshot of the dashboard layout inputs.
+
+    The strip width and shifts are per-skin values (native px for the
+    active panel), read lazily so a LayoutContext built before the display
+    profile is resolved still sees the right skin at use time.
+    """
 
     status_lights: bool = False
 
     @property
     def shift_l(self) -> int:
-        """Inward shift of the left widget column (design px)."""
-        return STATUS_STRIP_W - 10 if self.status_lights else 0
+        """Inward shift of the left widget column (native px)."""
+        if not self.status_lights:
+            return 0
+        from ...ui.skins import active_skin
+
+        return active_skin().dashboard.shift_l_on
 
     @property
     def shift_r(self) -> int:
-        """Inward shift of the right widget column (design px)."""
-        return STATUS_STRIP_W - 18 if self.status_lights else 0
+        """Inward shift of the right widget column (native px)."""
+        if not self.status_lights:
+            return 0
+        from ...ui.skins import active_skin
+
+        return active_skin().dashboard.shift_r_on
 
     @classmethod
     def from_config(cls) -> "LayoutContext":

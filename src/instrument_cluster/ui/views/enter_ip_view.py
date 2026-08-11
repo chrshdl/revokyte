@@ -5,21 +5,7 @@ from pygame.sprite import LayeredDirty
 from ...config import ConfigManager
 from ...ip4 import get_ip_prefill
 from ...ui.colors import Color
-from ...ui.constants import (
-    BUTTON_DIMENSIONS,
-    BUTTON_GRID_OFFSET,
-    BUTTONS_PER_ROW,
-    HEADER_BACKBUTTON_POSITION,
-    HEADER_BACKBUTTON_SIZE,
-    HEADER_TITLE_FONT_SIZE,
-    HEADER_TITLE_TOPLEFT,
-    NUMPAD_OFFSET,
-    RECENT_BUTTONS_DIMENSIONS,
-    RECENT_BUTTONS_GRID_OFFSET,
-    RECENT_BUTTONS_OFFSET,
-    RECENT_BUTTONS_PER_ROW,
-    RECENT_CONNECTIONS_POSITION,
-)
+from ...ui.icons import Icon
 from ...ui.events import (
     BUTTON_BACK_PRESSED,
     BUTTON_BACK_RELEASED,
@@ -30,12 +16,13 @@ from ...ui.events import (
     ENTER_IP_OK_BUTTON_PRESSED,
     ENTER_IP_OK_BUTTON_RELEASED,
 )
-from ...ui.utils import FontFamily, load_font, spos, srect, sx, sy
+from ...ui.skins import active_skin
+from ...ui.utils import FontFamily, load_font_px
 from ...ui.widgets.base.button import Button, ButtonEvents, ButtonGroup
 from ...ui.widgets.base.label import Label
-from ...ui.widgets.base.line import Line
 from ...ui.widgets.base.textfield import TextField
 from .base import View
+from .header import corner_button, header_line, header_title
 
 
 class EnterIPView(View):
@@ -51,67 +38,58 @@ class EnterIPView(View):
         self._init_ui_elements(recent_connected or [])
 
     def _init_ui_elements(self, recent_connected):
+        skin = active_skin()
+        np = skin.numpad
+
         # 1. Static Elements
-        self.title_label = Label(
-            text=self._title,
-            font=load_font(
-                size=HEADER_TITLE_FONT_SIZE, family=FontFamily.NOTOSANS_LIGHT
-            ),
-            color=Color.WHITE.rgb(),
-            pos=spos(*HEADER_TITLE_TOPLEFT),
-            center=False,
-        )
-        self.horizontal_line = Line()
+        self.title_label = header_title(self._title)
+        self.horizontal_line = header_line()
 
         self.recent_label = Label(
             text="Recent connections",
-            font=load_font(size=46, family=FontFamily.PIXEL_TYPE),
+            font=load_font_px(
+                np.recent_label_font,
+                FontFamily[np.recent_label_font_family],
+            ),
             color=Color.WHITE.rgb(),
-            pos=spos(*RECENT_CONNECTIONS_POSITION),
+            pos=np.recent_position,
             center=True,
             antialias=False,
             visible=len(ConfigManager.get_config().recent_connected) > 0,
         )
 
         # 2. Input Field
+        fx, fy, fw, fh = np.field_rect
         self.textfield = TextField(
             text=get_ip_prefill(),
-            font=load_font(size=36, family=FontFamily.NOTOSANS_REGULAR),
+            font=load_font_px(np.field_font, FontFamily[np.field_font_family]),
             color=Color.WHITE.rgb(),
-            pos=spos(62, 142),
-            width=sx(356),
-            height=sy(76),
+            pos=(fx, fy),
+            width=fw,
+            height=fh,
         )
 
         # 3. Buttons
-        self.back_button = Button(
-            rect=srect(*HEADER_BACKBUTTON_POSITION, *HEADER_BACKBUTTON_SIZE),
-            text="x",
-            text_visible=False,
+        self.back_button = corner_button(
+            icon=Icon.CLOSE.glyph(),
             events=ButtonEvents(
                 pressed=BUTTON_BACK_PRESSED,
                 released=BUTTON_BACK_RELEASED,
             ),
-            font=load_font(size=50, family=FontFamily.PIXEL_TYPE),
-            antialias=True,
-            icon="\ue5cd",
-            icon_color=Color.WHITE.rgb(),
-            icon_size=48,
-            icon_position="center",
         )
 
         self.del_button = Button(
-            rect=srect(416, 142, 110, 76),
+            rect=np.del_rect,
             text="<",
             text_visible=False,
             events=ButtonEvents(
                 pressed=ENTER_IP_DEL_BUTTON_PRESSED,
                 released=ENTER_IP_DEL_BUTTON_RELEASED,
             ),
-            font=load_font(size=36, family=FontFamily.PIXEL_TYPE),
+            font=load_font_px(np.field_font, FontFamily.PIXEL_TYPE),
             text_color=Color.LIGHT_RED.rgb(),
             antialias=True,
-            icon="\ue14a",
+            icon=Icon.BACKSPACE.glyph(),
             icon_size=46,
             icon_position="center",
             pressed_gradient=(Color.RPM_DARK_RED.rgb(), Color.BLACK.rgb()),
@@ -120,17 +98,17 @@ class EnterIPView(View):
         )
 
         self.ok_button = Button(
-            rect=srect(424, 398, 100, 164),
+            rect=np.ok_rect,
             text="OK",
             text_visible=False,
             events=ButtonEvents(
                 pressed=ENTER_IP_OK_BUTTON_PRESSED,
                 released=ENTER_IP_OK_BUTTON_RELEASED,
             ),
-            font=load_font(size=50, family=FontFamily.PIXEL_TYPE),
+            font=load_font_px(skin.header.title_font_size, FontFamily.PIXEL_TYPE),
             text_color=Color.GREEN.rgb(),
             antialias=True,
-            icon="\ue5ca",
+            icon=Icon.OK_CHECK.glyph(),
             icon_size=46,
             icon_position="center",
             pressed_gradient=(Color.DARK_GREEN.rgb(), Color.BLACK.rgb()),
@@ -141,19 +119,25 @@ class EnterIPView(View):
         self.button_group.extend_buttons(
             self._button_grid_generator(
                 labels,
-                BUTTONS_PER_ROW,
-                BUTTON_GRID_OFFSET,
-                NUMPAD_OFFSET,
-                BUTTON_DIMENSIONS,
+                np.buttons_per_row,
+                (
+                    np.button_dims[0] + np.button_margin,
+                    np.button_dims[1] + np.button_margin,
+                ),
+                np.offset,
+                np.button_dims,
             )
         )
         self.button_group.extend_buttons(
             self._button_grid_generator(
                 recent_connected[0:3],
-                RECENT_BUTTONS_PER_ROW,
-                RECENT_BUTTONS_GRID_OFFSET,
-                RECENT_BUTTONS_OFFSET,
-                RECENT_BUTTONS_DIMENSIONS,
+                np.recent_per_row,
+                (
+                    np.recent_dims[0] + np.recent_margin,
+                    np.recent_dims[1] + np.recent_margin,
+                ),
+                np.recent_offset,
+                np.recent_dims,
             )
         )
         self.button_group.add(self.back_button, self.del_button, self.ok_button)
@@ -174,9 +158,11 @@ class EnterIPView(View):
         global_offset: tuple[int, int],
         button_size: tuple[int, int],
     ) -> list[Button]:
+        np = active_skin().numpad
+        key_font = load_font_px(np.key_font, FontFamily[np.key_font_family])
         return [
             Button(
-                rect=srect(
+                rect=(
                     i % buttons_per_row * grid_offset[0] + global_offset[0],
                     i // buttons_per_row * grid_offset[1] + global_offset[1],
                     button_size[0],
@@ -189,7 +175,7 @@ class EnterIPView(View):
                     released=ENTER_IP_KEYPAD_BUTTON_RELEASED,
                 ),
                 event_data={"label": val},
-                font=load_font(size=34, family=FontFamily.NOTOSANS_REGULAR),
+                font=key_font,
                 antialias=True,
             )
             for i, val in enumerate(labels or [])

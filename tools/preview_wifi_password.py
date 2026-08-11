@@ -69,6 +69,7 @@ def handle_keyboard_event(view: WifiSetupView, event) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--display", default="dev", help="display profile")
     parser.add_argument("--ssid", default="Pit Wall 5G", help="picked network's SSID")
     parser.add_argument(
         "--manual",
@@ -78,7 +79,7 @@ def main() -> None:
     args = parser.parse_args()
 
     pygame.init()
-    display = Display("dev")
+    display = Display(args.display)
     surface = display.surface
 
     view = WifiSetupView(show_back=True, show_skip=False)

@@ -6,7 +6,8 @@ from ...core.vehicle.vehicle_bus import VehicleBus
 from ...signals.signal_keys import DeltaState, SignalKey
 from ...telemetry.mode import DiffReferenceMode
 from ..colors import Color
-from ..utils import FontFamily, load_font, su
+from ..skins.schema import DeltaStyle
+from ..utils import FontFamily, load_font_px, su
 from ..widgets import Widget
 
 # Header per active diff reference mode, so a mode switch is visible even
@@ -73,6 +74,11 @@ class DeltaTimeWidget(Widget):
         show_border: bool = True,
         antialias: bool = True,
         font_scale: float = 1.0,
+        *,
+        delta_style: DeltaStyle | None = None,
+        state_font_size: int | None = None,
+        state_font_family: FontFamily | None = None,
+        header_font_size: int | None = None,
     ):
         super().__init__(
             rect=rect,
@@ -83,32 +89,46 @@ class DeltaTimeWidget(Widget):
             show_border=show_border,
             antialias=antialias,
             font_scale=font_scale,
+            header_font_size=header_font_size,
         )
 
         self._lap_index = -1
 
-        self._seg_width = su(12)  # Width of a single segment
-        self._seg_height = su(20)  # Height of the segments
-        self._seg_gap = su(3)  # Gap between segments
-        self._seg_slant = su(8)  # Slant offset (in pixels)
+        if delta_style is not None:
+            # Skinned construction: native pixels straight from the skin.
+            self._seg_width = delta_style.seg_width
+            self._seg_height = delta_style.seg_height
+            self._seg_gap = delta_style.seg_gap
+            self._seg_slant = delta_style.seg_slant
+            self._y_offset = delta_style.seg_y_offset
+            self.value_offset_y = delta_style.value_offset_y
+            self.state_offset_y = delta_style.state_offset_y
+        else:
+            # Spec-space (custom dashboard / legacy) construction: segment
+            # geometry follows the panel scale, the state offset also the
+            # rect ratio carried in font_scale.
+            self._seg_width = su(12)  # Width of a single segment
+            self._seg_height = su(20)  # Height of the segments
+            self._seg_gap = su(3)  # Gap between segments
+            self._seg_slant = su(8)  # Slant offset (in pixels)
+            self._y_offset = su(8)  # Vertical spacing below the text
+            # Lift the value above the value area's center so the segment
+            # tracker underneath gets more room (positive = up, see
+            # Widget._render_value).
+            self.value_offset_y = su(16)
+            self.state_offset_y = round(_STATE_OFFSET_Y * self.font_scale)
         self._seg_ms = 100  # Milliseconds per segment
         self._max_segments = 10  # Max number of segments per side
-        self._y_offset = su(8)  # Vertical spacing below the text
-
-        # Lift the value above the value area's center so the segment
-        # tracker underneath gets more room (positive = up, see
-        # Widget._render_value).
-        self.value_offset_y = su(16)
 
         self._last_rendered_value: float | None = None
         self._last_value_str: str = ""
-        # load_font scales design px to the panel itself, so pass the design
-        # size — pre-scaled only by font_scale, as the base class does.
-        self._state_font = load_font(
-            size=max(1, round(_STATE_FONT_SIZE * self.font_scale)),
-            family=_STATE_FONT_FAMILY,
-        )
-        self.state_offset_y = su(_STATE_OFFSET_Y * self.font_scale)
+        if state_font_size is None:
+            # Spec-space default scaled with the rect (font_scale carries
+            # the panel scale on the custom path, see registry.py).
+            state_font_size = max(1, round(_STATE_FONT_SIZE * self.font_scale))
+        if state_font_family is None:
+            state_font_family = _STATE_FONT_FAMILY
+        self._state_font = load_font_px(state_font_size, state_font_family)
 
         self.set_value()
         self.visible = 1
@@ -280,7 +300,9 @@ class DeltaTimeWidget(Widget):
         # centered in the value area and lifted by value_offset_y, so the
         # segments track it instead of assuming the image center.
         text_center_y = area.centery - self.value_offset_y
-        text_half_height = su(self.font_value_size) // 2
+        # font_value_size is final pixels on every path (the base class
+        # resolves scaling at construction), so no further scaling here.
+        text_half_height = self.font_value_size // 2
 
         y_top = text_center_y + text_half_height + self._y_offset
         y_bottom = y_top + self._seg_height

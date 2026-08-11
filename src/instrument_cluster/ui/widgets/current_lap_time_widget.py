@@ -31,6 +31,7 @@ class CurrentLapTimeWidget(Widget):
         show_border: bool = True,
         antialias: bool = True,
         font_scale: float = 1.0,
+        header_font_size: int | None = None,
         value_color: tuple[int, int, int] | None = None,
     ):
         super().__init__(
@@ -42,6 +43,7 @@ class CurrentLapTimeWidget(Widget):
             show_border=show_border,
             antialias=antialias,
             font_scale=font_scale,
+            header_font_size=header_font_size,
             value_color=value_color,
         )
 

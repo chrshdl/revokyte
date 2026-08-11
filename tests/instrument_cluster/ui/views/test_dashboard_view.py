@@ -10,6 +10,7 @@ import pygame
 import pytest
 
 from instrument_cluster.config import ConfigManager
+from instrument_cluster.ui.skins import active_skin
 from instrument_cluster.ui.views.dashboard_view import DashboardView
 from instrument_cluster.ui.widgets.status_lights_widget import StatusLightsWidget
 from instrument_cluster.ui.widgets.slot_dots_widget import SlotDotsWidget
@@ -50,8 +51,9 @@ def test_status_lights_on_reserves_the_bezel_strips(config_path):
 
     assert view.status_lights_enabled is True
     assert len(_status_lights_widgets(view)) == 2
-    assert view._SHIFT_L == DashboardView._STATUS_STRIP_W - 10
-    assert view._SHIFT_R == DashboardView._STATUS_STRIP_W - 18
+    skin = active_skin().dashboard
+    assert view._SHIFT_L == skin.shift_l_on
+    assert view._SHIFT_R == skin.shift_r_on
 
 
 def test_status_lights_off_removes_strips_and_resets_shifts(config_path):

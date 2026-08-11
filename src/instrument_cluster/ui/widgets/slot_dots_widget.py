@@ -10,11 +10,7 @@ import pygame
 from pygame.sprite import DirtySprite
 
 from ..colors import Color
-from ..utils import spos, su
-
-DOT_RADIUS = 5  # design px
-DOT_PITCH = 26  # center-to-center distance, design px
-CENTER_POS = (640, 700)  # design-space center of the dot row
+from ..skins import active_skin
 
 
 class SlotDotsWidget(DirtySprite):
@@ -36,8 +32,9 @@ class SlotDotsWidget(DirtySprite):
         self.dirty = 1
 
     def _rebuild(self) -> None:
-        r = su(DOT_RADIUS)
-        pitch = su(DOT_PITCH)
+        dots = active_skin().dashboard.slot_dots
+        r = dots.radius
+        pitch = dots.pitch
         width = max(1, (self._count - 1) * pitch + 2 * r + 2)
         height = 2 * r + 2
         self.image = pygame.Surface((width, height), pygame.SRCALPHA)
@@ -48,7 +45,7 @@ class SlotDotsWidget(DirtySprite):
             pygame.draw.circle(
                 self.image, color, (r + 1 + i * pitch, height // 2), r
             )
-        self.rect = self.image.get_rect(center=spos(*CENTER_POS))
+        self.rect = self.image.get_rect(center=dots.center)
         # One page = nothing to switch = no chrome.
         self.visible = 1 if self._count > 1 else 0
 

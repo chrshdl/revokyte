@@ -9,7 +9,7 @@ class Label(DirtySprite):
         self,
         text,
         font: pygame.font.Font = None,
-        color: tuple[int, int, int] = Color.WHITE.rgb(),
+        color: tuple[int, int, int] | None = None,
         pos: tuple[int, int] = (0, 0),
         center: bool = True,
         antialias: bool = True,
@@ -20,7 +20,7 @@ class Label(DirtySprite):
         super().__init__()
         self._text = None
         self.font = font
-        self.color = color
+        self.color = Color.WHITE.rgb() if color is None else color
         self.pos = pos
         self.center = center
         self.antialias = antialias

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ...telemetry.models import TelemetryFrame
+from ..utils import FontFamily
 from ..widgets import Widget
 
 
@@ -20,9 +21,11 @@ class LapWidget(Widget):
         header_text: str = "Lap",
         anchor: str = "topleft",
         font_value_size: int = 44,
+        font_value_family: FontFamily | None = None,
         show_border: bool = True,
         antialias: bool = True,
         font_scale: float = 1.0,
+        header_font_size: int | None = None,
         value_color: tuple[int, int, int] | None = None,
     ):
         super().__init__(
@@ -30,9 +33,11 @@ class LapWidget(Widget):
             header_text=header_text,
             anchor=anchor,
             font_value_size=font_value_size,
+            font_value_family=font_value_family,
             show_border=show_border,
             antialias=antialias,
             font_scale=font_scale,
+            header_font_size=header_font_size,
             value_color=value_color,
         )
 

@@ -9,15 +9,7 @@ actually changed so the caller knows a rebuild is needed.
 from __future__ import annotations
 
 from ...colors import Color
-from ...constants import (
-    WIFI_KEY_GAP,
-    WIFI_KEY_H,
-    WIFI_KEY_ROW_STEP,
-    WIFI_KEY_W,
-    WIFI_KEYBOARD_TOP,
-    WIFI_SPACE_W,
-    WIFI_SPECIAL_W,
-)
+from ...icons import Icon
 from ...events import (
     WIFI_CONNECT_PRESSED,
     WIFI_CONNECT_RELEASED,
@@ -30,7 +22,8 @@ from ...events import (
     WIFI_SHIFT_PRESSED,
     WIFI_SHIFT_RELEASED,
 )
-from ...utils import FontFamily, load_font, srect
+from ...skins import active_skin
+from ...utils import FontFamily, load_font_px
 from ..base.button import Button, ButtonEvents
 
 _LETTER_ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"]
@@ -64,60 +57,60 @@ class WifiKeyboard:
     def build(self) -> list[Button]:
         keys: list[Button] = []
         rows = _SYMBOL_ROWS if self.symbols else _LETTER_ROWS
-        key_font = load_font(size=40, family=FontFamily.NOTOSANS_REGULAR)
+        skin = active_skin()
+        kb = skin.keyboard
+        key_font = load_font_px(kb.key_font, FontFamily[kb.key_font_family])
 
         # First two rows: plain character keys, centered.
         for r in range(2):
             keys.extend(
-                self._char_row(
-                    rows[r], WIFI_KEYBOARD_TOP + r * WIFI_KEY_ROW_STEP, key_font
-                )
+                self._char_row(rows[r], kb.top + r * kb.row_step, key_font)
             )
 
         # Third row: shift + chars + password-reveal (backspace moved
         # up beside the password field).
-        y2 = WIFI_KEYBOARD_TOP + 2 * WIFI_KEY_ROW_STEP
+        y2 = kb.top + 2 * kb.row_step
         chars = rows[2]
-        block_w = len(chars) * WIFI_KEY_W + (len(chars) - 1) * WIFI_KEY_GAP
-        total = WIFI_SPECIAL_W + WIFI_KEY_GAP + block_w + WIFI_KEY_GAP + WIFI_SPECIAL_W
-        x = (1280 - total) / 2
+        block_w = len(chars) * kb.key_w + (len(chars) - 1) * kb.gap
+        total = kb.special_w + kb.gap + block_w + kb.gap + kb.special_w
+        x = (skin.width - total) / 2
         keys.append(
             self._special_button(
                 x,
                 y2,
-                WIFI_SPECIAL_W,
-                "",  # arrow_upward (shift)
+                kb.special_w,
+                Icon.SHIFT.glyph(),
                 WIFI_SHIFT_PRESSED,
                 WIFI_SHIFT_RELEASED,
                 active=self.shift and not self.symbols,
             )
         )
-        x += WIFI_SPECIAL_W + WIFI_KEY_GAP
+        x += kb.special_w + kb.gap
         for ch in chars:
             keys.append(self._char_key(x, y2, ch, key_font))
-            x += WIFI_KEY_W + WIFI_KEY_GAP
+            x += kb.key_w + kb.gap
         keys.append(
             self._special_button(
                 x,
                 y2,
-                WIFI_SPECIAL_W,
-                "",  # visibility (password reveal)
+                kb.special_w,
+                Icon.REVEAL.glyph(),
                 WIFI_REVEAL_PRESSED,
                 WIFI_REVEAL_RELEASED,
             )
         )
 
         # Fourth row: mode toggle + space + connect.
-        y3 = WIFI_KEYBOARD_TOP + 3 * WIFI_KEY_ROW_STEP
-        total = (
-            WIFI_SPECIAL_W + WIFI_KEY_GAP + WIFI_SPACE_W + WIFI_KEY_GAP + WIFI_SPECIAL_W
-        )
-        x = (1280 - total) / 2
+        y3 = kb.top + 3 * kb.row_step
+        total = kb.special_w + kb.gap + kb.space_w + kb.gap + kb.special_w
+        x = (skin.width - total) / 2
         keys.append(
             Button(
-                rect=srect(x, y3, WIFI_SPECIAL_W, WIFI_KEY_H),
+                rect=self._key_rect(x, y3, kb.special_w, kb.key_h),
                 text="ABC" if self.symbols else "123",
-                font=load_font(size=28, family=FontFamily.NOTOSANS_REGULAR),
+                font=load_font_px(
+                    kb.small_font, FontFamily[kb.small_font_family]
+                ),
                 antialias=True,
                 events=ButtonEvents(
                     pressed=WIFI_MODE_PRESSED, released=WIFI_MODE_RELEASED
@@ -125,12 +118,14 @@ class WifiKeyboard:
                 text_color=Color.WHITE.rgb(),
             )
         )
-        x += WIFI_SPECIAL_W + WIFI_KEY_GAP
+        x += kb.special_w + kb.gap
         keys.append(
             Button(
-                rect=srect(x, y3, WIFI_SPACE_W, WIFI_KEY_H),
+                rect=self._key_rect(x, y3, kb.space_w, kb.key_h),
                 text="space",
-                font=load_font(size=28, family=FontFamily.NOTOSANS_REGULAR),
+                font=load_font_px(
+                    kb.small_font, FontFamily[kb.small_font_family]
+                ),
                 antialias=True,
                 events=ButtonEvents(
                     pressed=WIFI_KEY_PRESSED, released=WIFI_KEY_RELEASED
@@ -139,12 +134,12 @@ class WifiKeyboard:
                 text_color=Color.LIGHT_GREY.rgb(),
             )
         )
-        x += WIFI_SPACE_W + WIFI_KEY_GAP
+        x += kb.space_w + kb.gap
         keys.append(
             Button(
-                rect=srect(x, y3, WIFI_SPECIAL_W, WIFI_KEY_H),
+                rect=self._key_rect(x, y3, kb.special_w, kb.key_h),
                 text="OK",
-                font=load_font(size=40, family=FontFamily.NOTOSANS_REGULAR),
+                font=load_font_px(kb.key_font, FontFamily[kb.key_font_family]),
                 antialias=True,
                 events=ButtonEvents(
                     pressed=WIFI_CONNECT_PRESSED, released=WIFI_CONNECT_RELEASED
@@ -155,19 +150,26 @@ class WifiKeyboard:
         )
         return keys
 
+    @staticmethod
+    def _key_rect(x: float, y: float, w: float, h: float):
+        return (round(x), round(y), round(w), round(h))
+
     def _char_row(self, chars: str, y: float, font) -> list[Button]:
-        block_w = len(chars) * WIFI_KEY_W + (len(chars) - 1) * WIFI_KEY_GAP
-        x = (1280 - block_w) / 2
+        skin = active_skin()
+        kb = skin.keyboard
+        block_w = len(chars) * kb.key_w + (len(chars) - 1) * kb.gap
+        x = (skin.width - block_w) / 2
         out = []
         for ch in chars:
             out.append(self._char_key(x, y, ch, font))
-            x += WIFI_KEY_W + WIFI_KEY_GAP
+            x += kb.key_w + kb.gap
         return out
 
     def _char_key(self, x: float, y: float, ch: str, font) -> Button:
+        kb = active_skin().keyboard
         display = ch.upper() if (self.shift and not self.symbols) else ch
         return Button(
-            rect=srect(x, y, WIFI_KEY_W, WIFI_KEY_H),
+            rect=self._key_rect(x, y, kb.key_w, kb.key_h),
             text=display,
             font=font,
             antialias=True,
@@ -180,15 +182,17 @@ class WifiKeyboard:
     def _special_button(
         x, y, w, icon, pressed_evt, released_evt, active=False
     ) -> Button:
+        kb = active_skin().keyboard
         return Button(
-            rect=srect(x, y, w, WIFI_KEY_H),
+            rect=WifiKeyboard._key_rect(x, y, w, kb.key_h),
             text="",
             text_visible=False,
-            font=load_font(size=40, family=FontFamily.NOTOSANS_REGULAR),
+            font=load_font_px(kb.key_font, FontFamily[kb.key_font_family]),
             antialias=True,
             events=ButtonEvents(pressed=pressed_evt, released=released_evt),
             icon=icon,
-            icon_size=40,
+            icon_size=kb.key_font,
+            icon_font=load_font_px(kb.key_font, FontFamily.MATERIAL_SYMBOLS),
             icon_position="center",
             icon_color=Color.BLUE.rgb() if active else Color.WHITE.rgb(),
         )

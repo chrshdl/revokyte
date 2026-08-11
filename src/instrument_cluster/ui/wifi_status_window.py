@@ -21,29 +21,23 @@ import time
 import pygame
 
 from ..logger import Logger
-from ..peripherals.display import DESIGN_WIDTH
 from .colors import Color
-from .utils import FontFamily, load_font, su, sx, sy
+from .skins import active_skin
+from .utils import FontFamily, load_font_px
 from .window_layering import OverlayWindow, WindowLayer
 
 logger = Logger("wifi_status").get()
 
-# Geometry, in design px. Centred in the same free strip between the widget
-# rows that the NO SIGNAL band occupies (see no_signal_window.py for why
-# that strip) — but a compact pill, not a full-width band: this is a status
-# note, not an alert. When NO SIGNAL is up its SYSTEM_ALERT layer occludes
-# this window, which is exactly the right precedence.
-PILL_HEIGHT = 56
-PILL_CENTER_Y = 564
-PILL_PAD_X = 28
+# Geometry comes from the active skin's overlays group. Centred in the
+# same free strip between the widget rows that the NO SIGNAL band occupies
+# (see no_signal_window.py for why that strip) — but a compact pill, not a
+# full-width band: this is a status note, not an alert. When NO SIGNAL is
+# up its SYSTEM_ALERT layer occludes this window, which is exactly the
+# right precedence.
 PILL_TEXT = "Connecting to Wi-Fi …"
-PILL_FONT_SIZE = 26
-PILL_FONT_FAMILY = FontFamily.D_DIN
 
-PILL_BG_COLOR = (*Color.DARKER_GREY.rgb(), 235)
-PILL_BORDER_COLOR = Color.MID_GREY.rgb()
 PILL_BORDER_WIDTH = 2
-PILL_TEXT_COLOR = Color.WHITE.rgb()
+PILL_BG_ALPHA = 235
 
 # Poll fast at first — association after boot typically lands within
 # seconds — then back off, so a track day with the router left off doesn't
@@ -54,20 +48,26 @@ _POLL_FAST_WINDOW = 30.0
 
 
 def _build_pill() -> pygame.sprite.DirtySprite:
-    font = load_font(size=PILL_FONT_SIZE, family=PILL_FONT_FAMILY)
-    text = font.render(PILL_TEXT, True, PILL_TEXT_COLOR)
+    skin = active_skin()
+    o = skin.overlays
+    font = load_font_px(o.wifi_pill_font, FontFamily[o.wifi_pill_font_family])
+    # Colors resolve here (not at module scope) so palette overrides
+    # (skin editor) reach a rebuilt pill.
+    bg_color = (*Color.DARKER_GREY.rgb(), PILL_BG_ALPHA)
+    border_color = Color.MID_GREY.rgb()
+    text = font.render(PILL_TEXT, True, Color.WHITE.rgb())
 
-    width = text.get_width() + 2 * su(PILL_PAD_X)
-    height = sy(PILL_HEIGHT)
+    width = text.get_width() + 2 * o.wifi_pill_pad_x
+    height = o.wifi_pill_height
     radius = height // 2
 
     image = pygame.Surface((width, height), pygame.SRCALPHA)
-    pygame.draw.rect(image, PILL_BG_COLOR, image.get_rect(), border_radius=radius)
+    pygame.draw.rect(image, bg_color, image.get_rect(), border_radius=radius)
     pygame.draw.rect(
         image,
-        PILL_BORDER_COLOR,
+        border_color,
         image.get_rect(),
-        width=max(1, su(PILL_BORDER_WIDTH)),
+        width=PILL_BORDER_WIDTH,
         border_radius=radius,
     )
     image.blit(text, text.get_rect(center=image.get_rect().center))
@@ -75,7 +75,7 @@ def _build_pill() -> pygame.sprite.DirtySprite:
     sprite = pygame.sprite.DirtySprite()
     sprite.image = image
     sprite.rect = image.get_rect(
-        center=(sx(DESIGN_WIDTH) // 2, sy(PILL_CENTER_Y))
+        center=(skin.width // 2, o.wifi_pill_center_y)
     )
     sprite.visible = 1
     sprite.dirty = 1

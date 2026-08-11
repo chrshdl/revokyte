@@ -11,13 +11,21 @@ _font_cache: dict[tuple[FontFamily, int], pygame.font.Font] = {}
 
 
 # ---------------------------------------------------------------------------
-# Responsive scaling
+# Spec-space scaling (custom dashboards + self-contained decoration)
 #
-# Widget geometry and font sizes are authored against the design resolution
-# (1280x720, see display.py). These helpers map design values to the active
-# panel's native logical size so the UI renders pixel-perfect on each display
-# instead of being bitmap-scaled afterwards. Call them at widget/view
-# construction time (after the display profile has been set).
+# The standard HMI takes its geometry from the per-resolution skins
+# (ui/skins/) in native pixels — skinned code never calls these helpers.
+# They map the fixed 1280x720 spec space to the active panel's logical
+# size, and remain for exactly two uses:
+#
+# * custom-dashboard layouts, which are authored in spec space on every
+#   panel (see ui/widgets/registry.py);
+# * self-contained decoration inside a widget (small paddings, icon
+#   nudges, radio glyphs) that isn't worth a skin field — safe as long as
+#   the scaled value is never mixed arithmetically with a skin value that
+#   was scaled differently.
+#
+# Call them at construction time (after the display profile has been set).
 # ---------------------------------------------------------------------------
 def sx(value: float) -> int:
     """Scale an x-axis (horizontal) design value."""
@@ -77,10 +85,14 @@ def vertical_gradient(
     return surf
 
 
-def load_font(size: int, family: FontFamily) -> pygame.font.Font:
-    # Fonts are authored in design pixels; scale to the active panel so text is
-    # rendered at native resolution (crisp) rather than scaled after the fact.
-    size = max(1, su(size))
+def load_font_px(size: int, family: FontFamily) -> pygame.font.Font:
+    """Load a font at an exact pixel size (no scaling applied).
+
+    Skinned code calls this with native sizes from ``active_skin()``;
+    legacy design-space callers go through :func:`load_font`, which scales
+    first. Both share one cache keyed by the final pixel size.
+    """
+    size = max(1, int(size))
     key = (family, size)
     if key in _font_cache:
         return _font_cache[key]
@@ -91,6 +103,17 @@ def load_font(size: int, family: FontFamily) -> pygame.font.Font:
 
     _font_cache[key] = font
     return font
+
+
+def load_font(size: int, family: FontFamily) -> pygame.font.Font:
+    # Fonts are authored in design pixels; scale to the active panel so text is
+    # rendered at native resolution (crisp) rather than scaled after the fact.
+    # Pixeltype renders ragged off its 8px grid, so scaled sizes snap to it —
+    # a no-op at scale 1.0, where authored sizes are already on-grid.
+    scaled = max(1, su(size))
+    if family is FontFamily.PIXEL_TYPE and scale_uniform() != 1.0:
+        scaled = max(8, round(scaled / 8) * 8)
+    return load_font_px(scaled, family)
 
 
 def load_image(relpath: str) -> pygame.Surface:

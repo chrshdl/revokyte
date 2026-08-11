@@ -72,9 +72,10 @@ def run(conf: Config) -> None:
     try:
         # Initialize the rendering pipeline. Display resolves which physical
         # panel we're driving and registers it process-wide so input mapping
-        # (button.py) can translate physical input into logical 1280x720
-        # coordinates. The whole UI is drawn into a fixed logical surface;
-        # Display presents it to the panel (rotate and/or scale).
+        # (button.py) can translate physical input into logical coordinates
+        # and the per-resolution skin (ui/skins) resolves. The whole UI is
+        # drawn into a native-resolution logical surface; Display presents
+        # it to the panel (rotation only, no resampling).
         display = Display(getattr(conf, "display", "auto"))
         main_surface = display.surface
 

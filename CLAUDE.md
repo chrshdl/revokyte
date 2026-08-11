@@ -94,7 +94,7 @@ flowchart LR
     BUS --> PLUGINS
     BUS --> PERIPH
 
-    VIEW --> DISP["Display<br/>1280×720 logical → panel"]
+    VIEW --> DISP["Display<br/>native logical → panel"]
     PLUGINS -.->|"sprites"| VIEW
     PERIPH -->|"8-LED bar"| LEDS["Blinkt! shift lights"]
 ```
@@ -163,9 +163,15 @@ Extension-contributed plugins load through the same `PluginManager`; the hooks b
 
 The widget registry (`ui/widgets/registry.py`) stays here (free widgets, shared surface) and — with the SDK, config, and logger modules — is the informal API contract external plugins import (see the `GenericPlugin` docstring). The external plugin directory (`/data/plugins`, dev `~/.instrument-cluster/plugins`) remains a generic override mechanism: an external `plugin_id` shadows a packaged one, allowing a widget fix without an OS update.
 
-### Rendering
+### Rendering & Skins
 
-- On the Raspberry Pi Display 2: uses `HardwareRenderer` (OpenGL) which rotates the surface 270° to account for the portrait display mounted in landscape orientation.
+Every panel renders at **native resolution** with a **dedicated, hand-tunable skin** — one geometry set per resolution in `ui/skins/` (`skin_1280x720.py` is the original design verbatim, `skin_1024x600.py` and `skin_800x480.py` were seeded by `tools/gen_skin_seed.py` and are hand-tuned in place). A `Skin` (`ui/skins/schema.py`) holds every layout number in native integer pixels, grouped by area (`dashboard`, `style`, `header`, `setup`, `keyboard`, `numpad`, `overlays`); `active_skin()` resolves by the active profile's `logical_size`, lazily at construction time — **never at import time** (views import before `Display()` exists; the lazy dev fallback is SKIN_1280). Skins may differ structurally, not just in size: the 800×480 Setup grid has 4 rows to the 1280's 5, and its Wi-Fi list shows 3 network cells. Schema fields carry axis metadata (`x`/`y`/`u`/`font`/`font_pixel`/`const`) so the seed generator can scale mechanically; Pixeltype sizes snap to multiples of 8 (`test_pixel_fonts_snapped` enforces it — that font renders ragged off its grid).
+
+The old design-space helpers (`sx/sy/su/srect/spos` in `ui/utils.py`, `DESIGN_WIDTH/HEIGHT`) survive for exactly two things: the **custom-dashboard spec space** (user layouts are authored in 1280×720 on every panel; `registry.py` composes `scale_uniform()` into `font_scale`, and the external browser-builder stays 1280×720 — do not "fix" it to per-skin) and **self-contained decoration** (small paddings/glyphs inside a widget). Skinned code passes native pixels and `load_font_px`; never mix a `su()`-scaled value arithmetically with a skin value. Per-skin layout tests live in `tests/instrument_cluster/ui/test_skins.py` (bounds, overlap, pixel-font grid, per-profile resolution via the `force_profile` fixture in `tests/conftest.py`). Preview any skin on a dev machine: `python tools/preview_dashboard.py --display waveshare_5 --shot /tmp/dash.png` (headless PNG), or set `"display": "waveshare_5"` in the config for a live native-size window; every `tools/preview_*.py` accepts `--display`.
+
+**The skin editor** (`python tools/skin_editor`) is the designer-facing way to tune all of this: an EB-GUIDE-style standalone pygame app (view tree left, WYSIWYG canvas center — rendered by the *real* view/widget code — properties right) that edits geometry/fonts per skin with drag/resize/nudge on the canvas, the shared color palette (live overrides via `Color.rgb()`/`set_palette_override`; color defaults resolve at construction, never in signatures), and the icon registry (`ui/icons.py`, all material-symbols glyphs by semantic name, `Icon.X.glyph()`; a picker browses the TTF). Saving rewrites `skin_*.py` through `ui/skins/serialize.py::emit_skin_module` (`scale=None` = verbatim; the seed generator shares this code path) and surgically rewrites the member lines of `colors.py`/`icons.py` (golden tests in `tests/tools/` pin byte-identical no-op saves). The editor isolates its config (temp `IC_CONFIG_PATH`) and uses `set_skin_override`/`set_icon_override` — tooling-only hooks the app never calls.
+
+- On the Raspberry Pi Display 2: uses `HardwareRenderer` (OpenGL) which rotates the surface 270° to account for the portrait display mounted in landscape orientation (1:1 pixels, no resampling).
 - On the Waveshare panels (7″ 1024×600, 5″ 800×480): software renderer at native panel resolution (`logical_size == physical_size`, no post-scale). The profile is auto-detected by panel resolution in `peripherals/display.py`.
 - On other platforms (dev): standard `pygame.display.update()` with dirty rects.
 - Tests run with `SDL_VIDEODRIVER=dummy` (set in `tests/conftest.py`).

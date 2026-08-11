@@ -104,6 +104,7 @@ class TracingStateManager:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--display", default="dev", help="display profile")
     parser.add_argument("--boot", action="store_true", help="first-boot entry")
     parser.add_argument("--succeed", action="store_true", help="connect successfully")
     parser.add_argument("--fail-auth", action="store_true", help="never associate")
@@ -117,7 +118,7 @@ def main() -> None:
         args.fail_auth = True  # the failure the appliance actually showed
 
     pygame.init()
-    display = Display("dev")
+    display = Display(args.display)
     surface = display.surface
 
     manager = FakeWifiManager(args, conf_path="/tmp/preview-wpa_supplicant.conf")

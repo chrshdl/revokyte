@@ -15,8 +15,8 @@ class TextField(Label):
         height,
         *,
         antialias=True,
-        border_color=Color.LIGHT_GREY.rgb(),
-        background_color=Color.GREY.rgb(),
+        border_color=None,
+        background_color=None,
         blinking_cursor=True,
         mask=False,
     ):
@@ -26,8 +26,12 @@ class TextField(Label):
         self.cursor_timer = 0.0
         self.blinking_cursor = blinking_cursor
         self.antialias = antialias
-        self.border_color = border_color
-        self.background_color = background_color
+        self.border_color = (
+            Color.LIGHT_GREY.rgb() if border_color is None else border_color
+        )
+        self.background_color = (
+            Color.GREY.rgb() if background_color is None else background_color
+        )
         self.active = False
 
         # Password-style masking: when enabled the field renders bullets in

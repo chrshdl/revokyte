@@ -363,9 +363,11 @@ def test_pressed_highlight_clears_on_release(monkeypatch):
     The highlight persisting *during* the drag is intended — see
     widgets/test_button_drag.py.
     """
-    from instrument_cluster.ui.feed_update_window import CARD_COLOR
+    from instrument_cluster.ui.feed_update_window import _card_color
     from instrument_cluster.ui.widgets.base.button import ButtonState
     from instrument_cluster.ui.window_layering import WindowManager
+
+    CARD_COLOR = _card_color()
 
     manager = _StateManager()
     manager.is_running = True

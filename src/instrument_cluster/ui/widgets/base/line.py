@@ -1,18 +1,16 @@
 import pygame
 
 from ...colors import Color
-from ...constants import HEADER_LINE_TOPLEFT
-from ...utils import spos, su, sx, sy
 
 
 class Line:
     def __init__(
         self,
-        start_pos=HEADER_LINE_TOPLEFT,
-        length=1280,
-        color=Color.BLUE.rgb(),
-        width=2,
-        horizontal=True,
+        start_pos: tuple[int, int],
+        length: int,
+        color=None,
+        width: int = 2,
+        horizontal: bool = True,
     ):
         """
         A simple widget that draws a straight line.
@@ -24,12 +22,13 @@ class Line:
             width (int): Thickness of the line in pixels.
             horizontal (bool): True for horizontal, False for vertical.
 
-        Coordinates are authored in design space and scaled to the active panel.
+        Coordinates are final (native) pixels — callers pass values from
+        the active skin (see ``ui/views/header.py::header_line``).
         """
-        self.start_pos = spos(*start_pos)
-        self.length = sx(length) if horizontal else sy(length)
-        self.color = color
-        self.width = max(1, su(width))
+        self.start_pos = (round(start_pos[0]), round(start_pos[1]))
+        self.length = round(length)
+        self.color = Color.BLUE.rgb() if color is None else color
+        self.width = max(1, width)
         self.horizontal = horizontal
 
     def draw(self, surface):

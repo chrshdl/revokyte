@@ -17,12 +17,14 @@ from ..ui.events import (
     BUTTON_SETUP_LONGPRESSED,
     BUTTON_SETUP_RELEASED,
 )
+from ..ui.skins import active_skin
 from ..ui.views.dashboard_view import DashboardView
 
 # A slot swipe must travel far enough horizontally to never collide with
-# button taps, and stay flat enough to not be a scroll-ish gesture.
-SWIPE_MIN_DX = 180  # design px
-SWIPE_MAX_DY = 140
+# button taps, and stay flat enough to not be a scroll-ish gesture. The
+# thresholds are per-skin (native px): swipe positions arrive in logical
+# coordinates, so a fixed design-px threshold made the gesture ~1.6x
+# harder on the 800x480 panel.
 
 # Slide transition between dashboard pages (ease-out cubic).
 SLIDE_DURATION_S = 0.26
@@ -154,7 +156,8 @@ class DashboardState(State):
     def _handle_swipe(self, start, end) -> bool:
         dx = end[0] - start[0]
         dy = end[1] - start[1]
-        if abs(dx) < SWIPE_MIN_DX or abs(dy) > SWIPE_MAX_DY:
+        skin = active_skin().dashboard
+        if abs(dx) < skin.swipe_min_dx or abs(dy) > skin.swipe_max_dy:
             return False
 
         pages = self._pages()

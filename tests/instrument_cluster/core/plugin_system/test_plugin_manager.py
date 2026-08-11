@@ -373,16 +373,14 @@ class TestRectParity:
 
     @classmethod
     def expected_with_constants(cls):
-        from instrument_cluster.ui.constants import (
-            LAP_WIDGET_HEIGHT,
-            LAP_WIDGET_Y,
-        )
+        from instrument_cluster.ui.skins import SKIN_1280
 
+        _, lap_y, _, lap_h = SKIN_1280.dashboard.lap_counter_rect
         return cls.EXPECTED + [
             (
                 "lap-counter",
                 "topleft",
-                [("1172-sr", LAP_WIDGET_Y, 90, LAP_WIDGET_HEIGHT)],
+                [("1172-sr", lap_y, 90, lap_h)],
             ),
         ]
 

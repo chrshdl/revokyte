@@ -20,11 +20,11 @@ from __future__ import annotations
 import pygame
 
 from ..addons.feeds import FeedDescriptor, feed_needs_reinstall
-from ..peripherals.display import DESIGN_HEIGHT, DESIGN_WIDTH
 from ..telemetry.mode import TelemetryMode
 from .colors import Color
 from .events import FEED_UPDATE_NOW_PRESSED, FEED_UPDATE_NOW_RELEASED
-from .utils import FontFamily, load_font, srect, su
+from .skins import active_skin
+from .utils import FontFamily, load_font_px
 from .widgets.base.button import Button, ButtonEvents, ButtonGroup
 from .widgets.base.modal_dimming import ModalDimming
 from .window_layering import OverlayWindow, WindowLayer
@@ -32,34 +32,23 @@ from .window_layering import OverlayWindow, WindowLayer
 # How far the live dashboard is knocked back behind the card.
 DIM_PERCENT = 35.0
 
-# Card geometry in design px (centred).
-CARD_SIZE = (860, 340)
-CARD_RADIUS = 10
-# The card's fill, shared with the buttons so they paint opaquely over it.
-CARD_COLOR = Color.DARKER_GREY.rgb()
+# Card geometry comes from the active skin's overlays group (centred).
 CARD_BORDER_WIDTH = 2
+
+
+def _card_color() -> tuple:
+    """The card's fill, shared with the buttons so they paint opaquely
+    over it. Resolved per build so palette overrides (skin editor) reach
+    a rebuilt card."""
+    return Color.DARKER_GREY.rgb()
 
 TITLE_TEXT = "Telemetry feed out of date"
 
-TITLE_FONT_SIZE = 44
-BODY_FONT_SIZE = 28
-
-# Vertical rhythm inside the card, design px from its top edge.
-TITLE_TOP = 46
-BODY_TOP = 132
-BODY_LINE_PITCH = 42
-
-# The single action, styled like InstallView's Install button.
-BUTTON_SIZE = (260, 70)
-BUTTON_FONT_SIZE = 40
-BUTTON_BOTTOM_MARGIN = 40
-
 
 def _card_rect() -> pygame.Rect:
-    w, h = CARD_SIZE
-    return pygame.Rect(
-        srect((DESIGN_WIDTH - w) // 2, (DESIGN_HEIGHT - h) // 2, w, h)
-    )
+    skin = active_skin()
+    w, h = skin.overlays.feed_card_size
+    return pygame.Rect((skin.width - w) // 2, (skin.height - h) // 2, w, h)
 
 
 def body_lines(descriptor: FeedDescriptor, installed_version: str) -> list[str]:
@@ -80,34 +69,39 @@ def body_lines(descriptor: FeedDescriptor, installed_version: str) -> list[str]:
 
 def build_card(descriptor: FeedDescriptor, installed_version: str) -> pygame.Surface:
     """Render the notice card."""
+    o = active_skin().overlays
     rect = _card_rect()
     card = pygame.Surface(rect.size, pygame.SRCALPHA)
-    radius = max(1, su(CARD_RADIUS))
+    radius = max(1, o.feed_card_radius)
 
     pygame.draw.rect(
-        card, CARD_COLOR, card.get_rect(), border_radius=radius
+        card, _card_color(), card.get_rect(), border_radius=radius
     )
     pygame.draw.rect(
         card,
         Color.ORANGE.rgb(),
         card.get_rect(),
-        max(1, su(CARD_BORDER_WIDTH)),
+        CARD_BORDER_WIDTH,
         border_radius=radius,
     )
 
     centre_x = rect.width // 2
 
-    title_font = load_font(size=TITLE_FONT_SIZE, family=FontFamily.D_DIN_EXP_BOLD)
+    title_font = load_font_px(
+        o.feed_title_font, FontFamily[o.feed_title_font_family]
+    )
     title = title_font.render(TITLE_TEXT, True, Color.ORANGE.rgb())
-    card.blit(title, title.get_rect(midtop=(centre_x, su(TITLE_TOP))))
+    card.blit(title, title.get_rect(midtop=(centre_x, o.feed_title_top)))
 
-    body_font = load_font(size=BODY_FONT_SIZE, family=FontFamily.NOTOSANS_REGULAR)
-    y = su(BODY_TOP)
+    body_font = load_font_px(
+        o.feed_body_font, FontFamily[o.feed_body_font_family]
+    )
+    y = o.feed_body_top
     for line in body_lines(descriptor, installed_version):
         if line:
             surf = body_font.render(line, True, Color.WHITE.rgb())
             card.blit(surf, surf.get_rect(midtop=(centre_x, y)))
-        y += su(BODY_LINE_PITCH)
+        y += o.feed_body_line_pitch
 
     return card
 
@@ -115,11 +109,13 @@ def build_card(descriptor: FeedDescriptor, installed_version: str) -> pygame.Sur
 def _button_rect() -> tuple:
     """Screen-space rect for the Update now button, centred on the card
     above its bottom edge."""
-    width, height = BUTTON_SIZE
-    card_bottom = (DESIGN_HEIGHT + CARD_SIZE[1]) // 2
-    return srect(
-        (DESIGN_WIDTH - width) // 2,
-        card_bottom - height - BUTTON_BOTTOM_MARGIN,
+    skin = active_skin()
+    o = skin.overlays
+    width, height = o.feed_button_size
+    card_bottom = (skin.height + o.feed_card_size[1]) // 2
+    return (
+        (skin.width - width) // 2,
+        card_bottom - height - o.feed_button_bottom_margin,
         width,
         height,
     )
@@ -189,9 +185,12 @@ class FeedUpdateWindow(OverlayWindow):
             rect=rect,
             text=text,
             text_visible=True,
-            font=load_font(size=BUTTON_FONT_SIZE, family=FontFamily.PIXEL_TYPE),
+            font=load_font_px(
+                active_skin().overlays.feed_button_font,
+                FontFamily[active_skin().overlays.feed_button_font_family],
+            ),
             antialias=True,
-            bg_color=CARD_COLOR,
+            bg_color=_card_color(),
             events=ButtonEvents(pressed=pressed, released=released),
         )
 

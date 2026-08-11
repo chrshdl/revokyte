@@ -6,8 +6,7 @@ import pygame
 
 from ....peripherals.display import active_profile
 from ...colors import Color
-from ...constants import SCREEN_WIDTH
-from ...utils import su, sx, sy
+from ...skins import active_skin
 
 # Gesture id for mouse-driven content drags; finger ids are ints, so a
 # sentinel object can never collide with one.
@@ -25,20 +24,18 @@ class Scrollbar:
     reflects the visible fraction of content and can also be dragged
     directly (or tapped) to jump-scroll.
 
-    Geometry is authored in design-space (unscaled) px; ``draw`` and
-    ``handle_event`` operate in scaled (screen/logical) coordinates, mirroring
-    the rest of the widget layer.
+    Geometry, ``self.offset``, and event coordinates are all native
+    (logical) px — callers pass values derived from ``active_skin()``, and
+    the track/thumb styling comes from ``skin.style.scrollbar``. One unit
+    end to end: finger deltas from ``to_logical`` add directly onto the
+    offset (the old design-px offset under-scrolled content drags on the
+    scaled panels).
 
     The caller is responsible for applying ``self.offset`` to its own
     content (e.g. ``ListItemGroup.scroll_to(offset)``) after every
     ``update()`` / ``handle_event()`` call — this class only tracks the
     scroll physics and draws the indicator, it doesn't own any content.
     """
-
-    TRACK_WIDTH = 8
-    TRACK_MARGIN_RIGHT = 16
-    MIN_THUMB_HEIGHT = 32
-    TRACK_HIT_PAD = 20  # extra hit-test margin around the visual track
 
     RUBBER_BAND_RESISTANCE = 10.0
     FRICTION_DECAY = 3.5  # 1/s — higher stops momentum sooner
@@ -48,12 +45,11 @@ class Scrollbar:
     # damping values crawl — don't raise damping without re-simulating.
     SPRING_STIFFNESS = 300  # 1/s^2 — pulls an out-of-bounds offset back
     SPRING_DAMPING = 22.0  # 1/s
-    DRAG_THRESHOLD = 12  # design-px finger movement before a tap becomes a drag
-    VELOCITY_EPSILON = 2.0  # design-px/s below which momentum is considered stopped
+    VELOCITY_EPSILON = 2.0  # px/s below which momentum is considered stopped
     # With snapping enabled: once free momentum decays below this, the spring
-    # takes over and glides to the nearest snap point (design-px/s).
+    # takes over and glides to the nearest snap point (px/s).
     SNAP_VELOCITY = 250.0
-    # Release velocity cap (design-px/s). Touch timestamps can degenerate
+    # Release velocity cap (px/s). Touch timestamps can degenerate
     # (two motion events in the same tick), producing absurd flings that
     # ricochet between the bounds before the spring can catch them.
     MAX_FLING_VELOCITY = 3000.0
@@ -74,12 +70,12 @@ class Scrollbar:
         self.track_color = track_color
         self.thumb_color = thumb_color or Color.BLUE.rgb()
         # Shortens only the visual track (and its hit/thumb geometry) at the
-        # bottom, in design px — the scroll viewport and range are untouched.
+        # bottom, in native px — the scroll viewport and range are untouched.
         # Lets the track keep the same breathing room from the screen bottom
         # as viewport_top gives it from the chrome above.
         self.track_margin_bottom = track_margin_bottom
         # > 0: after a release the offset comes to rest on a multiple of this
-        # (design px, typically the row pitch) so no row is left half-cut.
+        # (native px, typically the row pitch) so no row is left half-cut.
         # The bounds always win over a snap point.
         self.snap_interval = snap_interval
 
@@ -120,18 +116,23 @@ class Scrollbar:
         self.offset = max(0.0, min(self.max_offset, self.offset))
 
     def _track_rect(self) -> pygame.Rect:
-        w = su(self.TRACK_WIDTH)
-        x = sx(SCREEN_WIDTH - self.TRACK_MARGIN_RIGHT) - w
-        h = sy(self.viewport_height - self.track_margin_bottom)
-        return pygame.Rect(x, sy(self.viewport_top), w, h)
+        skin = active_skin()
+        style = skin.style.scrollbar
+        w = style.track_width
+        x = skin.width - style.track_margin_right - w
+        h = round(self.viewport_height - self.track_margin_bottom)
+        return pygame.Rect(x, round(self.viewport_top), w, h)
 
     def _track_hit_rect(self) -> pygame.Rect:
-        pad = su(self.TRACK_HIT_PAD)
+        pad = active_skin().style.scrollbar.track_hit_pad
         return self._track_rect().inflate(pad * 2, 0)
 
     def viewport_rect(self) -> pygame.Rect:
         return pygame.Rect(
-            0, sy(self.viewport_top), sx(SCREEN_WIDTH), sy(self.viewport_height)
+            0,
+            round(self.viewport_top),
+            active_skin().width,
+            round(self.viewport_height),
         )
 
     # ------------------------------------------------------------------
@@ -330,7 +331,8 @@ class Scrollbar:
             if not self._gesture_dragging:
                 dx = pos[0] - self._gesture_start[0]
                 dy = pos[1] - self._gesture_start[1]
-                if max(abs(dx), abs(dy)) > su(self.DRAG_THRESHOLD):
+                threshold = active_skin().style.scrollbar.drag_threshold
+                if max(abs(dx), abs(dy)) > threshold:
                     self._gesture_dragging = True
                     self._snap_goal = None
                     self._gesture_base_offset = self.offset
@@ -392,7 +394,10 @@ class Scrollbar:
         )
 
         visible_fraction = self.viewport_height / self.content_height
-        thumb_h = max(su(self.MIN_THUMB_HEIGHT), int(track.height * visible_fraction))
+        thumb_h = max(
+            active_skin().style.scrollbar.min_thumb_height,
+            int(track.height * visible_fraction),
+        )
         frac = (
             0.0
             if self.max_offset <= 0

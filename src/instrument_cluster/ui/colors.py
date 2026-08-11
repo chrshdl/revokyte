@@ -5,6 +5,23 @@ RGB = tuple[int, int, int]
 RGBA = tuple[int, int, int, int]
 ColorValues = RGB | RGBA
 
+# Palette overrides — tooling only (the skin editor's live preview, tests).
+# ``Color.rgb()`` consults this before the member's baked value, so a tool
+# can restyle the palette at runtime and rebuild views to see the effect.
+# The app itself never writes here; persisted palette changes are edits to
+# this file (the skin editor rewrites it).
+_overrides: dict["Color", ColorValues] = {}
+
+
+def set_palette_override(color: "Color", rgb: ColorValues) -> None:
+    """Tooling only: make ``color.rgb()`` return ``rgb`` in this process."""
+    _overrides[color] = tuple(rgb)
+
+
+def reset_palette_overrides() -> None:
+    """Tooling only: drop every override set in this process."""
+    _overrides.clear()
+
 
 class Color(Enum):
     GREEN = (auto(), (0, 200, 0))
@@ -39,7 +56,8 @@ class Color(Enum):
     ORANGE = (auto(), (255, 140, 0))
 
     def rgb(self) -> ColorValues:
-        return self.value[1]
+        override = _overrides.get(self)
+        return self.value[1] if override is None else override
 
     @classmethod
     def colormap(cls, f: float) -> ColorValues:

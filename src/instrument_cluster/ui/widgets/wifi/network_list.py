@@ -21,30 +21,44 @@ import pygame
 
 from ....core.system.wifi_manager import Network
 from ...colors import Color
-from ...constants import SCREEN_WIDTH
+from ...icons import Icon
 from ...events import (
     WIFI_NETWORK_ROW_PRESSED,
     WIFI_NETWORK_SELECTED,
     WIFI_OTHER_ROW_PRESSED,
     WIFI_OTHER_SELECTED,
 )
-from ...utils import FontFamily, load_font, srect, su, sx, sy
+from ...skins import active_skin
+from ...utils import FontFamily, load_font, load_font_px, su, sx, sy
 from ..base.button import Button, ButtonEvents
 from ..base.line import Line
 from ..base.list_item import ListItem
 from ..base.scrollbar import Scrollbar
 
-# Row grid, derived from the settings rows so both lists share one look.
-_GAP = ListItem.ROW_PITCH - ListItem.DEFAULT_HEIGHT
-_CELL_TOP = ListItem.ROW_TOP - _GAP / 2  # first cell boundary (header line)
-_ROW_X = ListItem.SEPARATOR_INSET
-_ROW_W = SCREEN_WIDTH - 2 * ListItem.SEPARATOR_INSET
-# Stretched row rect inside its cell (same clearance dance as the setup
-# rows' dropdown headers, so the pressed fill never covers a separator).
-_STRETCH_DY = -_GAP / 2 + ListItem.SEPARATOR_CLEARANCE
-_STRETCH_H = ListItem.DEFAULT_HEIGHT + _GAP - 2 * ListItem.SEPARATOR_CLEARANCE
+class _Grid:
+    """Row grid in native px, derived from the active skin's settings rows
+    so both lists share one look. Resolved at construction time (never at
+    import) because the skin follows the display profile."""
 
-_VISIBLE_NETWORK_CELLS = 4
+    def __init__(self):
+        skin = active_skin()
+        s = skin.setup
+        self.gap = s.row_pitch - s.row_height
+        self.cell_top = s.row_top - self.gap / 2  # first cell boundary
+        self.row_x = s.separator_inset
+        self.row_w = skin.width - 2 * s.separator_inset
+        # Stretched row rect inside its cell (same clearance dance as the
+        # setup rows' dropdown headers, so the pressed fill never covers a
+        # separator).
+        self.stretch_dy = -self.gap / 2 + s.separator_clearance
+        self.stretch_h = s.row_height + self.gap - 2 * s.separator_clearance
+        self.row_top = s.row_top
+        self.row_pitch = s.row_pitch
+        self.row_height = s.row_height
+        self.label_x = s.label_x
+        self.row_font_size = s.row_font_size
+        self.row_font_family = s.row_font_family
+        self.visible_cells = s.visible_network_cells
 
 
 class _NetworkRows:
@@ -62,6 +76,7 @@ class WifiNetworkList:
     """Elastic, touch-draggable list of scan results."""
 
     def __init__(self):
+        self._grid = _Grid()
         self._icon_font = load_font(size=30, family=FontFamily.MATERIAL_SYMBOLS)
 
         self._network_rows: list[tuple[Button, Network]] = []
@@ -84,7 +99,7 @@ class WifiNetworkList:
             (self._network_button(i, net), net) for i, net in enumerate(networks)
         ]
         self._other_btn = self._other_button(
-            min(len(networks), _VISIBLE_NETWORK_CELLS)
+            min(len(networks), self._grid.visible_cells)
         )
         self._scrollbar = self._make_scrollbar(len(networks))
 
@@ -100,49 +115,49 @@ class WifiNetworkList:
         # to the manual row's cell boundary. Content height follows the
         # ListItemGroup convention (last cell bottom minus first content
         # top), so four networks fit exactly and a fifth starts scrolling.
-        viewport_height = _VISIBLE_NETWORK_CELLS * ListItem.ROW_PITCH - _GAP / 2
+        g = self._grid
+        viewport_height = g.visible_cells * g.row_pitch - g.gap / 2
         content_height = (
-            (network_count - 1) * ListItem.ROW_PITCH
-            + ListItem.DEFAULT_HEIGHT
-            + _GAP / 2
+            (network_count - 1) * g.row_pitch + g.row_height + g.gap / 2
             if network_count
             else 0.0
         )
         return Scrollbar(
-            viewport_top=ListItem.ROW_TOP,
+            viewport_top=g.row_top,
             viewport_height=viewport_height,
             content_height=content_height,
-            # Same breathing room above the separator as ROW_TOP leaves
+            # Same breathing room above the separator as row_top leaves
             # below the header line.
-            track_margin_bottom=_GAP / 2,
+            track_margin_bottom=g.gap / 2,
             # Come to rest on whole rows — never leave one half-cut under
             # the header.
-            snap_interval=ListItem.ROW_PITCH,
+            snap_interval=g.row_pitch,
         )
 
     def _cell_content_y(self, cell: int) -> float:
-        return ListItem.ROW_TOP + cell * ListItem.ROW_PITCH
+        return self._grid.row_top + cell * self._grid.row_pitch
 
     def _row_button(self, cell: int, text: str, events: ButtonEvents, **kw) -> Button:
+        g = self._grid
         return Button(
-            rect=srect(
-                _ROW_X,
-                self._cell_content_y(cell) + _STRETCH_DY,
-                _ROW_W,
-                _STRETCH_H,
+            rect=(
+                g.row_x,
+                round(self._cell_content_y(cell) + g.stretch_dy),
+                g.row_w,
+                round(g.stretch_h),
             ),
             text=text,
             text_visible=True,
             # SSIDs are arbitrary user text — NotoSans covers accents and
             # non-Latin scripts.
-            font=load_font(
-                size=ListItem.ROW_FONT_SIZE, family=FontFamily.NOTOSANS_REGULAR
+            font=load_font_px(
+                g.row_font_size, FontFamily[g.row_font_family]
             ),
             antialias=True,
             events=events,
             content_align="left",
             # Text on the settings rows' caption column.
-            padding=(su(ListItem.LABEL_X - _ROW_X), su(20), su(20), su(20)),
+            padding=(g.label_x - g.row_x, su(20), su(20), su(20)),
             text_offset_y=su(4),
             text_color=Color.WHITE.rgb(),
             show_border=False,
@@ -178,8 +193,8 @@ class WifiNetworkList:
         self._scrollbar.update(dt)
         offset = self._scrollbar.offset
         for i, (btn, _) in enumerate(self._network_rows):
-            top = self._cell_content_y(i) + _STRETCH_DY - offset
-            btn.rect.top = round(sy(top))
+            top = self._cell_content_y(i) + self._grid.stretch_dy - offset
+            btn.rect.top = round(top)
             btn.update(dt)
         if self._other_btn is not None:
             self._other_btn.update(dt)
@@ -206,8 +221,11 @@ class WifiNetworkList:
             surface.blit(btn.image, btn.rect)
         self._draw_decorations(surface)
         # Separators between network rows, at the cell boundaries.
+        g = self._grid
         for i in range(1, len(self._network_rows)):
-            self._draw_separator(surface, _CELL_TOP + i * ListItem.ROW_PITCH - offset)
+            self._draw_separator(
+                surface, g.cell_top + i * g.row_pitch - offset
+            )
 
         if scrollable:
             surface.set_clip(prev_clip)
@@ -222,28 +240,35 @@ class WifiNetworkList:
         self._scrollbar.draw(surface)
 
     def _other_btn_cell_boundary(self) -> float:
-        cells = min(len(self._network_rows), _VISIBLE_NETWORK_CELLS)
-        return _CELL_TOP + cells * ListItem.ROW_PITCH
+        g = self._grid
+        cells = min(len(self._network_rows), g.visible_cells)
+        return g.cell_top + cells * g.row_pitch
 
     def _draw_separator(self, surface, y: float) -> None:
+        skin = active_skin()
+        inset = skin.setup.separator_inset
         Line(
-            start_pos=(ListItem.SEPARATOR_INSET, y),
-            length=SCREEN_WIDTH - 2 * ListItem.SEPARATOR_INSET,
-            color=ListItem.SEPARATOR_COLOR,
-            width=ListItem.SEPARATOR_WIDTH,
+            start_pos=(inset, y),
+            length=skin.width - 2 * inset,
+            color=ListItem.separator_color(),
+            width=skin.setup.separator_width,
         ).draw(surface)
 
     def _draw_decorations(self, surface) -> None:
         for button, net in self._network_rows:
             self._draw_signal_bars(surface, button.rect, net.bars)
             if self._current_ssid and net.ssid == self._current_ssid:
-                check = self._icon_font.render("\ue876", True, Color.LIGHT_GREEN.rgb())
+                check = self._icon_font.render(
+                    Icon.ROW_CHECK.glyph(), True, Color.LIGHT_GREEN.rgb()
+                )
                 r = check.get_rect()
                 r.right = button.rect.right - sx(108)
                 r.centery = button.rect.centery
                 surface.blit(check, r)
             if net.secured:
-                lock = self._icon_font.render("\ue897", True, Color.WHITE.rgb())
+                lock = self._icon_font.render(
+                    Icon.LOCK.glyph(), True, Color.WHITE.rgb()
+                )
                 r = lock.get_rect()
                 r.right = button.rect.right - sx(72)
                 r.centery = button.rect.centery

@@ -98,8 +98,8 @@ class AbstractButton(DirtySprite):
     def _event_xy(event) -> tuple[int, int] | None:
         """
         Universal input scaler. Maps any mouse/touch input into the app's
-        logical (1280x720) resolution using the active display profile, which
-        accounts for the panel's physical size and rotation.
+        logical (native panel) resolution using the active display profile,
+        which accounts for the panel's physical size and rotation.
         """
         from ....peripherals.display import active_profile
 
@@ -279,7 +279,9 @@ class Button(AbstractButton):
         padding: Tuple[int, int, int, int] | Tuple[int, int] | int = 0,
         icon_cell_width: int | None = None,
         bg_color: tuple[int, int, int] | None = None,
-        pressed_gradient: tuple[tuple[int, int, int], tuple[int, int, int]] | None = (Color.DARK_BLUE.rgb(), Color.BLACK.rgb()),
+        # None disables the pressed fill; the sentinel resolves to the
+        # palette default at construction (live palette overrides).
+        pressed_gradient: tuple[tuple[int, int, int], tuple[int, int, int]] | None | str = "default",
         gradient_dir: Literal["vertical", "horizontal"] = "vertical",
         border_top_left_radius=None,
         border_top_right_radius=None,
@@ -319,7 +321,11 @@ class Button(AbstractButton):
         self.padding = padding
         self.icon_cell_width = icon_cell_width
         self.bg_color = bg_color
-        self.pressed_gradient = pressed_gradient
+        self.pressed_gradient = (
+            (Color.DARK_BLUE.rgb(), Color.BLACK.rgb())
+            if pressed_gradient == "default"
+            else pressed_gradient
+        )
         self.gradient_dir = gradient_dir
 
         self.border_top_left_radius = border_top_left_radius

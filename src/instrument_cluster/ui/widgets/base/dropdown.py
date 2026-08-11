@@ -6,14 +6,19 @@ import pygame
 from pygame.sprite import DirtySprite, LayeredDirty
 
 from ...colors import Color
+from ...icons import Icon
 from ...utils import su
 from .button import Button, ButtonEvents, ButtonState
 
+# ``text_left_pad`` and the paddings derived from it are native px (the
+# setup view passes column offsets straight from the active skin). The
+# radio glyph constants below are design px, converted once with su() —
+# self-contained styling, not grid geometry.
 TEXT_LEFT_PAD = 32
 
 # Radio button drawn to the left of each option's label (see _DropdownOption
 # ._draw_radio): its ring aligns with the header's value-text column, and the
-# label follows RADIO_GAP after it.
+# label follows the radio gap after it.
 RADIO_LEFT_X = 24  # minimum radio inset for headers with a smaller pad
 RADIO_DIAMETER = 32
 RADIO_RING_WIDTH = 3
@@ -47,7 +52,7 @@ class _DropdownOption(Button):
             icon=None,
             text_visible=True,
             content_align="left",
-            padding=(su(parent.option_text_left_pad), su(20), su(20), su(20)),
+            padding=(parent.option_text_left_pad, su(20), su(20), su(20)),
             # The radio is drawn at the rect's exact vertical center, so the
             # text must stay centered too (no header-style baseline nudge).
             text_offset_y=0,
@@ -72,8 +77,8 @@ class _DropdownOption(Button):
 
     def _draw_radio(self) -> None:
         d = su(RADIO_DIAMETER)
-        radio_left = self._parent.option_text_left_pad - RADIO_DIAMETER - RADIO_GAP
-        cx = su(radio_left) + d // 2
+        radio_left = self._parent.option_text_left_pad - d - su(RADIO_GAP)
+        cx = radio_left + d // 2
         cy = self.rect.height // 2
         color = Color.BLUE.rgb() if self._is_selected else Color.WHITE.rgb()
         pygame.draw.circle(
@@ -139,9 +144,9 @@ class Dropdown(Button):
         labels: Mapping[Any, str] | None = None,
         menu_layer: int = DROPDOWN_MENU_LAYER,
         menu_pitch: int | None = None,
-        closed_bg_color: tuple[int, int, int] = Color.BLACK.rgb(),
-        open_bg_color: tuple[int, int, int] = Color.DARKEST_GREY.rgb(),
-        pressed_bg_color: tuple[int, int, int] = Color.DARKER_GREY.rgb(),
+        closed_bg_color: tuple[int, int, int] | None = None,
+        open_bg_color: tuple[int, int, int] | None = None,
+        pressed_bg_color: tuple[int, int, int] | None = None,
         text_left_pad: int = TEXT_LEFT_PAD,
         menu_separator_color: tuple[int, int, int] | None = None,
         menu_separator_width: int = 1,
@@ -153,16 +158,22 @@ class Dropdown(Button):
         # (feed labels) but not for enums — DiffReferenceMode would put a
         # bare "fastest" on screen.
         self._labels: dict[Any, str] = dict(labels) if labels else {}
-        # Vertical distance (scaled px) between the header top and each
+        # Vertical distance (native px) between the header top and each
         # successive menu option top. Lets an open menu align with a row grid
         # (e.g. the setup view's ListItems). None keeps the compact default.
         self.menu_pitch = menu_pitch
 
-        self._closed_bg_color = closed_bg_color
-        self._open_bg_color = open_bg_color
-        self._pressed_bg_color = pressed_bg_color
+        self._closed_bg_color = (
+            Color.BLACK.rgb() if closed_bg_color is None else closed_bg_color
+        )
+        self._open_bg_color = (
+            Color.DARKEST_GREY.rgb() if open_bg_color is None else open_bg_color
+        )
+        self._pressed_bg_color = (
+            Color.DARKER_GREY.rgb() if pressed_bg_color is None else pressed_bg_color
+        )
         # When set, the list's separator lines crossing the open menu are
-        # repainted onto the scrim at each cell boundary (design px width).
+        # repainted onto the scrim at each cell boundary (native px width).
         self.menu_separator_color = menu_separator_color
         self.menu_separator_width = menu_separator_width
 
@@ -171,7 +182,7 @@ class Dropdown(Button):
         # their label RADIO_GAP after it. The floor keeps the radio inside
         # the row for headers with the small default pad.
         self.option_text_left_pad = (
-            max(text_left_pad, RADIO_LEFT_X) + RADIO_DIAMETER + RADIO_GAP
+            max(text_left_pad, su(RADIO_LEFT_X)) + su(RADIO_DIAMETER) + su(RADIO_GAP)
         )
 
         label = self._label_for_index(self.selected_index)
@@ -185,12 +196,12 @@ class Dropdown(Button):
             pressed_gradient=None,
             font=font,
             text_color=text_color or Color.WHITE.rgb(),
-            icon="\ue313",
+            icon=Icon.CARET_DOWN.glyph(),
             icon_size=46,
             icon_position="right",
             icon_offset_y=su(4),
             content_align="left",
-            padding=(su(text_left_pad), su(20), su(20), su(20)),
+            padding=(text_left_pad, su(20), su(20), su(20)),
             icon_fixed_right=True,
             text_offset_y=su(4),
             border_top_left_radius=4,
@@ -402,7 +413,7 @@ class Dropdown(Button):
                     self.menu_separator_color,
                     (0, y),
                     (footprint.width, y),
-                    max(1, su(self.menu_separator_width)),
+                    max(1, self.menu_separator_width),
                 )
         self._group.add(scrim, layer=Dropdown.SCRIM_LAYER)
         self._scrim = scrim
