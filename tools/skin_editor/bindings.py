@@ -224,7 +224,7 @@ def bindings_for(view_id: str) -> list[Binding]:
         # The dashboard underneath is context, not the editable subject —
         # matching the view's widget tree.
         return _overlays()
-    if view_id == "setup":
+    if view_id in ("setup", "setup_dropdown"):
         return _setup()
     if view_id in ("wifi_scan",):
         # The network list rides the setup grid; no controls column here.

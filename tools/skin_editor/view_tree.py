@@ -240,6 +240,21 @@ _KEYBOARD = [
     ),
 ]
 
+_SETUP_VIEW_TREE = _HEADER + _SETUP_GRID + [
+    (
+        "Controls column",
+        ["setup.value_x", "setup.dropdown_x", "setup.chevron_icon_size"],
+    ),
+    (
+        "Toggle pill",
+        [
+            "style.toggle.track_w",
+            "style.toggle.track_h",
+            "style.toggle.knob_margin",
+        ],
+    ),
+]
+
 # ---------------------------------------------------------------------------
 # The per-view trees
 # ---------------------------------------------------------------------------
@@ -285,22 +300,8 @@ VIEW_TREES: dict[str, list[tuple[str, list[str]]]] = {
             ],
         ),
     ],
-    "setup": _HEADER
-    + _SETUP_GRID
-    + [
-        (
-            "Controls column",
-            ["setup.value_x", "setup.dropdown_x", "setup.chevron_icon_size"],
-        ),
-        (
-            "Toggle pill",
-            [
-                "style.toggle.track_w",
-                "style.toggle.track_h",
-                "style.toggle.knob_margin",
-            ],
-        ),
-    ],
+    "setup": _SETUP_VIEW_TREE,
+    "setup_dropdown": _SETUP_VIEW_TREE,
     "wifi_scan": _HEADER
     + [
         (

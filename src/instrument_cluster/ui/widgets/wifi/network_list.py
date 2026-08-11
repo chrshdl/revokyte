@@ -50,7 +50,10 @@ class _Grid:
         # Stretched row rect inside its cell (same clearance dance as the
         # setup rows' dropdown headers, so the pressed fill never covers a
         # separator).
-        self.stretch_dy = -self.gap / 2 + s.separator_clearance
+        # Same integer cell math as SetupView's stretched controls —
+        # float -gap/2 rounded later climbs onto the header line on
+        # odd-gap skins.
+        self.stretch_dy = s.separator_clearance - self.gap // 2
         self.stretch_h = s.row_height + self.gap - 2 * s.separator_clearance
         self.row_top = s.row_top
         self.row_pitch = s.row_pitch

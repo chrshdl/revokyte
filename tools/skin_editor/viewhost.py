@@ -36,6 +36,7 @@ VIEWS = [
     ("dashboard_lights", "Dashboard + status lights"),
     ("overlays", "Dashboard + overlays"),
     ("setup", "Setup"),
+    ("setup_dropdown", "Setup (dropdown open)"),
     ("wifi_scan", "Wi-Fi scan"),
     ("wifi_password", "Wi-Fi password"),
     ("wifi_manual", "Wi-Fi manual entry"),
@@ -147,10 +148,15 @@ def _render_overlays(surface: pygame.Surface) -> None:
     surface.blit(pill.image, pill.rect)
 
 
-def _render_setup(surface: pygame.Surface) -> None:
+def _render_setup(surface: pygame.Surface, dropdown_open: bool = False) -> None:
     from instrument_cluster.ui.views.setup_view import SetupView
 
     view = SetupView()
+    if dropdown_open:
+        # The menu state has geometry of its own (scrim + option rows) that
+        # a closed-dropdown render never shows — an overlap with the header
+        # line shipped invisibly once because of exactly that.
+        view.telemetry_mode_dropdown._set_open(True)
     background = pygame.Surface(surface.get_size())
     background.fill(Color.BLACK.rgb())
     view.draw_static_elements(background)
@@ -234,6 +240,8 @@ class ViewHost:
                 _render_overlays(self.surface)
             elif self.view_id == "setup":
                 _render_setup(self.surface)
+            elif self.view_id == "setup_dropdown":
+                _render_setup(self.surface, dropdown_open=True)
             elif self.view_id == "wifi_scan":
                 _render_wifi(self.surface, "scan")
             elif self.view_id == "wifi_password":

@@ -157,6 +157,38 @@ def test_scrollbar_track_has_equal_top_and_bottom_margins(view):
     assert view.scrollbar.viewport_rect().bottom == skin.height
 
 
+@pytest.mark.parametrize("profile", ["dev", "waveshare_7", "waveshare_5"])
+def test_open_dropdown_stays_clear_of_the_header_line(
+    tmp_path, monkeypatch, force_profile, profile
+):
+    """The open menu's scrim blanks everything under its footprint — if the
+    footprint climbs onto the header line, the line visibly disappears
+    under the dropdown (shipped on the 800x480 skin via a half-pixel
+    banker's rounding in the stretched-cell offset). A width-2 line at
+    line_y covers rows line_y..line_y+1, so the footprint must start at
+    line_y + 2 or below."""
+    monkeypatch.setattr(
+        "instrument_cluster.ui.views.setup_view.is_raspberry_pi", lambda: True
+    )
+    original_path = ConfigManager.path
+    ConfigManager.set_path(tmp_path / "config.json")
+    try:
+        with force_profile(profile):
+            view = SetupView()
+            dropdown = view.telemetry_mode_dropdown
+            dropdown._set_open(True)
+            footprint = dropdown.rect.unionall(
+                [r for _, r in dropdown.get_option_rects()]
+            )
+            line_bottom = active_skin().header.line_y + 1
+            assert footprint.top > line_bottom, (
+                f"{profile}: open dropdown footprint {footprint} covers the "
+                f"header line (bottom row {line_bottom})"
+            )
+    finally:
+        ConfigManager.set_path(original_path)
+
+
 def test_status_lights_toggle_reflects_config_default(view):
     # Fresh config defaults to status lights off.
     assert view.status_lights_toggle.checked is False
