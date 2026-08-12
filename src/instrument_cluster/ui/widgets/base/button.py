@@ -759,11 +759,18 @@ class Button(AbstractButton):
         """
         surface.blit(self.image, self.rect)
 
-    def set_text(self, text: str) -> None:
+    def set_text(
+        self, text: str, *, color: tuple[int, int, int] | None = None
+    ) -> None:
         """
-        Update button text and redraw if changed.
+        Update button text (and optionally its colour) and redraw if changed.
         """
         self.text = text
+        if color is not None and color != self.color:
+            self.color = color
+            self._text_cache_key = None
+            self._invalidate_layout_and_composite()
+            self._on_visual_change()
 
     @property
     def text(self) -> str:

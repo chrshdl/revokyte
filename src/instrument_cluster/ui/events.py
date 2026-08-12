@@ -47,6 +47,11 @@ STATUS_LIGHTS_TOGGLED = pygame.event.custom_type()  # event_data: checked (bool)
 WIFI_SETUP_PRESSED = pygame.event.custom_type()
 WIFI_SETUP_RELEASED = pygame.event.custom_type()
 
+# Factory reset (Pi only). Two-tap: the first release arms the row, the
+# second within the timeout performs the reset. See SetupState.
+FACTORY_RESET_PRESSED = pygame.event.custom_type()
+FACTORY_RESET_RELEASED = pygame.event.custom_type()
+
 WIFI_NETWORK_SELECTED = pygame.event.custom_type()  # event_data: ssid, secured
 WIFI_OTHER_SELECTED = pygame.event.custom_type()  # type a hidden SSID manually
 

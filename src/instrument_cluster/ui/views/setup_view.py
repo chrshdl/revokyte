@@ -15,6 +15,8 @@ from ...ui.events import (
     DIFF_REFERENCE_MODE_PRESSED,
     DIFF_REFERENCE_MODE_RELEASED,
     DIFF_REFERENCE_MODE_SELECTED,
+    FACTORY_RESET_PRESSED,
+    FACTORY_RESET_RELEASED,
     STATUS_LIGHTS_PRESSED,
     STATUS_LIGHTS_RELEASED,
     STATUS_LIGHTS_TOGGLED,
@@ -40,6 +42,11 @@ from .header import corner_button, header_line, header_title
 class SetupView(View):
     STEP_PERCENT = 10
     DIFF_REFERENCE_OPTIONS = [DiffReferenceMode.PREVIOUS, DiffReferenceMode.FASTEST]
+
+    # Factory-reset row labels for the two-tap confirmation (SetupState drives
+    # the arming; the view only renders the state it is told to show).
+    _FACTORY_RESET_IDLE_TEXT = "Factory Reset"
+    _FACTORY_RESET_ARMED_TEXT = "Tap again to reset"
 
     def __init__(self):
         # ui_layer: header chrome (title, back button) — plain dirty-rect.
@@ -266,6 +273,14 @@ class SetupView(View):
                 released=WIFI_SETUP_RELEASED,
             ),
         )
+        self.factory_reset_button = self._row_button(
+            text=self._FACTORY_RESET_IDLE_TEXT,
+            icon=Icon.CHEVRON_RIGHT.glyph(),
+            events=ButtonEvents(
+                pressed=FACTORY_RESET_PRESSED,
+                released=FACTORY_RESET_RELEASED,
+            ),
+        )
         # One ListItem per grid slot, top to bottom. Extensions may
         # contribute extra rows; with none installed the list below
         # is all there is. Brightness (panel backlight) and Network
@@ -292,6 +307,12 @@ class SetupView(View):
         ]
         if on_pi:
             row_contents.append((Icon.NETWORK.glyph(), "Network", self.wifi_button))
+            # Data reset (Wi-Fi credentials, entered IPs, installed feed) only
+            # makes sense on the appliance; a desktop window's data lives in
+            # the user's home directory and the OS owns Wi-Fi.
+            row_contents.append(
+                (Icon.FACTORY_RESET.glyph(), "Factory Reset", self.factory_reset_button)
+            )
         for entry in extensions.setup_entries:
             text = (
                 entry.button_text()
@@ -348,6 +369,25 @@ class SetupView(View):
                 self.rows_layer,
                 menu_layer=Dropdown.DROPDOWN_MENU_LAYER,
                 open_header_layer=Dropdown.DROPDOWN_HEADER_OPEN_LAYER,
+            )
+
+    def set_factory_reset_armed(self, armed: bool) -> None:
+        """Reflect the factory-reset arming state on its row.
+
+        Armed: red warning label prompting the confirming second tap.
+        Idle: the neutral default label. No-op if the row was never built
+        (desktop builds omit it).
+        """
+        button = getattr(self, "factory_reset_button", None)
+        if button is None:
+            return
+        if armed:
+            button.set_text(
+                self._FACTORY_RESET_ARMED_TEXT, color=Color.LIGHTEST_RED.rgb()
+            )
+        else:
+            button.set_text(
+                self._FACTORY_RESET_IDLE_TEXT, color=Color.WHITE.rgb()
             )
 
     def set_brightness_text(self, value):
