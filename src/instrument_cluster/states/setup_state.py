@@ -11,6 +11,7 @@ from ..ui.events import (
     BRIGHTNESS_UP_RELEASED,
     BUTTON_BACK_RELEASED,
     DIFF_REFERENCE_MODE_SELECTED,
+    FACTORY_RESET_RELEASED,
     STATUS_LIGHTS_TOGGLED,
     TELEMETRY_MODE_SELECTED,
     WIFI_SETUP_RELEASED,
@@ -20,12 +21,19 @@ from .state import State
 
 
 class SetupState(State):
+    # Factory reset is guarded by a two-tap confirmation: the first tap arms
+    # the row for this many seconds, a second tap within the window performs
+    # the (destructive, irreversible) reset. No tap within the window disarms.
+    FACTORY_RESET_ARM_TIMEOUT_S = 5.0
+
     def __init__(self, state_manager: StateManager | None = None):
         super().__init__(state_manager)
         self.logger = Logger(__class__.__name__).get()
 
         self.view = SetupView()
         self._backlight = Backlight()
+        # >0 while the factory-reset row is armed; counts down in update().
+        self._factory_reset_armed_s = 0.0
 
     def background_color(self):
         # return the color defined in the view
@@ -47,6 +55,9 @@ class SetupState(State):
         self.view.set_brightness_text(brightness)
 
     def exit(self):
+        # Leaving Setup cancels a pending factory-reset confirmation, so it
+        # never survives to a later visit.
+        self._disarm_factory_reset()
         # clean up view state
         self.view.close_dropdowns()
         # All settings changes were applied in-memory (persist=False) as they
@@ -70,6 +81,11 @@ class SetupState(State):
 
     def update(self, dt):
         super().update(dt)
+        # Count down a pending factory-reset confirmation; disarm on timeout.
+        if self._factory_reset_armed_s > 0.0:
+            self._factory_reset_armed_s -= dt
+            if self._factory_reset_armed_s <= 0.0:
+                self._disarm_factory_reset()
         self.view.update(dt)
 
     def handle_event(self, event):
@@ -118,6 +134,9 @@ class SetupState(State):
             )
             return True
 
+        if event.type == FACTORY_RESET_RELEASED:
+            return self.on_factory_reset_released()
+
         return False
 
     def on_back_released(self):
@@ -165,6 +184,35 @@ class SetupState(State):
                 )
             )
         return True
+
+    def on_factory_reset_released(self):
+        """Two-tap guard: first tap arms, second (while armed) resets."""
+        if self._factory_reset_armed_s > 0.0:
+            self._disarm_factory_reset()
+            self._perform_factory_reset()
+        else:
+            self._factory_reset_armed_s = self.FACTORY_RESET_ARM_TIMEOUT_S
+            self.view.set_factory_reset_armed(True)
+            self.logger.info("Factory reset armed; awaiting confirming tap")
+        return True
+
+    def _disarm_factory_reset(self):
+        if self._factory_reset_armed_s > 0.0:
+            self.logger.debug("Factory reset disarmed")
+        self._factory_reset_armed_s = 0.0
+        self.view.set_factory_reset_armed(False)
+
+    def _perform_factory_reset(self):
+        # Imported lazily so importing SetupState never pulls the reset
+        # machinery (and its subprocess/reboot surface) into scope.
+        from ..core.system.factory_reset import perform_factory_reset
+
+        self.logger.warning("Factory reset confirmed by user")
+        try:
+            perform_factory_reset()
+        except Exception:
+            # A failed reset must not crash the HMI; log and stay in Setup.
+            self.logger.exception("Factory reset failed")
 
     def adjust_brightness(self, delta_percent: int):
         # UI floor is 10 (never let the user black out the panel), even

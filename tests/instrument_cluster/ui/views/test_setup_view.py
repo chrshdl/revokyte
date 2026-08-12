@@ -200,13 +200,14 @@ def test_set_brightness_text_updates_percent_label(view):
 
 
 def test_base_view_has_no_extension_rows(view):
-    # With no extension wired, Setup ends at the Network row.
-    assert len(view.rows.rows) == 5
+    # With no extension wired, Setup ends at the Factory Reset row (appliance:
+    # Telemetry, Brightness, Reference Lap, Status Lights, Network, Factory Reset).
+    assert len(view.rows.rows) == 6
 
 
 def test_extension_entries_append_rows_in_order(view, extension_entries):
     ext_view = SetupView()
-    assert len(ext_view.rows.rows) == 5 + len(extension_entries)
+    assert len(ext_view.rows.rows) == 6 + len(extension_entries)
 
 
 def test_all_row_sprites_are_in_the_rows_layer(view):
@@ -225,6 +226,7 @@ def test_desktop_view_hides_appliance_only_rows(desktop_view):
     }
     assert "Brightness" not in texts
     assert "Network" not in texts
+    assert "Factory Reset" not in texts
     assert {"Telemetry Mode", "Reference Lap", "Status Lights"} <= texts
 
 
