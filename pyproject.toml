@@ -54,3 +54,9 @@ dev = [
     "snakeviz>=2.2.2",
     "jsonschema>=4.21",
 ]
+
+[tool.pytest.ini_options]
+# The skin-editor tests import `tools.skin_editor`, which only resolves when
+# the repo root is on sys.path. `python -m pytest` prepends the CWD and hides
+# this; bare `pytest` / `uv run pytest` (CI) does not. Make it explicit.
+pythonpath = ["."]
