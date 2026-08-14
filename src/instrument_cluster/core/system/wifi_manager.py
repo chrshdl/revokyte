@@ -135,25 +135,87 @@ class WifiManager:
             timeout=timeout,
             check=False,
         )
+        if out.returncode != 0:
+            # wpa_cli exits non-zero when it cannot reach the supplicant's
+            # control socket (service failed, wlan0 gone) and prints the
+            # reason to stderr. Swallowing that made a dead radio
+            # indistinguishable from an empty scan — on the device and in
+            # the debug log.
+            logger.warning(
+                "wpa_cli %s failed (rc=%d): %s",
+                args[0] if args else "",
+                out.returncode,
+                (out.stderr or out.stdout).strip()[:200],
+            )
         return out.stdout
+
+    def _supplicant_responding(self) -> bool:
+        try:
+            return self._wpa_cli("ping").strip().endswith("PONG")
+        except (subprocess.SubprocessError, OSError):
+            return False
+
+    def ensure_supplicant(self, wait: float = 8.0) -> bool:
+        """True once the supplicant answers on its control interface.
+
+        ``wpa_supplicant@wlan0`` starts at multi-user while the first-boot
+        Wi-Fi gate is already on screen a few seconds after power-on — and
+        a supplicant that started before udev created wlan0 fails once and
+        stays dead (the template unit has no ``Restart=``). Restart it and
+        wait, instead of letting every scan report an empty world.
+        """
+        deadline = time.monotonic() + wait
+        restarted = False
+        while time.monotonic() < deadline:
+            if self._supplicant_responding():
+                return True
+            if not restarted:
+                restarted = True
+                logger.warning(
+                    "wpa_supplicant not reachable; restarting %s", self.service
+                )
+                try:
+                    subprocess.run(
+                        [self._systemctl_bin or "systemctl", "restart", self.service],
+                        capture_output=True,
+                        timeout=10,
+                        check=False,
+                    )
+                except (subprocess.SubprocessError, OSError) as e:
+                    logger.error(f"Restarting {self.service} failed: {e}")
+                    return False
+            time.sleep(0.5)
+        logger.error("wpa_supplicant unreachable after restart; Wi-Fi unavailable")
+        return False
 
     # ------------------------------------------------------------------
     # scanning
     # ------------------------------------------------------------------
-    def scan(self, settle: float = 2.5) -> list[Network]:
+    def scan(self, timeout: float = 10.0) -> list[Network] | None:
         """Trigger a scan and return nearby networks, strongest first.
 
-        ``settle`` is how long we wait for the radio to populate results after
-        asking it to scan. Safe to call repeatedly (rescan).
+        Returns ``None`` when the radio is unreachable (supplicant down and
+        not restartable) — distinct from a successful scan that found
+        nothing. Polls for results instead of sleeping a fixed settle: the
+        first sweep after boot takes several seconds (radio init + full
+        passive scan), and a fixed wait shipped the "first scan is always
+        empty, rescan works" symptom. Safe to call repeatedly (rescan).
         """
         try:
+            if not self.ensure_supplicant():
+                return None
             self._wpa_cli("scan")
-            time.sleep(settle)
-            results = self._wpa_cli("scan_results")
+            deadline = time.monotonic() + timeout
+            results: list[Network] = []
+            while time.monotonic() < deadline:
+                time.sleep(0.5)
+                results = self._parse_scan_results(self._wpa_cli("scan_results"))
+                if results:
+                    break
         except (subprocess.SubprocessError, OSError) as e:
             logger.error(f"Wi-Fi scan failed: {e}")
-            return []
-        return self._parse_scan_results(results)
+            return None
+        return results
 
     @staticmethod
     def _decode_ssid(raw: str) -> str:

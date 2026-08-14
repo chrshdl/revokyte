@@ -40,6 +40,11 @@ _MIN_PSK_LEN = 8
 _SSID_RESAMPLE_TRIES = 4
 _SSID_RESAMPLE_PAUSE_S = 0.5
 
+# Scan-worker mailbox sentinel: the manager's scan() returns None for
+# "radio unreachable" (distinct from an empty result list), so pending
+# cannot be modelled as None.
+_SCAN_PENDING = object()
+
 # Connect-worker outcomes and the hint each one shows. Only auth failure
 # blames the password; setup and DHCP failures name their own layer.
 _CONNECT_OK = "ok"
@@ -93,7 +98,7 @@ class WifiSetupState(State):
         self._manual: bool = False
 
         self._scan_thread: threading.Thread | None = None
-        self._scan_result: list[Network] | None = None
+        self._scan_result: object = _SCAN_PENDING
         # Last SSID the supplicant reported, which marks the connected row.
         self._current_ssid: str = ""
         self._scanning = False
@@ -137,7 +142,7 @@ class WifiSetupState(State):
         if self._scanning:
             return
         self._scanning = True
-        self._scan_result = None
+        self._scan_result = _SCAN_PENDING
         self.view.show_scanning()
 
         # Sample the association before scanning: wpa_cli scan goes
@@ -150,7 +155,7 @@ class WifiSetupState(State):
                 self._scan_result = self.manager.scan()
             except Exception as e:
                 self.logger.error(f"Scan worker failed: {e}")
-                self._scan_result = []
+                self._scan_result = None
             finally:
                 if not knew_ssid:
                     self._resample_ssid()
@@ -249,16 +254,24 @@ class WifiSetupState(State):
                     self._enter_dashboard()
             return
 
-        if self._scan_result is not None and not self._scanning:
-            self._networks = self._scan_result
-            self._scan_result = None
+        if self._scan_result is not _SCAN_PENDING and not self._scanning:
+            result = self._scan_result
+            self._scan_result = _SCAN_PENDING
             # Only ever render results into the scan phase. A scan started
             # before the user picked a network can land while they are
             # typing a password or waiting on "Connecting …", and switching
             # the view then throws away their input and looks like the app
             # jumping back to the network list on its own.
-            if self.view.phase == self.view.PHASE_SCAN:
-                self.view.show_networks(self._networks, self._current_ssid)
+            if result is None:
+                # Radio unreachable (supplicant down and restart failed) —
+                # say so instead of showing an empty list that reads as
+                # "no networks nearby".
+                if self.view.phase == self.view.PHASE_SCAN:
+                    self.view.show_unavailable()
+            else:
+                self._networks = result
+                if self.view.phase == self.view.PHASE_SCAN:
+                    self.view.show_networks(self._networks, self._current_ssid)
 
         if self._connect_result is not None and not self._connecting:
             result = self._connect_result

@@ -123,6 +123,18 @@ class WifiSetupView(View):
         self.hint_message = ""
         self._widgets = self._header_widgets() + self._scan_controls()
 
+    def show_unavailable(self) -> None:
+        """Radio unreachable — distinct from a scan that found nothing, so
+        the user isn't told to hunt for their router when the device's own
+        Wi-Fi stack is the problem."""
+        self.phase = self.PHASE_SCAN
+        self._set_title(self._DEFAULT_TITLE)
+        self.network_list.clear()
+        self.status_message = "Wi-Fi  hardware  not  responding.  Try  rescan."
+        self.status_is_error = True
+        self.hint_message = ""
+        self._widgets = self._header_widgets() + self._scan_controls()
+
     def show_networks(self, networks: list[Network], current_ssid: str = "") -> None:
         self.phase = self.PHASE_SCAN
         self._set_title(self._DEFAULT_TITLE)

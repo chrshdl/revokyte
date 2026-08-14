@@ -267,3 +267,103 @@ def test_has_credentials_ignores_unedited_flash_template(tmp_path):
         "}\n"
     )
     assert WifiManager(conf_path=str(conf)).has_credentials() is False
+
+
+# ---------------------------------------------------------------------------
+# scan robustness: a dead supplicant must be reported, not shown as an
+# empty neighborhood; results are polled, not waited for a fixed settle
+# ---------------------------------------------------------------------------
+
+def _bare_manager() -> WifiManager:
+    """Manager without the config lookup, with tool paths pinned."""
+    m = WifiManager.__new__(WifiManager)
+    m.interface = "wlan0"
+    m.service = "wpa_supplicant@wlan0.service"
+    m.conf_path = "/tmp/unused.conf"
+    m.country = ""
+    m._wpa_cli_bin = "/usr/sbin/wpa_cli"
+    m._systemctl_bin = "/usr/bin/systemctl"
+    m._networkctl_bin = None
+    m._supports_sae_cached = None
+    return m
+
+
+def test_ensure_supplicant_restarts_once_then_gives_up(monkeypatch):
+    m = _bare_manager()
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        if "restart" in cmd:
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+        # wpa_cli ping with no control socket
+        return SimpleNamespace(
+            returncode=255, stdout="", stderr="Failed to connect to non-global ctrl_ifname: wlan0"
+        )
+
+    monkeypatch.setattr(
+        "instrument_cluster.core.system.wifi_manager.subprocess.run", fake_run
+    )
+    monkeypatch.setattr(
+        "instrument_cluster.core.system.wifi_manager.time.sleep", lambda s: None
+    )
+
+    assert m.ensure_supplicant(wait=0.05) is False
+    restarts = [c for c in calls if "restart" in c]
+    assert restarts == [["/usr/bin/systemctl", "restart", "wpa_supplicant@wlan0.service"]]
+
+
+def test_ensure_supplicant_true_on_pong(monkeypatch):
+    m = _bare_manager()
+    monkeypatch.setattr(
+        "instrument_cluster.core.system.wifi_manager.subprocess.run",
+        lambda cmd, **kw: SimpleNamespace(returncode=0, stdout="PONG\n", stderr=""),
+    )
+    assert m.ensure_supplicant(wait=0.05) is True
+
+
+def test_scan_returns_none_when_supplicant_unreachable(monkeypatch):
+    m = _bare_manager()
+    monkeypatch.setattr(m, "ensure_supplicant", lambda wait=8.0: False)
+    assert m.scan() is None
+
+
+def test_scan_polls_until_results_appear(monkeypatch):
+    # First scan_results poll lands before the sweep finishes (the shipped
+    # "first scan is always empty" symptom); the second has networks. The
+    # scan must keep polling instead of returning the empty first read.
+    m = _bare_manager()
+    monkeypatch.setattr(m, "ensure_supplicant", lambda wait=8.0: True)
+    monkeypatch.setattr(
+        "instrument_cluster.core.system.wifi_manager.time.sleep", lambda s: None
+    )
+    polls = []
+
+    def fake_wpa_cli(*args, timeout=5.0):
+        if args == ("scan",):
+            return "OK\n"
+        polls.append(args)
+        if len(polls) < 2:
+            return "bssid / frequency / signal level / flags / ssid\n"
+        return SCAN_OUTPUT
+
+    monkeypatch.setattr(m, "_wpa_cli", fake_wpa_cli)
+
+    nets = m.scan(timeout=5.0)
+    assert nets is not None and [n.ssid for n in nets][0] == "FRITZ!Box 7590"
+    assert len(polls) == 2
+
+
+def test_scan_returns_empty_list_when_radio_sees_nothing(monkeypatch):
+    # Radio reachable but genuinely nothing in the air: [] (not None), so
+    # the UI says "no networks found" rather than "Wi-Fi unavailable".
+    m = _bare_manager()
+    monkeypatch.setattr(m, "ensure_supplicant", lambda wait=8.0: True)
+    monkeypatch.setattr(
+        "instrument_cluster.core.system.wifi_manager.time.sleep", lambda s: None
+    )
+    monkeypatch.setattr(
+        m, "_wpa_cli",
+        lambda *a, timeout=5.0: "bssid / frequency / signal level / flags / ssid\n",
+    )
+    assert m.scan(timeout=0.05) == []
