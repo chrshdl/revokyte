@@ -38,6 +38,37 @@ from ...ui.widgets.settings.brightness_widget import BrightnessWidget
 from .base import View
 from .header import corner_button, header_line, header_title
 
+_OS_RELEASE_PATH = "/etc/os-release"
+_IMAGE_OS_ID = "instrument-cluster"
+
+
+def _read_os_release(path: str = _OS_RELEASE_PATH) -> dict[str, str]:
+    info: dict[str, str] = {}
+    try:
+        with open(path, "r") as f:
+            for line in f:
+                if "=" in line:
+                    k, v = line.strip().split("=", 1)
+                    info[k] = v.strip('"')
+    except OSError:
+        return {}
+    return info
+
+
+def image_version(path: str = _OS_RELEASE_PATH) -> str | None:
+    """Release version of the appliance OS image, or None when the app is
+    not running on it. Keyed on the image's os-release ID rather than on
+    the platform: desktop Linux and stock Raspberry Pi OS carry their own
+    /etc/os-release, whose VERSION_ID is the distro's release — showing
+    that as the cluster's version would be wrong exactly where support
+    needs the number. VERSION_ID is the OS release tag (CI-tagged builds
+    only); local image builds fall back to their BUILD_ID timestamp.
+    """
+    info = _read_os_release(path)
+    if info.get("ID") != _IMAGE_OS_ID:
+        return None
+    return info.get("VERSION_ID") or info.get("BUILD_ID") or None
+
 
 class SetupView(View):
     STEP_PERCENT = 10
@@ -77,6 +108,14 @@ class SetupView(View):
             self.app_version = version("instrument-cluster")
         except PackageNotFoundError:
             self.app_version = "dev"
+        # Display drops the PEP-440 local segment (+g<hash>.d<date> on dev
+        # builds via setuptools_scm) — release tags carry none, and the
+        # full string overflows the row's value column.
+        app_display = self.app_version.split("+", 1)[0]
+        os_version = image_version()
+        self.version_text = f"App {app_display}" + (
+            f"  ·  OS {os_version}" if os_version else ""
+        )
 
     def _row_label(self, text: str) -> Label:
         """Standard row caption at row-local (label_x, label_dy)."""
@@ -334,6 +373,29 @@ class SetupView(View):
                 )
             )
         s = active_skin().setup
+        # The About row is a plain, non-interactive label in the control
+        # column: app version plus, on the appliance image, the OS release.
+        # The running version must be readable on the device itself
+        # (traceability and support; EN 18031 transparency on the
+        # commercial build), so the row exists on every platform and
+        # always comes last — extensions insert their rows above it.
+        self.version_label = Label(
+            text=self.version_text,
+            font=load_font_px(s.row_font_size, FontFamily[s.row_font_family]),
+            color=Color.WHITE.rgb(),
+            pos=(s.value_x, s.label_dy),
+            center=False,
+            bg_color=Color.BLACK.rgb(),
+        )
+        # Ellipsize to the value column — the string is uncontrolled
+        # (dev versions, future fields) and an overflow paints past the
+        # separator inset into the scrollbar.
+        available = active_skin().width - s.separator_inset - s.value_x
+        raw = self.version_text
+        while self.version_label.rect.width > available and len(raw) > 1:
+            raw = raw[:-1]
+            self.version_label.set_text(raw + "…")
+        row_contents.append((Icon.ABOUT.glyph(), "About", self.version_label))
         self.rows = ListItemGroup(
             ListItem(
                 y=s.row_top + i * s.row_pitch,

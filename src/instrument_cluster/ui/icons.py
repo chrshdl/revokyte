@@ -44,6 +44,7 @@ class Icon(Enum):
     STATUS_LIGHTS = "\ue0f0"
     NETWORK = "\ue63e"  # wifi
     FACTORY_RESET = "\ue8ba"  # settings_backup_restore
+    ABOUT = "\ue88e"  # info, version row
 
     # Controls
     CARET_DOWN = "\ue313"  # dropdown chevron
