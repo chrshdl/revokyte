@@ -27,7 +27,7 @@ class Backlight:
             return
 
         try:
-            candidates = sorted(list(SYSFS_BACKLIGHT_ROOT.iterdir()))
+            candidates = sorted(SYSFS_BACKLIGHT_ROOT.iterdir())
             for candidate in candidates:
                 brightness_file = candidate / "brightness"
                 max_brightness_file = candidate / "max_brightness"
@@ -86,7 +86,7 @@ class Backlight:
 
         clamped_pct = max(0, min(100, percent))
 
-        hw_value = int(round((clamped_pct / 100.0) * self._max_brightness))
+        hw_value = round((clamped_pct / 100.0) * self._max_brightness)
 
         try:
             self._brightness_path.write_text(str(hw_value), encoding="utf-8")
@@ -112,4 +112,4 @@ class Backlight:
         if self._max_brightness <= 0:
             return 0
 
-        return int(round((current_hw_val / self._max_brightness) * 100.0))
+        return round((current_hw_val / self._max_brightness) * 100.0)

@@ -141,7 +141,7 @@ class BlinktSPI(LEDBar):
         # LED frames: [0b111xxxxx, B, G, R] * N
         # end frame: at least (N+15)//16 bytes of 0xFF
         gb = int(self._brightness * 31)  # 0..31
-        gb = 0 if gb < 0 else 31 if gb > 31 else gb
+        gb = 0 if gb < 0 else min(gb, 31)
         global_byte = 0b1110_0000 | gb
 
         # pre-allocate bytearray for speed

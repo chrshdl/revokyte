@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from ...colors import Color
-from ...icons import Icon
 from ...events import (
     BRIGHTNESS_DOWN_PRESSED,
     BRIGHTNESS_DOWN_RELEASED,
     BRIGHTNESS_UP_PRESSED,
     BRIGHTNESS_UP_RELEASED,
 )
+from ...icons import Icon
 from ...utils import FontFamily, load_font, spos, srect
 from ..base.button import Button, ButtonEvents
 from ..base.container import Container
