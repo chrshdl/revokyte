@@ -169,8 +169,21 @@ def run(conf: Config) -> None:
 
         clock = pygame.time.Clock()
 
+        # Field diagnostics: a stalled main loop dumps its own stack to the
+        # log, and touch arrivals leave a (rate-limited) trace — together
+        # they separate "input not delivered" from "input swallowed" from
+        # "loop blocked" on a device with no debugger.
+        import threading as _threading
+
+        from .debug.stall_detector import StallDetector
+
+        stall_detector = StallDetector(_threading.get_ident())
+        stall_detector.start()
+        last_touch_log = 0.0
+
         while state_manager.is_running:
             dt = clock.tick(60) / 1000
+            stall_detector.beat()
 
             vehicle_bus.tick(dt)
             vehicle_bus.merge_signals(extensions.update_signals())
@@ -183,6 +196,11 @@ def run(conf: Config) -> None:
             plugin_manager.update(dt)
 
             for event in pygame.event.get():
+                if event.type in (pygame.FINGERDOWN, pygame.MOUSEBUTTONDOWN):
+                    now = time.monotonic()
+                    if now - last_touch_log >= 1.0:
+                        last_touch_log = now
+                        logger.debug("touch down received")
                 if event.type == pygame.QUIT:
                     state_manager.is_running = False
                 elif event.type in (
