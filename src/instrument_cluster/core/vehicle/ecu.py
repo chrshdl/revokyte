@@ -321,12 +321,16 @@ class ShiftLightController:
                 self._thresholds_by_gear.clear()
                 self._shift_rpm_by_gear.clear()
 
-        if not self.calculator:
-            return [False] * 8, False, False, False
-
-        # shift RPM target for this gear
-        optimal = float(self.calculator.get_optimal_rpm(gear))
-        shift_rpm = min(optimal, float(self.engine.redline) - 40.0)
+        # shift RPM target for this gear. Without gear ratios on the wire
+        # (demo mode and the ACC broadcast feed never send them) no
+        # power-curve shift point can be computed — anchor on the redline
+        # instead: later than optimal, but correct for every car, where the
+        # previous all-off return meant no shift lights at all.
+        if self.calculator:
+            optimal = float(self.calculator.get_optimal_rpm(gear))
+            shift_rpm = min(optimal, float(self.engine.redline) - 40.0)
+        else:
+            shift_rpm = float(self.engine.redline) - 40.0
         self._target_rpm = shift_rpm
 
         if (

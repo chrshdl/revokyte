@@ -46,12 +46,35 @@ def test_rpm_alert_updates_the_redline():
     assert controller.engine.redline == 8800
 
 
-def test_no_gear_ratios_means_no_lights():
-    """Without ratios there is no shift point — dark, not wrong."""
+def test_no_gear_ratios_falls_back_to_the_redline():
+    """Demo mode and the ACC broadcast feed never send gear ratios, and the
+    previous 'dark, not wrong' choice meant those users saw no shift lights
+    at all. Without ratios the shift point anchors on the redline: later
+    than a power-curve optimum, but correct for every car."""
+    # Below the ladder window: dark.
     controller = _controller()
-    leds, alert, _, _ = controller.calculate_lights(_frame(gear_ratios=None), 0.016)
+    for _ in range(4):
+        leds, alert, _, _ = controller.calculate_lights(
+            _frame(gear_ratios=None, engine_rpm=4000.0), 0.016
+        )
     assert leds == [False] * 8
     assert alert is False
+
+    # Approaching the redline: part of the ladder lights.
+    controller = _controller()
+    for _ in range(4):
+        leds, alert, _, _ = controller.calculate_lights(
+            _frame(gear_ratios=None, engine_rpm=7900.0), 0.016
+        )
+    assert alert or any(leds)
+
+    # At the redline: full-bar alert.
+    controller = _controller()
+    for _ in range(4):
+        leds, alert, _, _ = controller.calculate_lights(
+            _frame(gear_ratios=None, engine_rpm=8000.0), 0.016
+        )
+    assert alert is True
 
 
 def test_ratios_light_the_ladder_near_the_shift_point():
