@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from ..config import ConfigManager
 from ..core.vehicle.car_profiler import CarLibrary
 from ..core.vehicle.ecu import ShiftLightController
 from ..core.vehicle.vehicle_bus import VehicleBus
@@ -49,6 +50,15 @@ class ShiftLights:
         self.ledbar.reset()
 
     def update(self, bus: VehicleBus, dt: float):
+        if not ConfigManager.get_config().shift_lights:
+            # Blank exactly once on the off-edge (the render cache tells
+            # us whether anything is lit), then stay silent — no SPI
+            # traffic while disabled.
+            if any(c != Color.BLACK.rgb() for c in self._render_cache):
+                self.ledbar.reset()
+                self._render_cache = [Color.BLACK.rgb()] * self.ledbar.NUM_PIXELS
+            return
+
         frame: TelemetryFrame = bus.frame
         if frame is None or frame.flags is None:
             return

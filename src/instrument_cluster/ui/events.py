@@ -43,6 +43,11 @@ STATUS_LIGHTS_PRESSED = pygame.event.custom_type()
 STATUS_LIGHTS_RELEASED = pygame.event.custom_type()
 STATUS_LIGHTS_TOGGLED = pygame.event.custom_type()  # event_data: checked (bool)
 
+# Physical shift-light LED bar (Blinkt!)
+SHIFT_LIGHTS_PRESSED = pygame.event.custom_type()
+SHIFT_LIGHTS_RELEASED = pygame.event.custom_type()
+SHIFT_LIGHTS_TOGGLED = pygame.event.custom_type()  # event_data: checked (bool)
+
 # Wi-Fi setup
 WIFI_SETUP_PRESSED = pygame.event.custom_type()
 WIFI_SETUP_RELEASED = pygame.event.custom_type()

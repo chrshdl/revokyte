@@ -43,6 +43,7 @@ class Icon(Enum):
     REFERENCE_LAP = "\ue425"
     STATUS_LIGHTS = "\ue0f0"
     NETWORK = "\ue63e"  # wifi
+    SHIFT_LIGHTS = "\ue260"  # linear_scale (LED row), shift-lights toggle
     FACTORY_RESET = "\ue8ba"  # settings_backup_restore
     SOFTWARE = "\ue322"  # memory (chip), Software row
     APP = "\ue9e4"  # speed (gauge), Software screen App row

@@ -12,6 +12,7 @@ from ..ui.events import (
     BUTTON_BACK_RELEASED,
     DIFF_REFERENCE_MODE_SELECTED,
     SOFTWARE_RELEASED,
+    SHIFT_LIGHTS_TOGGLED,
     STATUS_LIGHTS_TOGGLED,
     TELEMETRY_MODE_SELECTED,
     WIFI_SETUP_RELEASED,
@@ -103,6 +104,12 @@ class SetupState(State):
             # Applied in-memory now — DashboardState rebuilds its layout on
             # resume — with the disk write deferred to on_back_released.
             ConfigManager.set_status_lights(event.checked, persist=False)
+            return True
+
+        if event.type == SHIFT_LIGHTS_TOGGLED:
+            # The LED-bar peripheral reads the flag every update, so the
+            # bar reacts on the next dashboard frame; disk write deferred.
+            ConfigManager.set_shift_lights(event.checked, persist=False)
             return True
 
         # Rows contributed by extensions (none installed = none shown).

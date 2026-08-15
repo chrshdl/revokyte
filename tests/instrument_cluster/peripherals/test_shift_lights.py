@@ -80,3 +80,40 @@ def test_stable_specs_do_not_rebuild_per_frame():
     first = lights.controller
     lights.update(_bus(frame), 0.016)
     assert lights.controller is first
+
+
+def test_disabled_toggle_blanks_the_bar_once_and_stays_silent(monkeypatch):
+    """config.shift_lights off: the bar is blanked on the off-edge (never
+    left frozen mid-pattern) and gets no further SPI traffic — the
+    controller isn't even consulted."""
+    from instrument_cluster.config import ConfigManager
+
+    lights = ShiftLights()
+    bus = _bus(_frame())
+    # A lit bar, however it got that way (mid-pattern state).
+    lights._render_cache = [(255, 0, 0)] * lights.ledbar.NUM_PIXELS
+
+    monkeypatch.setattr(ConfigManager.get_config(), "shift_lights", False)
+    resets = []
+    monkeypatch.setattr(lights.ledbar, "reset", lambda: resets.append(True))
+    lights.update(bus, 0.016)
+    assert resets == [True]  # blanked exactly once
+    assert all(c == (0, 0, 0) for c in lights._render_cache)
+    lights.update(bus, 0.016)
+    assert resets == [True]  # ...and then silence
+    assert lights.controller is None  # never consulted while disabled
+
+
+def test_reenabled_toggle_resumes_rendering(monkeypatch):
+    from instrument_cluster.config import ConfigManager
+
+    lights = ShiftLights()
+    bus = _bus(_frame())
+    cfg = ConfigManager.get_config()
+    monkeypatch.setattr(cfg, "shift_lights", False)
+    lights.update(bus, 0.016)
+    assert lights.controller is None
+    monkeypatch.setattr(cfg, "shift_lights", True)
+    lights.update(bus, 0.016)
+    # The full path ran again: controller built from the frame's specs.
+    assert lights.controller is not None

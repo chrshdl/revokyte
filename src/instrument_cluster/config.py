@@ -56,6 +56,10 @@ class Config:
     # Show the bezel status LEDs (TC/ASM) on the dashboard; off also
     # returns the widget columns to the strip-less layout.
     status_lights: bool = field(default=False)
+    # Physical Blinkt! shift-light bar; ON is the shipped default — the
+    # bar is a headline feature, the toggle exists for photosensitive
+    # users (TF-03 O1 measure) and dark-room driving.
+    shift_lights: bool = field(default=True)
     # Active dashboard page selection, owned by the exclusive dashboard
     # provider plugin (0 = the built-in default). An invalid or
     # no-longer-available value silently falls back to the default.
@@ -102,6 +106,7 @@ class Config:
         self.brightness = max(0, min(100, self.brightness))
         self.udp_port = max(1, min(65535, self.udp_port))
         self.status_lights = bool(self.status_lights)
+        self.shift_lights = bool(self.shift_lights)
 
         valid_telemetry_modes = {m.value for m in TelemetryMode}
         if self.telemetry_mode not in valid_telemetry_modes:
@@ -229,6 +234,12 @@ class ConfigManager:
     def set_status_lights(cls, enabled: bool, persist: bool = True) -> None:
         cfg = cls.get_config()
         cfg.status_lights = bool(enabled)
+        if persist:
+            cls.persist()
+
+    def set_shift_lights(cls, enabled: bool, persist: bool = True) -> None:
+        cfg = cls.get_config()
+        cfg.shift_lights = bool(enabled)
         if persist:
             cls.persist()
 

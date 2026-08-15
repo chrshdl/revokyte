@@ -79,14 +79,18 @@ def test_rows_place_controls_on_the_grid(view):
         s.dropdown_x,
         row_top + 2 * pitch - dropdown_offset,
     )
-    # The status-lights toggle shares the stretched dropdown-header rect.
+    # The toggles share the stretched dropdown-header rect.
     assert view.status_lights_toggle.rect.topleft == (
         s.dropdown_x,
         row_top + 3 * pitch - dropdown_offset,
     )
-    assert view.wifi_button.rect.topleft == (
+    assert view.shift_lights_toggle.rect.topleft == (
         s.dropdown_x,
         row_top + 4 * pitch - dropdown_offset,
+    )
+    assert view.wifi_button.rect.topleft == (
+        s.dropdown_x,
+        row_top + 5 * pitch - dropdown_offset,
     )
     # BrightnessWidget centers its stepper buttons within the row band, with
     # its own small internal offset from the row's natural top.
@@ -194,6 +198,13 @@ def test_status_lights_toggle_reflects_config_default(view):
     assert view.status_lights_toggle.checked is False
 
 
+def test_shift_lights_toggle_defaults_on(view):
+    # The physical LED bar is a headline feature: shipped default ON;
+    # the toggle exists for photosensitive users (TF-03 O1) and
+    # dark-room driving.
+    assert view.shift_lights_toggle.checked is True
+
+
 def test_set_brightness_text_updates_percent_label(view):
     view.set_brightness_text(80)
     assert view.brightness_widget.percent_label.text == "80 %"
@@ -201,14 +212,15 @@ def test_set_brightness_text_updates_percent_label(view):
 
 def test_base_view_has_no_extension_rows(view):
     # With no extension wired, Setup ends at the Software row (appliance:
-    # Telemetry, Brightness, Reference Lap, Status Lights, Network,
-    # Software — versions and factory reset live on the Software screen).
-    assert len(view.rows.rows) == 6
+    # Telemetry, Brightness, Reference Lap, Status Lights, Shift Lights,
+    # Network, Software — versions and factory reset live on the
+    # Software screen).
+    assert len(view.rows.rows) == 7
 
 
 def test_extension_entries_append_rows_in_order(view, extension_entries):
     ext_view = SetupView()
-    assert len(ext_view.rows.rows) == 6 + len(extension_entries)
+    assert len(ext_view.rows.rows) == 7 + len(extension_entries)
 
 
 def test_all_row_sprites_are_in_the_rows_layer(view):
@@ -219,7 +231,7 @@ def test_all_row_sprites_are_in_the_rows_layer(view):
 
 
 def test_desktop_view_hides_appliance_only_rows(desktop_view):
-    assert len(desktop_view.rows.rows) == 4  # Telemetry, Reference, Lights, Software
+    assert len(desktop_view.rows.rows) == 5  # Telemetry, Reference, 2x Lights, Software
     texts = {
         s.text
         for s in desktop_view.rows_layer.sprites()
@@ -228,7 +240,7 @@ def test_desktop_view_hides_appliance_only_rows(desktop_view):
     assert "Brightness" not in texts
     assert "Network" not in texts
     assert "Factory Reset" not in texts  # lives on the Software screen now
-    assert {"Telemetry Mode", "Reference Lap", "Status Lights", "Software"} <= texts
+    assert {"Telemetry Mode", "Reference Lap", "Status Lights", "Shift Lights", "Software"} <= texts
 
 
 

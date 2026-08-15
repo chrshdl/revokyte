@@ -13,6 +13,9 @@ from ...ui.events import (
     DIFF_REFERENCE_MODE_PRESSED,
     DIFF_REFERENCE_MODE_RELEASED,
     DIFF_REFERENCE_MODE_SELECTED,
+    SHIFT_LIGHTS_PRESSED,
+    SHIFT_LIGHTS_RELEASED,
+    SHIFT_LIGHTS_TOGGLED,
     SOFTWARE_PRESSED,
     SOFTWARE_RELEASED,
     STATUS_LIGHTS_PRESSED,
@@ -174,6 +177,14 @@ class SetupView(View):
                 selected=STATUS_LIGHTS_TOGGLED,
             ),
         )
+        self.shift_lights_toggle = self._row_toggle(
+            checked=config.shift_lights,
+            events=ButtonEvents(
+                pressed=SHIFT_LIGHTS_PRESSED,
+                released=SHIFT_LIGHTS_RELEASED,
+                selected=SHIFT_LIGHTS_TOGGLED,
+            ),
+        )
 
         # Custom dashboard slots are selected by swiping between pages on
         # the dashboard itself — there is no slot row in Setup.
@@ -208,6 +219,7 @@ class SetupView(View):
         row_contents += [
             (Icon.REFERENCE_LAP.glyph(), "Reference Lap", self.diff_reference_mode_dropdown),
             (Icon.STATUS_LIGHTS.glyph(), "Status Lights", self.status_lights_toggle),
+            (Icon.SHIFT_LIGHTS.glyph(), "Shift Lights", self.shift_lights_toggle),
         ]
         if on_pi:
             row_contents.append((Icon.NETWORK.glyph(), "Network", self.wifi_button))
