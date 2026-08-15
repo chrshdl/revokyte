@@ -49,14 +49,28 @@ class ShiftLights:
     def exit(self) -> None:
         self.ledbar.reset()
 
+    def _blank_once(self) -> None:
+        """Blank the bar if anything is lit (the render cache tells us),
+        then stay silent — no SPI traffic while there is nothing to show."""
+        if any(c != Color.BLACK.rgb() for c in self._render_cache):
+            self.ledbar.reset()
+            self._render_cache = [Color.BLACK.rgb()] * self.ledbar.NUM_PIXELS
+
     def update(self, bus: VehicleBus, dt: float):
         if not ConfigManager.get_config().shift_lights:
-            # Blank exactly once on the off-edge (the render cache tells
-            # us whether anything is lit), then stay silent — no SPI
-            # traffic while disabled.
-            if any(c != Color.BLACK.rgb() for c in self._render_cache):
-                self.ledbar.reset()
-                self._render_cache = [Color.BLACK.rgb()] * self.ledbar.NUM_PIXELS
+            # Blank exactly once on the off-edge, never leave the bar
+            # frozen mid-pattern.
+            self._blank_once()
+            return
+
+        if bus.signals.get("telemetry_stale"):
+            # Dead link (mode switch away from a running feed, crashed
+            # feed, sleeping console, dropped Wi-Fi): readers hold their
+            # last frame forever, so without this the controller keeps
+            # rendering stale RPM. The screen deliberately keeps its
+            # gauges under the NO SIGNAL banner, but lit LEDs on dead
+            # telemetry read as live state — blank them.
+            self._blank_once()
             return
 
         frame: TelemetryFrame = bus.frame

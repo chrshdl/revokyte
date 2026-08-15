@@ -117,3 +117,32 @@ def test_reenabled_toggle_resumes_rendering(monkeypatch):
     lights.update(bus, 0.016)
     # The full path ran again: controller built from the frame's specs.
     assert lights.controller is not None
+
+
+def test_stale_telemetry_blanks_the_bar_once(monkeypatch):
+    """A dead link (mode switch, crashed feed, sleeping console) must not
+    leave the bar frozen mid-pattern: readers hold their last frame
+    forever, so the stale flag is the only truth about liveness."""
+    lights = ShiftLights()
+    bus = _bus(_frame())
+    lights._render_cache = [(255, 0, 0)] * lights.ledbar.NUM_PIXELS
+
+    bus.signals["telemetry_stale"] = True
+    resets = []
+    monkeypatch.setattr(lights.ledbar, "reset", lambda: resets.append(True))
+    lights.update(bus, 0.016)
+    assert resets == [True]  # blanked exactly once
+    lights.update(bus, 0.016)
+    assert resets == [True]  # ...and then silence
+    assert lights.controller is None  # never consulted while stale
+
+
+def test_fresh_telemetry_resumes_after_stale(monkeypatch):
+    lights = ShiftLights()
+    bus = _bus(_frame())
+    bus.signals["telemetry_stale"] = True
+    lights.update(bus, 0.016)
+    assert lights.controller is None
+    bus.signals["telemetry_stale"] = False
+    lights.update(bus, 0.016)
+    assert lights.controller is not None
