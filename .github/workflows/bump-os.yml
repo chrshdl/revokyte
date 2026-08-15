@@ -53,7 +53,7 @@ jobs:
       - name: Checkout instrument-cluster-os
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: chrshdl/instrument-cluster-os
+          repository: revokyte/instrument-cluster-os
           token: ${{ secrets.INSTRUMENT_CLUSTER_OS_REPO_PAT }}
           path: os
 
