@@ -73,28 +73,19 @@ def app_version() -> str:
 
 
 def component_versions(path: str = _OS_RELEASE_PATH) -> list[tuple[str, str]]:
-    """The device's software inventory, base components first.
+    """The device's software inventory: the release-relevant numbers only.
 
-    OS and Buildroot rows only exist on the appliance image (keyed on the
-    os-release ID). Extension-contributed entries (e.g. the Pro package)
+    App always; OS (the image release tag — TF-11's Soll-Release check
+    reads this row) only on the appliance image, keyed on the os-release
+    ID. Internals like the delta calculator or the Buildroot toolchain
+    series are deliberately not listed — support gets them from the
+    release tag. Extension-contributed entries (e.g. the Pro package)
     come last; a callable version is re-evaluated per view build.
     """
     rows = [("App", app_version())]
     info = _read_os_release(path)
-    on_image = info.get("ID") == _IMAGE_OS_ID
-    if on_image:
+    if info.get("ID") == _IMAGE_OS_ID:
         rows.append(("OS", info.get("VERSION_ID") or info.get("BUILD_ID") or "—"))
-    try:
-        # Vendored source; imported lazily so building this view never
-        # pulls the delta calculator (and its numpy surface) into scope
-        # before the dashboard does.
-        from ...core.delta_calculator import __version__ as delta_version
-
-        rows.append(("Delta Calculator", delta_version))
-    except Exception:
-        rows.append(("Delta Calculator", "—"))
-    if on_image:
-        rows.append(("Buildroot", info.get("BUILDROOT_VERSION") or "—"))
     for name, ver in extensions.version_entries:
         rows.append((name, ver() if callable(ver) else ver))
     return rows

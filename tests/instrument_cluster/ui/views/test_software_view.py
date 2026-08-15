@@ -69,20 +69,20 @@ def test_image_version_ignores_foreign_os_releases(tmp_path):
 
 
 def test_component_versions_on_the_appliance_image(tmp_path):
+    # Release-relevant numbers only: internals (delta calculator,
+    # Buildroot toolchain series) are deliberately not listed.
     p = tmp_path / "os-release"
     p.write_text(APPLIANCE_OS_RELEASE)
-    rows = dict(component_versions(str(p)))
-    assert rows["OS"] == "v0.2.31"
-    assert rows["Buildroot"] == "2025.02.15"
-    assert "App" in rows and "Delta Calculator" in rows
-    assert [name for name, _ in component_versions(str(p))][:2] == ["App", "OS"]
+    rows = component_versions(str(p))
+    assert [name for name, _ in rows] == ["App", "OS"]
+    assert dict(rows)["OS"] == "v0.2.31"
 
 
 def test_component_versions_off_the_image(tmp_path):
-    # No OS/Buildroot rows on dev machines — a desktop distro's values
-    # are not the cluster's.
+    # No OS row on dev machines — a desktop distro's values are not the
+    # cluster's.
     names = [n for n, _ in component_versions(str(tmp_path / "missing"))]
-    assert names == ["App", "Delta Calculator"]
+    assert names == ["App"]
 
 
 def test_extension_version_entries_are_appended(tmp_path):
