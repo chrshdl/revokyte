@@ -106,6 +106,14 @@ class WifiStatusWindow(OverlayWindow):
         ).start()
 
     def _poll(self, manager) -> None:
+        # A supplicant that raced udev at boot fails once and stays dead
+        # (the template unit has no Restart=). On this provisioned-boot
+        # path no scan ever runs, so unlike Wi-Fi setup nothing would
+        # revive it — the device stays offline until someone opens the
+        # scan screen by hand. Heal it here before settling into the
+        # association poll; on a healthy boot this returns immediately.
+        if not manager.ensure_supplicant():
+            logger.error("Supplicant unreachable; Wi-Fi stays down this boot.")
         fast_until = time.monotonic() + _POLL_FAST_WINDOW
         while not self._done.is_set():
             if manager.is_associated():
