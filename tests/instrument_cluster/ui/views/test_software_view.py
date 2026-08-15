@@ -104,6 +104,23 @@ def test_appliance_view_has_factory_reset_row(view):
     assert "App" in _texts(view)
 
 
+def test_version_rows_carry_icons(monkeypatch):
+    # Base rows get their own glyphs; extension-contributed lines get the
+    # generic puzzle piece.
+    from instrument_cluster.ui.icons import Icon
+
+    monkeypatch.setattr(
+        "instrument_cluster.ui.views.software_view.is_raspberry_pi", lambda: False
+    )
+    extensions.version_entries.append(("Pro Extension", "9.9.9"))
+    try:
+        texts = _texts(SoftwareView())
+    finally:
+        extensions.version_entries.pop()
+    assert Icon.APP.glyph() in texts
+    assert Icon.EXTENSION.glyph() in texts
+
+
 def test_desktop_view_has_no_factory_reset_row(desktop_view):
     assert desktop_view.factory_reset_button is None
     assert "Factory Reset" not in _texts(desktop_view)

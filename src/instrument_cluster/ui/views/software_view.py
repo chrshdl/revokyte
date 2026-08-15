@@ -119,10 +119,13 @@ class SoftwareView(View):
         )
         self.horizontal_line = header_line()
 
-        # Version rows are informational: blank icon cell, name as the
-        # caption, version in the control column.
+        # Version rows are informational: name as the caption, version in
+        # the control column. Base rows carry their own glyphs; any name
+        # not in the map came from an extension and gets the puzzle piece.
+        base_icons = {"App": Icon.APP, "OS": Icon.OS_IMAGE}
         row_contents = [
-            ("", name, row_value(value)) for name, value in component_versions()
+            (base_icons.get(name, Icon.EXTENSION).glyph(), name, row_value(value))
+            for name, value in component_versions()
         ]
 
         # Data reset (Wi-Fi credentials, entered IPs, installed feed) only

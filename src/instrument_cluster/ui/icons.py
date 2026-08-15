@@ -45,6 +45,9 @@ class Icon(Enum):
     NETWORK = "\ue63e"  # wifi
     FACTORY_RESET = "\ue8ba"  # settings_backup_restore
     SOFTWARE = "\ue322"  # memory (chip), Software row
+    APP = "\ue9e4"  # speed (gauge), Software screen App row
+    OS_IMAGE = "\ue623"  # sd_storage, Software screen OS row
+    EXTENSION = "\ue87b"  # extension (puzzle), contributed version rows
 
     # Controls
     CARET_DOWN = "\ue313"  # dropdown chevron
