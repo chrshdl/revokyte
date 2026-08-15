@@ -28,6 +28,9 @@ class SoftwareState(State):
     def background_color(self):
         return self.view.background_color
 
+    def create_group(self):
+        return None
+
     def draw_static_background(self, bg):
         self.view.draw_static_elements(bg)
 

@@ -122,3 +122,16 @@ def test_reset_failure_does_not_propagate(config_path, monkeypatch):
     # Confirming tap: the action raises, but the HMI must stay alive.
     handled = state.handle_event(_reset_event())
     assert handled is True
+
+
+def test_enter_runs_the_full_state_contract(config_path):
+    # SoftwareState must satisfy everything State.enter() calls
+    # (background_color, draw_static_background, create_group) — the
+    # missing create_group shipped as an on-device crash when the
+    # Software row was first pressed.
+    import pygame
+
+    state = _make_state()
+    state.enter(pygame.Surface((1280, 720)))
+    state.update(0.016)
+    state.draw(pygame.Surface((1280, 720)))
