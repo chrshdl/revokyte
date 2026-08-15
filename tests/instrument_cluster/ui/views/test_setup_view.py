@@ -3,7 +3,7 @@ import pytest
 from instrument_cluster.config import ConfigManager
 from instrument_cluster.extensions import SetupEntry, runtime as extensions
 from instrument_cluster.ui.skins import active_skin
-from instrument_cluster.ui.views.setup_view import SetupView, image_version
+from instrument_cluster.ui.views.setup_view import SetupView
 
 
 @pytest.fixture
@@ -200,17 +200,15 @@ def test_set_brightness_text_updates_percent_label(view):
 
 
 def test_base_view_has_no_extension_rows(view):
-    # With no extension wired, Setup ends at the About row (appliance:
+    # With no extension wired, Setup ends at the Software row (appliance:
     # Telemetry, Brightness, Reference Lap, Status Lights, Network,
-    # Factory Reset, About).
-    assert len(view.rows.rows) == 7
+    # Software — versions and factory reset live on the Software screen).
+    assert len(view.rows.rows) == 6
 
 
 def test_extension_entries_append_rows_in_order(view, extension_entries):
     ext_view = SetupView()
-    assert len(ext_view.rows.rows) == 7 + len(extension_entries)
-    # About stays the last row — extension rows insert above it.
-    assert ext_view.version_label in ext_view.rows.rows[-1].sprites()
+    assert len(ext_view.rows.rows) == 6 + len(extension_entries)
 
 
 def test_all_row_sprites_are_in_the_rows_layer(view):
@@ -221,7 +219,7 @@ def test_all_row_sprites_are_in_the_rows_layer(view):
 
 
 def test_desktop_view_hides_appliance_only_rows(desktop_view):
-    assert len(desktop_view.rows.rows) == 4
+    assert len(desktop_view.rows.rows) == 4  # Telemetry, Reference, Lights, Software
     texts = {
         s.text
         for s in desktop_view.rows_layer.sprites()
@@ -229,70 +227,9 @@ def test_desktop_view_hides_appliance_only_rows(desktop_view):
     }
     assert "Brightness" not in texts
     assert "Network" not in texts
-    assert "Factory Reset" not in texts
-    assert {"Telemetry Mode", "Reference Lap", "Status Lights", "About"} <= texts
+    assert "Factory Reset" not in texts  # lives on the Software screen now
+    assert {"Telemetry Mode", "Reference Lap", "Status Lights", "Software"} <= texts
 
-
-def test_version_row_is_last_and_shows_app_version(view):
-    # The About row exists on every platform: support and (on the
-    # commercial build) traceability need the running version readable on
-    # the device, not only in dist metadata.
-    assert view.version_label in view.rows.rows[-1].sprites()
-    assert view.version_label.text.startswith("App ")
-    # Display drops the PEP-440 local segment (dev builds append
-    # +g<hash>.d<date>); the release part must always be shown.
-    assert view.app_version.split("+", 1)[0] in view.version_label.text
-
-
-def test_version_label_is_ellipsized_to_the_value_column(
-    tmp_path, monkeypatch
-):
-    # The string is uncontrolled (dev versions, future fields); overflow
-    # would paint past the separator inset into the scrollbar.
-    monkeypatch.setattr(
-        "instrument_cluster.ui.views.setup_view.is_raspberry_pi", lambda: True
-    )
-    monkeypatch.setattr(
-        "instrument_cluster.ui.views.setup_view.image_version",
-        lambda path=None: "v0.2.29-with-an-absurdly-long-build-annotation",
-    )
-    original_path = ConfigManager.path
-    ConfigManager.set_path(tmp_path / "config.json")
-    try:
-        view = SetupView()
-        skin = active_skin()
-        s = skin.setup
-        available = skin.width - s.separator_inset - s.value_x
-        assert view.version_label.rect.width <= available
-        assert view.version_label.text.endswith("…")
-    finally:
-        ConfigManager.set_path(original_path)
-
-
-def test_image_version_reads_the_appliance_os_release(tmp_path):
-    p = tmp_path / "os-release"
-    p.write_text(
-        'NAME="InstrumentCluster-OS"\nID=instrument-cluster\n'
-        "BUILD_ID=202608141200\nVERSION_ID=\"v0.2.29\"\n"
-    )
-    assert image_version(str(p)) == "v0.2.29"
-
-
-def test_image_version_falls_back_to_build_id_on_untagged_builds(tmp_path):
-    # Local/PR image builds carry no VERSION_ID (CI injects it on tags
-    # only); the BUILD_ID timestamp still identifies the build.
-    p = tmp_path / "os-release"
-    p.write_text('ID=instrument-cluster\nBUILD_ID=202608141200\n')
-    assert image_version(str(p)) == "202608141200"
-
-
-def test_image_version_ignores_foreign_os_releases(tmp_path):
-    # A desktop distro or stock Raspberry Pi OS has its own os-release;
-    # its VERSION_ID is the distro's, not the cluster image's.
-    p = tmp_path / "os-release"
-    p.write_text('ID=debian\nVERSION_ID="12"\nBUILD_ID=20260814\n')
-    assert image_version(str(p)) is None
-    assert image_version(str(tmp_path / "missing")) is None
 
 
 def test_desktop_set_brightness_text_is_harmless(desktop_view):

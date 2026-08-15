@@ -1,5 +1,3 @@
-from importlib.metadata import PackageNotFoundError, version
-
 from pygame.sprite import LayeredDirty
 
 from ...addons.feeds import current_choice, feed_needs_reinstall, telemetry_choices
@@ -15,8 +13,8 @@ from ...ui.events import (
     DIFF_REFERENCE_MODE_PRESSED,
     DIFF_REFERENCE_MODE_RELEASED,
     DIFF_REFERENCE_MODE_SELECTED,
-    FACTORY_RESET_PRESSED,
-    FACTORY_RESET_RELEASED,
+    SOFTWARE_PRESSED,
+    SOFTWARE_RELEASED,
     STATUS_LIGHTS_PRESSED,
     STATUS_LIGHTS_RELEASED,
     STATUS_LIGHTS_TOGGLED,
@@ -27,57 +25,21 @@ from ...ui.events import (
     WIFI_SETUP_RELEASED,
 )
 from ...ui.skins import active_skin
-from ...ui.utils import FontFamily, load_font_px, su
-from ...ui.widgets.base.button import Button, ButtonEvents
+from ...ui.utils import FontFamily, load_font_px
+from ...ui.widgets.base.button import ButtonEvents
 from ...ui.widgets.base.dropdown import Dropdown
-from ...ui.widgets.base.label import Label
 from ...ui.widgets.base.list_item import ListItem, ListItemGroup
 from ...ui.widgets.base.scrollbar import Scrollbar
 from ...ui.widgets.base.toggle import Toggle
 from ...ui.widgets.settings.brightness_widget import BrightnessWidget
 from .base import View
 from .header import corner_button, header_line, header_title
-
-_OS_RELEASE_PATH = "/etc/os-release"
-_IMAGE_OS_ID = "instrument-cluster"
-
-
-def _read_os_release(path: str = _OS_RELEASE_PATH) -> dict[str, str]:
-    info: dict[str, str] = {}
-    try:
-        with open(path, "r") as f:
-            for line in f:
-                if "=" in line:
-                    k, v = line.strip().split("=", 1)
-                    info[k] = v.strip('"')
-    except OSError:
-        return {}
-    return info
-
-
-def image_version(path: str = _OS_RELEASE_PATH) -> str | None:
-    """Release version of the appliance OS image, or None when the app is
-    not running on it. Keyed on the image's os-release ID rather than on
-    the platform: desktop Linux and stock Raspberry Pi OS carry their own
-    /etc/os-release, whose VERSION_ID is the distro's release — showing
-    that as the cluster's version would be wrong exactly where support
-    needs the number. VERSION_ID is the OS release tag (CI-tagged builds
-    only); local image builds fall back to their BUILD_ID timestamp.
-    """
-    info = _read_os_release(path)
-    if info.get("ID") != _IMAGE_OS_ID:
-        return None
-    return info.get("VERSION_ID") or info.get("BUILD_ID") or None
-
+from .setup_rows import row_button, row_icon, row_label
 
 class SetupView(View):
     STEP_PERCENT = 10
     DIFF_REFERENCE_OPTIONS = [DiffReferenceMode.PREVIOUS, DiffReferenceMode.FASTEST]
 
-    # Factory-reset row labels for the two-tap confirmation (SetupState drives
-    # the arming; the view only renders the state it is told to show).
-    _FACTORY_RESET_IDLE_TEXT = "Factory Reset"
-    _FACTORY_RESET_ARMED_TEXT = "Tap again to reset"
 
     def __init__(self):
         # ui_layer: header chrome (title, back button) — plain dirty-rect.
@@ -96,100 +58,11 @@ class SetupView(View):
         self.rows_layer = LayeredDirty()
         self.rows_layer._use_update = True
 
-        self._init_version_string()
         self._init_ui_elements()
 
         self._bind_dropdowns()
 
         self.background_color = Color.BLACK.rgb()
-
-    def _init_version_string(self):
-        try:
-            self.app_version = version("instrument-cluster")
-        except PackageNotFoundError:
-            self.app_version = "dev"
-        # Display drops the PEP-440 local segment (+g<hash>.d<date> on dev
-        # builds via setuptools_scm) — release tags carry none, and the
-        # full string overflows the row's value column.
-        app_display = self.app_version.split("+", 1)[0]
-        os_version = image_version()
-        self.version_text = f"App {app_display}" + (
-            f"  ·  OS {os_version}" if os_version else ""
-        )
-
-    def _row_label(self, text: str) -> Label:
-        """Standard row caption at row-local (label_x, label_dy)."""
-        s = active_skin().setup
-        return Label(
-            text=text,
-            font=load_font_px(s.row_font_size, FontFamily[s.row_font_family]),
-            color=Color[s.row_text_color].rgb(),
-            pos=(s.label_x, s.label_dy),
-            center=False,
-            bg_color=Color.BLACK.rgb(),
-        )
-
-    def _row_icon(self, glyph: str) -> Label:
-        """Material-symbols row icon, centered in the icon cell at icon_x."""
-        s = active_skin().setup
-        return Label(
-            text=glyph,
-            font=load_font_px(s.icon_size, FontFamily.MATERIAL_SYMBOLS),
-            color=Color[s.row_text_color].rgb(),
-            pos=(s.icon_x, s.row_height // 2 + 4),
-            center=True,
-            bg_color=Color.BLACK.rgb(),
-            antialias=True,
-        )
-
-    def _row_button(self, text: str, icon: str, events: ButtonEvents) -> Button:
-        """Standard row action button, styled like a closed dropdown header:
-        same rect (DROPDOWN_X to the row's right edge, stretched to touch
-        the separator lines), text on the value_x column, the arrow icon in
-        the chevron's spot, and the dropdown's pressed-grey glow instead of
-        a border. Stops separator_clearance short of the separator lines so
-        the pressed fill never covers them."""
-        skin = active_skin()
-        s = skin.setup
-        width = skin.width - s.separator_inset - s.dropdown_x
-        gap = s.row_pitch - s.row_height
-        clearance = s.separator_clearance
-        return Button(
-            rect=(
-                s.dropdown_x,
-                # Integer cell math: round(-gap/2 + c) banker's-rounds a
-                # half-pixel *upward* on odd gaps (800 skin: -17.5 -> -18),
-                # lifting the control 1px onto the header line — which the
-                # open dropdown's scrim then visibly blanks.
-                clearance - gap // 2,
-                width,
-                s.row_height + gap - 2 * clearance,
-            ),
-            text=text,
-            text_visible=True,
-            font=load_font_px(s.row_font_size, FontFamily[s.row_font_family]),
-            antialias=True,
-            events=events,
-            icon=icon,
-            icon_size=s.chevron_icon_size,
-            icon_font=load_font_px(
-                s.chevron_icon_size, FontFamily.MATERIAL_SYMBOLS
-            ),
-            icon_offset_y=su(4),
-            icon_position="right",
-            icon_fixed_right=True,
-            text_color=Color.WHITE.rgb(),
-            content_align="left",
-            padding=(
-                s.value_x - s.dropdown_x,
-                su(20),
-                su(20),
-                su(20),
-            ),
-            text_offset_y=su(4),
-            show_border=False,
-            pressed_gradient=(Color.DARKER_GREY.rgb(), Color.DARKER_GREY.rgb()),
-        )
 
     def _row_toggle(self, checked: bool, events: ButtonEvents) -> Toggle:
         """Standard row toggle switch, sharing the stretched rect of a
@@ -304,20 +177,12 @@ class SetupView(View):
 
         # Custom dashboard slots are selected by swiping between pages on
         # the dashboard itself — there is no slot row in Setup.
-        self.wifi_button = self._row_button(
+        self.wifi_button = row_button(
             text="Wi-Fi Setup",
             icon=Icon.CHEVRON_RIGHT.glyph(),
             events=ButtonEvents(
                 pressed=WIFI_SETUP_PRESSED,
                 released=WIFI_SETUP_RELEASED,
-            ),
-        )
-        self.factory_reset_button = self._row_button(
-            text=self._FACTORY_RESET_IDLE_TEXT,
-            icon=Icon.CHEVRON_RIGHT.glyph(),
-            events=ButtonEvents(
-                pressed=FACTORY_RESET_PRESSED,
-                released=FACTORY_RESET_RELEASED,
             ),
         )
         # One ListItem per grid slot, top to bottom. Extensions may
@@ -346,12 +211,17 @@ class SetupView(View):
         ]
         if on_pi:
             row_contents.append((Icon.NETWORK.glyph(), "Network", self.wifi_button))
-            # Data reset (Wi-Fi credentials, entered IPs, installed feed) only
-            # makes sense on the appliance; a desktop window's data lives in
-            # the user's home directory and the OS owns Wi-Fi.
-            row_contents.append(
-                (Icon.FACTORY_RESET.glyph(), "Factory Reset", self.factory_reset_button)
-            )
+        # Versions, factory reset, and extension update flows live on
+        # the Software screen — one row here instead of several.
+        self.software_button = row_button(
+            text="Version",
+            icon=Icon.CHEVRON_RIGHT.glyph(),
+            events=ButtonEvents(
+                pressed=SOFTWARE_PRESSED,
+                released=SOFTWARE_RELEASED,
+            ),
+        )
+        row_contents.append((Icon.SOFTWARE.glyph(), "Software", self.software_button))
         for entry in extensions.setup_entries:
             text = (
                 entry.button_text()
@@ -362,7 +232,7 @@ class SetupView(View):
                 (
                     entry.icon,
                     entry.label,
-                    self._row_button(
+                    row_button(
                         text=text,
                         icon=Icon.CHEVRON_RIGHT.glyph(),
                         events=ButtonEvents(
@@ -373,33 +243,10 @@ class SetupView(View):
                 )
             )
         s = active_skin().setup
-        # The About row is a plain, non-interactive label in the control
-        # column: app version plus, on the appliance image, the OS release.
-        # The running version must be readable on the device itself
-        # (traceability and support; EN 18031 transparency on the
-        # commercial build), so the row exists on every platform and
-        # always comes last — extensions insert their rows above it.
-        self.version_label = Label(
-            text=self.version_text,
-            font=load_font_px(s.row_font_size, FontFamily[s.row_font_family]),
-            color=Color.WHITE.rgb(),
-            pos=(s.value_x, s.label_dy),
-            center=False,
-            bg_color=Color.BLACK.rgb(),
-        )
-        # Ellipsize to the value column — the string is uncontrolled
-        # (dev versions, future fields) and an overflow paints past the
-        # separator inset into the scrollbar.
-        available = active_skin().width - s.separator_inset - s.value_x
-        raw = self.version_text
-        while self.version_label.rect.width > available and len(raw) > 1:
-            raw = raw[:-1]
-            self.version_label.set_text(raw + "…")
-        row_contents.append((Icon.ABOUT.glyph(), "About", self.version_label))
         self.rows = ListItemGroup(
             ListItem(
                 y=s.row_top + i * s.row_pitch,
-                widgets=[self._row_icon(icon), self._row_label(text), control],
+                widgets=[row_icon(icon), row_label(text), control],
             )
             for i, (icon, text, control) in enumerate(row_contents)
         )
@@ -431,25 +278,6 @@ class SetupView(View):
                 self.rows_layer,
                 menu_layer=Dropdown.DROPDOWN_MENU_LAYER,
                 open_header_layer=Dropdown.DROPDOWN_HEADER_OPEN_LAYER,
-            )
-
-    def set_factory_reset_armed(self, armed: bool) -> None:
-        """Reflect the factory-reset arming state on its row.
-
-        Armed: red warning label prompting the confirming second tap.
-        Idle: the neutral default label. No-op if the row was never built
-        (desktop builds omit it).
-        """
-        button = getattr(self, "factory_reset_button", None)
-        if button is None:
-            return
-        if armed:
-            button.set_text(
-                self._FACTORY_RESET_ARMED_TEXT, color=Color.LIGHTEST_RED.rgb()
-            )
-        else:
-            button.set_text(
-                self._FACTORY_RESET_IDLE_TEXT, color=Color.WHITE.rgb()
             )
 
     def set_brightness_text(self, value):

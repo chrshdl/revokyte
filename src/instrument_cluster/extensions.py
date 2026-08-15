@@ -96,6 +96,8 @@ class ExtensionRuntime:
         self.plugin_manager = None
         self._signal_processors: list[Any] = []
         self.setup_entries: list[SetupEntry] = []
+        self.software_entries: list[SetupEntry] = []
+        self.version_entries: list[tuple[str, str | Callable[[], str]]] = []
 
     @property
     def active(self) -> bool:
@@ -110,6 +112,22 @@ class ExtensionRuntime:
 
     def add_setup_entry(self, entry: SetupEntry) -> None:
         self.setup_entries.append(entry)
+
+    def add_software_entry(self, entry: SetupEntry) -> None:
+        """An extra action row on the Software screen (below Factory Reset).
+
+        Same contract as Setup rows — the Software screen renders the row
+        and switches to ``make_state(state_manager)`` on release. This is
+        where an extension's update flow lives.
+        """
+        self.software_entries.append(entry)
+
+    def add_version_entry(self, name: str, version: str | Callable[[], str]) -> None:
+        """A component line on the Software screen's version list.
+
+        ``version`` may be a callable, re-evaluated on every view build.
+        """
+        self.version_entries.append((name, version))
 
     # --- lifecycle (called from main) ---
 
@@ -133,6 +151,8 @@ class ExtensionRuntime:
         for name, wire in hooks:
             processors_before = len(self._signal_processors)
             entries_before = len(self.setup_entries)
+            software_before = len(self.software_entries)
+            versions_before = len(self.version_entries)
             try:
                 wire(self)
                 self.loaded.append(name)
@@ -143,6 +163,8 @@ class ExtensionRuntime:
                     self._stop_processor(processor)
                 del self._signal_processors[processors_before:]
                 del self.setup_entries[entries_before:]
+                del self.software_entries[software_before:]
+                del self.version_entries[versions_before:]
 
     def update_signals(self) -> dict:
         """Poll every registered processor; one crashing must not stall

@@ -47,8 +47,12 @@ STATUS_LIGHTS_TOGGLED = pygame.event.custom_type()  # event_data: checked (bool)
 WIFI_SETUP_PRESSED = pygame.event.custom_type()
 WIFI_SETUP_RELEASED = pygame.event.custom_type()
 
+# Software screen (version inventory + factory reset + extension rows)
+SOFTWARE_PRESSED = pygame.event.custom_type()
+SOFTWARE_RELEASED = pygame.event.custom_type()
+
 # Factory reset (Pi only). Two-tap: the first release arms the row, the
-# second within the timeout performs the reset. See SetupState.
+# second within the timeout performs the reset. See SoftwareState.
 FACTORY_RESET_PRESSED = pygame.event.custom_type()
 FACTORY_RESET_RELEASED = pygame.event.custom_type()
 

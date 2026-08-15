@@ -1,4 +1,5 @@
-"""Two-tap factory-reset confirmation in SetupState."""
+"""Two-tap factory-reset confirmation in SoftwareState (moved here
+from Setup together with the row)."""
 
 import json
 
@@ -6,7 +7,7 @@ import pygame
 import pytest
 
 from instrument_cluster.config import ConfigManager
-from instrument_cluster.states.setup_state import SetupState
+from instrument_cluster.states.software_state import SoftwareState
 from instrument_cluster.telemetry.mode import DiffReferenceMode, TelemetryMode
 from instrument_cluster.ui.events import FACTORY_RESET_RELEASED
 
@@ -45,7 +46,7 @@ def config_path(tmp_path):
 
 def _make_state():
     manager = _FakeStateManager()
-    state = SetupState(manager)
+    state = SoftwareState(manager)
     manager.state = state
     return state
 
@@ -89,7 +90,7 @@ def test_arm_times_out_and_disarms(config_path, spy_reset):
     assert state._factory_reset_armed_s > 0.0
 
     # Advance past the arm window.
-    state.update(SetupState.FACTORY_RESET_ARM_TIMEOUT_S + 0.1)
+    state.update(SoftwareState.FACTORY_RESET_ARM_TIMEOUT_S + 0.1)
 
     assert state._factory_reset_armed_s == 0.0
     # A subsequent single tap only re-arms; it must not reset.
@@ -98,7 +99,7 @@ def test_arm_times_out_and_disarms(config_path, spy_reset):
     assert state._factory_reset_armed_s > 0.0
 
 
-def test_leaving_setup_disarms(config_path, spy_reset):
+def test_leaving_the_screen_disarms(config_path, spy_reset):
     state = _make_state()
     state.handle_event(_reset_event())
     assert state._factory_reset_armed_s > 0.0
