@@ -146,6 +146,9 @@ class ConfigManager:
     _pending: tuple[dict, Path] | None = None
     _writing = False
     _writer: threading.Thread | None = None
+    # Poison flag: True after a factory reset has wiped the config file
+    # and the process is going down. See disable_persistence().
+    _persistence_disabled = False
     # Last state known synced to disk, as (path, dict) — lets the writer
     # skip no-op writes so callers can persist() unconditionally.
     _last_written: tuple[Path, dict] | None = None
@@ -267,6 +270,8 @@ class ConfigManager:
         """
         cfg = cls.get_config()  # may parse from disk; keep out of the lock
         with cls._cond:
+            if cls._persistence_disabled:
+                return
             # Snapshot inside the lock so snapshot+publish is atomic — two
             # racing persists can't publish an older snapshot over a newer.
             cls._pending = (asdict(cfg), cls.path)
@@ -320,6 +325,24 @@ class ConfigManager:
             )
 
     @classmethod
+    def disable_persistence(cls) -> None:
+        """Drop pending writes and refuse all further ones, permanently.
+
+        Called by the factory reset right before it wipes the config file
+        on the appliance: the process is about to die (reboot), and any
+        teardown that persists on exit — SetupState does — would otherwise
+        faithfully resurrect the just-erased file from the still-live
+        in-memory config, personal data (entered IPs) included. The
+        writer's no-op skip cannot catch this: ``_last_written`` only
+        knows what *this process* wrote, which after a settings-free
+        session is nothing.
+        """
+        with cls._cond:
+            cls._persistence_disabled = True
+            cls._pending = None
+            cls._cond.notify_all()
+
+    @classmethod
     def reset(cls) -> None:
         """Clear the cached config instance. Intended for use in tests."""
         if not cls.flush(timeout=2.0):
@@ -327,6 +350,7 @@ class ConfigManager:
         with cls._cond:
             cls._pending = None
             cls._last_written = None
+            cls._persistence_disabled = False
         cls._config = None
 
     @classmethod

@@ -109,22 +109,31 @@ def perform_factory_reset(
     ``reboot`` is None it is decided by :func:`is_raspberry_pi` — the device
     reboots, a dev machine does not.
     """
-    if config_path is None:
-        # Import here to avoid a module-level import cycle (config imports
-        # from the logger which imports … keep the top of the module thin).
-        from ...config import ConfigManager
+    # Import here to avoid a module-level import cycle (config imports
+    # from the logger which imports … keep the top of the module thin).
+    from ...config import ConfigManager
 
+    if config_path is None:
         config_path = ConfigManager.path
 
+    if reboot is None:
+        reboot = is_raspberry_pi()
+
     logger.warning("factory reset: erasing user data")
+
+    if reboot:
+        # The process is going down: refuse all further config writes
+        # BEFORE wiping, or the shutdown's persist-on-exit (SetupState)
+        # resurrects the erased file from the still-live in-memory config
+        # — brightness, entered IPs and all (found on device 2026-08-15).
+        # Dev machines (no reboot) keep persistence: the process lives on
+        # and later settings changes may legitimately recreate the file.
+        ConfigManager.disable_persistence()
 
     for target in _personal_data_targets(Path(config_path), Path(data_root)):
         _remove(target)
 
     _reseed_wifi(Path(wifi_conf_path))
-
-    if reboot is None:
-        reboot = is_raspberry_pi()
 
     if reboot:
         _reboot()
