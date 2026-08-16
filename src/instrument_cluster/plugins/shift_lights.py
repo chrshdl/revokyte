@@ -2,9 +2,13 @@
 
 Free like every standard gauge (a device without the LED bar simply has
 nothing to drive). No sprites: this plugin owns hardware.
-``dashboard_only`` keeps the old cadence (the LEDs only run while the
-dashboard is the active state), and ``teardown()`` blanks the bar so a
-reload never leaves stale lights on.
+
+Deliberately not ``dashboard_only``: like the signal pipeline, a physical
+peripheral never pauses for a UI state — freezing the bar mid-pattern in
+Setup showed lit LEDs that no longer meant anything. The peripheral's own
+guards keep it honest instead (the Setup toggle and stale-link supervision
+both blank it, and no frames means nothing to light), and ``teardown()``
+blanks the bar so a reload never leaves stale lights on.
 """
 
 from ..core.plugin_system.sdk import GenericPlugin
@@ -13,8 +17,7 @@ from ..peripherals.shift_lights import ShiftLights
 
 class ShiftLightsPlugin(GenericPlugin):
     plugin_id = "shift-lights"
-    version = "1.1.0"
-    dashboard_only = True
+    version = "1.2.0"
 
     def setup(self) -> None:
         self._peripheral = ShiftLights()

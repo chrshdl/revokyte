@@ -302,6 +302,28 @@ class TestUpdateLoop:
         m.update(0.016)
         assert plugin.updates == 1
 
+    def test_shift_lights_run_while_a_menu_covers_the_dashboard(
+        self, tmp_path, granted_features
+    ):
+        """The LED bar is a physical peripheral: like the signal pipeline it
+        never pauses for a UI state (a dashboard_only gate used to freeze it
+        mid-pattern in Setup, showing lit LEDs that meant nothing). The
+        peripheral's own guards — the Setup toggle, stale-link supervision —
+        are what blank it."""
+        from unittest.mock import MagicMock
+
+        m = make_manager(
+            tmp_path, packaged_dir=PACKAGED_DIR, external=tmp_path / "empty"
+        )
+        m.load_plugins()
+        plugin = by_id(m, "shift-lights")
+        plugin._peripheral = MagicMock()
+
+        m.set_dashboard_active(False)  # e.g. Setup pushed over the dashboard
+        m.update(0.016)
+
+        plugin._peripheral.update.assert_called_once()
+
     def test_crashing_plugin_is_disabled_not_fatal(
         self, tmp_path, granted_features
     ):
