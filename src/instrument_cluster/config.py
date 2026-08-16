@@ -237,6 +237,7 @@ class ConfigManager:
         if persist:
             cls.persist()
 
+    @classmethod
     def set_shift_lights(cls, enabled: bool, persist: bool = True) -> None:
         cfg = cls.get_config()
         cfg.shift_lights = bool(enabled)

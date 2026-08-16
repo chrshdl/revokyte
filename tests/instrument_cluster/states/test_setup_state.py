@@ -9,6 +9,7 @@ from instrument_cluster.telemetry.mode import DiffReferenceMode, TelemetryMode
 from instrument_cluster.ui.events import (
     BUTTON_BACK_RELEASED,
     DIFF_REFERENCE_MODE_SELECTED,
+    SHIFT_LIGHTS_TOGGLED,
     STATUS_LIGHTS_TOGGLED,
 )
 
@@ -70,6 +71,10 @@ def _status_lights_event(checked: bool) -> pygame.event.Event:
     return pygame.event.Event(STATUS_LIGHTS_TOGGLED, {"checked": checked})
 
 
+def _shift_lights_event(checked: bool) -> pygame.event.Event:
+    return pygame.event.Event(SHIFT_LIGHTS_TOGGLED, {"checked": checked})
+
+
 @pytest.fixture
 def write_calls(monkeypatch):
     """Patches the config writer's disk I/O so tests can assert on it
@@ -123,6 +128,35 @@ def test_toggling_status_lights_applies_live_and_persists_on_exit(
     state.handle_event(_back_event())
     ConfigManager.flush(timeout=2)
     assert len(write_calls) == 1
+
+
+def test_toggling_shift_lights_applies_live_and_persists_on_exit(
+    config_path, write_calls
+):
+    # Regression: set_shift_lights lacked @classmethod, so this handler
+    # raised (swallowed by StateManager) and the toggle never applied —
+    # the LED bar kept running with the switch visually off.
+    state = _make_state()
+    state.handle_event(_shift_lights_event(False))
+
+    # applied live in-memory (the peripheral reads the flag every frame)
+    assert ConfigManager.get_config().shift_lights is False
+    ConfigManager.flush(timeout=2)
+    assert write_calls == []
+
+    state.handle_event(_back_event())
+    ConfigManager.flush(timeout=2)
+    assert len(write_calls) == 1
+
+
+def test_toggling_shift_lights_back_and_forth_does_not_write(config_path, write_calls):
+    state = _make_state()
+    state.handle_event(_shift_lights_event(False))
+    state.handle_event(_shift_lights_event(True))
+    state.handle_event(_back_event())
+
+    ConfigManager.flush(timeout=2)
+    assert write_calls == []
 
 
 def test_toggling_status_lights_back_and_forth_does_not_write(config_path, write_calls):
