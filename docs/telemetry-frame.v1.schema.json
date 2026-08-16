@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/chrshdl/revokyte/main/docs/telemetry-frame.v1.schema.json",
+  "$id": "https://raw.githubusercontent.com/revokyte/revokyte/main/docs/telemetry-frame.v1.schema.json",
   "title": "Revokyte Telemetry Protocol v1 frame",
   "description": "Sender-conformance schema for one telemetry frame (one UDP datagram payload). Encodes sender obligations from docs/PROTOCOL.md section 3; receivers are more tolerant (unknown fields ignored, numeric coercion). Every field is optional: omitting a field means 'channel not provided'. Fields marked 'omit, never null' reject explicit null. License: CC0-1.0 (public domain dedication) - see LICENSES/CC0-1.0.txt.",
   "type": "object",

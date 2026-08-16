@@ -159,7 +159,7 @@ jobs:
 
           Corresponding sources: this application's source is attached to the
           same GitHub release (python-instrument-cluster-*.tar.gz) and lives at
-          https://github.com/chrshdl/revokyte. Python package sources are the
+          https://github.com/revokyte/revokyte. Python package sources are the
           sdists on https://pypi.org for the pinned versions in manifest.csv;
           granturismo's is https://github.com/chrshdl/granturismo. The Python
           runtime (PSF-2.0) is from https://python.org. The PyInstaller
