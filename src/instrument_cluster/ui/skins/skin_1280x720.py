@@ -246,11 +246,9 @@ SKIN_1280 = Skin(
         del_color="LIGHT_RED",
     ),
     overlays=OverlaySkin(
-        # Between the track/lap row and the footer: gear ends at 504,
-        # footer ink starts at 630 (see no_signal_window.py for the why).
-        no_signal_rect=(0, 514, 1280, 100),
-        no_signal_font=56,
-        no_signal_font_family="D_DIN_EXP_BOLD",
+        # The shared status pill sits between the track/lap row and the
+        # footer: gear ends at 504, footer ink starts at 630 (see
+        # status_pill.py / no_signal_window.py for the why).
         wifi_pill_height=56,
         wifi_pill_center_y=564,
         wifi_pill_pad_x=28,
@@ -269,7 +267,6 @@ SKIN_1280 = Skin(
         feed_body_line_pitch=42,
         feed_button_size=(260, 70),
         feed_button_bottom_margin=40,
-        no_signal_accent_color="LIGHT_RED",
         wifi_pill_border_color="MID_GREY",
         feed_accent_color="ORANGE",
     ),

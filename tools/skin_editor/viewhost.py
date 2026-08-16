@@ -131,21 +131,23 @@ def _render_dashboard(surface: pygame.Surface, lights: bool) -> None:
 
 
 def _render_overlays(surface: pygame.Surface) -> None:
-    from instrument_cluster.ui import no_signal_window
+    from instrument_cluster.ui.no_signal_window import build_no_telemetry_pill
     from instrument_cluster.ui.wifi_status_window import _build_pill
 
     _render_dashboard(surface, lights=False)
     # Knock the base back the way FeedUpdateWindow's dimming does, then
-    # composite the two passive overlays where their windows place them.
+    # composite the two passive overlays. Both pills share the same skin
+    # spot and never co-show in the app (SYSTEM_ALERT occludes), so the
+    # preview steps the Wi-Fi one down a row to keep both editable at once.
     dim = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
     dim.fill((0, 0, 0, 90))
     surface.blit(dim, (0, 0))
 
-    rect = no_signal_window.banner_rect()
-    surface.blit(no_signal_window.build_banner(rect.size), rect)
+    alert = build_no_telemetry_pill()
+    surface.blit(alert.image, alert.rect)
 
     pill = _build_pill()
-    surface.blit(pill.image, pill.rect)
+    surface.blit(pill.image, pill.rect.move(0, alert.rect.height + 8))
 
 
 def _render_setup(surface: pygame.Surface, dropdown_open: bool = False) -> None:

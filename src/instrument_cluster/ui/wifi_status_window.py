@@ -6,7 +6,7 @@ credentials provisioned the app boots straight to the gauges and this pill
 is the only trace of the association still running in the background. It
 withdraws itself the moment the link is up and never comes back — boot
 status, not a link monitor (link loss mid-session is telemetry loss, and
-that is the NO SIGNAL band's job).
+that is the no-telemetry alert's job).
 
 Association is polled on a daemon thread: ``wpa_cli`` is a subprocess and
 its 10-30 ms would otherwise hitch the 60 fps main loop. The thread ends
@@ -21,23 +21,17 @@ import time
 import pygame
 
 from ..logger import Logger
-from .colors import Color
 from .skins import active_skin
-from .utils import FontFamily, load_font_px
+from .status_pill import build_pill
 from .window_layering import OverlayWindow, WindowLayer
 
 logger = Logger("wifi_status").get()
 
-# Geometry comes from the active skin's overlays group. Centred in the
-# same free strip between the widget rows that the NO SIGNAL band occupies
-# (see no_signal_window.py for why that strip) — but a compact pill, not a
-# full-width band: this is a status note, not an alert. When NO SIGNAL is
-# up its SYSTEM_ALERT layer occludes this window, which is exactly the
-# right precedence.
-PILL_TEXT = "Connecting to Wi-Fi …"
-
-PILL_BORDER_WIDTH = 2
-PILL_BG_ALPHA = 235
+# The shared status pill (see status_pill.py), centred in the free strip
+# between the widget rows — a status note, not an alert, so the border
+# stays the quiet grey. When the no-telemetry alert is up its SYSTEM_ALERT
+# layer occludes this window, which is exactly the right precedence.
+PILL_TEXT = "Connecting to Wi-Fi ..."
 
 # Poll fast at first — association after boot typically lands within
 # seconds — then back off, so a track day with the router left off doesn't
@@ -48,38 +42,7 @@ _POLL_FAST_WINDOW = 30.0
 
 
 def _build_pill() -> pygame.sprite.DirtySprite:
-    skin = active_skin()
-    o = skin.overlays
-    font = load_font_px(o.wifi_pill_font, FontFamily[o.wifi_pill_font_family])
-    # Colors resolve here (not at module scope) so palette overrides
-    # (skin editor) reach a rebuilt pill.
-    bg_color = (*Color.DARKER_GREY.rgb(), PILL_BG_ALPHA)
-    border_color = Color[o.wifi_pill_border_color].rgb()
-    text = font.render(PILL_TEXT, True, Color.WHITE.rgb())
-
-    width = text.get_width() + 2 * o.wifi_pill_pad_x
-    height = o.wifi_pill_height
-    radius = height // 2
-
-    image = pygame.Surface((width, height), pygame.SRCALPHA)
-    pygame.draw.rect(image, bg_color, image.get_rect(), border_radius=radius)
-    pygame.draw.rect(
-        image,
-        border_color,
-        image.get_rect(),
-        width=PILL_BORDER_WIDTH,
-        border_radius=radius,
-    )
-    image.blit(text, text.get_rect(center=image.get_rect().center))
-
-    sprite = pygame.sprite.DirtySprite()
-    sprite.image = image
-    sprite.rect = image.get_rect(
-        center=(skin.width // 2, o.wifi_pill_center_y)
-    )
-    sprite.visible = 1
-    sprite.dirty = 1
-    return sprite
+    return build_pill(PILL_TEXT, active_skin().overlays.wifi_pill_border_color)
 
 
 class WifiStatusWindow(OverlayWindow):

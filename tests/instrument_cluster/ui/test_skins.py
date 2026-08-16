@@ -236,9 +236,9 @@ def test_dashboard_gauges_fit_per_skin(force_profile, profile, lights):
 def test_overlay_geometry_stays_inside_every_skin():
     for skin in ALL_SKINS:
         o = skin.overlays
-        # The NO SIGNAL band and the Wi-Fi pill share the free strip the
-        # dashboard leaves between the track row and the footer.
-        assert o.no_signal_rect[1] + o.no_signal_rect[3] <= skin.height
+        # The shared status pill (Wi-Fi note and no-telemetry alert) sits
+        # in the free strip the dashboard leaves between the track row and
+        # the footer.
         assert o.wifi_pill_center_y + o.wifi_pill_height // 2 <= skin.height
         # The feed-update card and its button fit centred on screen.
         assert o.feed_card_size[0] <= skin.width

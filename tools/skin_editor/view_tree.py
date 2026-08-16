@@ -295,23 +295,16 @@ VIEW_TREES: dict[str, list[tuple[str, list[str]]]] = {
     "dashboard_lights": _STATUS_LIGHTS + _DASHBOARD_CORE,
     "overlays": [
         (
-            "NO SIGNAL banner",
-            [
-            "overlays.no_signal_rect",
-            "overlays.no_signal_font",
-            "overlays.no_signal_font_family",
-            "overlays.no_signal_accent_color",
-        ],
-        ),
-        (
-            "Wi-Fi pill",
+            # Shared by the Wi-Fi note and the no-telemetry alert (see
+            # ui/status_pill.py); only the wording is per-window.
+            "Status pill",
             [
                 "overlays.wifi_pill_height",
                 "overlays.wifi_pill_center_y",
                 "overlays.wifi_pill_pad_x",
                 "overlays.wifi_pill_font",
-            "overlays.wifi_pill_font_family",
-            "overlays.wifi_pill_border_color",
+                "overlays.wifi_pill_font_family",
+                "overlays.wifi_pill_border_color",
             ],
         ),
         (

@@ -354,11 +354,13 @@ class NumpadSkin:
 
 @dataclass(frozen=True)
 class OverlaySkin:
-    """Overlay windows: NO SIGNAL banner, Wi-Fi pill, feed-update card."""
+    """Overlay windows: the status pills and the feed-update card.
 
-    no_signal_rect: Rect = _px("rect")
-    no_signal_font: int = _px("font")
-    no_signal_font_family: str = _px("family")
+    The ``wifi_pill_*`` group is the shared status-pill geometry — the
+    Wi-Fi connecting note and the no-telemetry alert both render through
+    it (see ui/status_pill.py); only their border color fields differ.
+    """
+
     wifi_pill_height: int = _px("y")
     wifi_pill_center_y: int = _px("y")
     wifi_pill_pad_x: int = _px("x")
@@ -377,7 +379,6 @@ class OverlaySkin:
     feed_body_line_pitch: int = _px("y")
     feed_button_size: Size = _px("size")
     feed_button_bottom_margin: int = _px("y")
-    no_signal_accent_color: str = _px("color")
     wifi_pill_border_color: str = _px("color")
     feed_accent_color: str = _px("color")
 

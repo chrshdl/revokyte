@@ -209,7 +209,6 @@ def _overlays() -> list[Binding]:
         return _r((s.width - w) // 2, (s.height - h) // 2, w, h)
 
     return [
-        Binding(o + "no_signal_rect", RECT, lambda s: _r(*s.overlays.no_signal_rect)),
         Binding(o + "wifi_pill_center_y", HLINE, lambda s: _hline_rect(s, s.overlays.wifi_pill_center_y)),
         Binding(o + "feed_card_size", RECT, card, "topleft", "centred; only size editable"),
     ]

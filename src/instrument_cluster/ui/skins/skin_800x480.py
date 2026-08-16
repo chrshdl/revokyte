@@ -244,9 +244,6 @@ SKIN_800 = Skin(
         del_color="LIGHT_RED",
     ),
     overlays=OverlaySkin(
-        no_signal_rect=(0, 343, 800, 67),
-        no_signal_font=36,
-        no_signal_font_family="D_DIN_EXP_BOLD",
         wifi_pill_height=37,
         wifi_pill_center_y=376,
         wifi_pill_pad_x=18,
@@ -265,7 +262,6 @@ SKIN_800 = Skin(
         feed_body_line_pitch=28,
         feed_button_size=(162, 47),
         feed_button_bottom_margin=27,
-        no_signal_accent_color="LIGHT_RED",
         wifi_pill_border_color="MID_GREY",
         feed_accent_color="ORANGE",
     ),

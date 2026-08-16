@@ -1,15 +1,23 @@
-"""The NO SIGNAL alert — a composited SYSTEM_ALERT overlay window.
+"""The no-telemetry alert — a composited SYSTEM_ALERT overlay window.
 
 Telemetry link loss is exactly what the topmost overlay layer is for. Making
 it a window rather than something ``DashboardView`` paints buys two things
 the view could not give it:
 
-* nothing can draw over it. A widget repainting under the banner is
+* nothing can draw over it. A widget repainting under the pill is
   re-composited beneath it by the WindowManager, instead of the view having
-  to restamp the band whenever a dirty rect wandered into it;
+  to restamp it whenever a dirty rect wandered into it;
 * the base keeps running live underneath, and the compositor already knows
-  to repaint the base when the window disappears — so clearing the banner on
+  to repaint the base when the window disappears — so clearing the alert on
   recovery is no longer the view's problem either.
+
+The alert renders as the shared status pill (see ``status_pill.py``) — the
+same compact pill the Wi-Fi connecting note uses, centred in the free strip
+between the widget rows, in the same quiet colours. A full-width gradient
+band was tried and dropped, and so was a red accent border: against the
+Wi-Fi pill both read as a second design language, and the strip's job is
+glance-legibility, which the pill already delivers. The wording alone
+carries the alert.
 
 Visibility is driven by ``LinkSignal``'s ``telemetry_stale`` (see
 ``signals/link_signal.py``), gated on the active state opting in, the same
@@ -21,147 +29,30 @@ from __future__ import annotations
 import pygame
 
 from ..signals.signal_keys import SignalKey
-from .colors import Color
 from .skins import active_skin
-from .utils import FontFamily, load_font_px, vertical_gradient
+from .status_pill import build_pill
 from .window_layering import OverlayWindow, WindowLayer
 
-# Banner geometry and font come from the active skin (overlays group):
-# full width, in the strip between the Track Name / Previous Lap row and
-# the footer — not along the top edge, which would sit on top of the
-# Fastest Lap and Speed gauges. The banner must not hide the very readings
-# it is marking as stale.
-#
-# On the 1280 skin it runs from 514 to 614, clear of everything either
-# side: the gear widget's rect ends at 504, and the footer row's first ink
-# is at 630. Every skin must keep that relationship — the band lives in
-# the gap its dashboard layout leaves free. Overlapping the gear digit was
-# tried and dropped — the band has to be legible at a glance without
-# costing a reading, and the strip is tall enough without borrowing from
-# the gauge above it.
-BANNER_TEXT = "NO SIGNAL"
-
-# Same ramp *and* the same colours the gauge panels use (see
-# ui/utils.vertical_gradient and the tyre temp widget): dark grey at the top
-# falling to black at the bottom. The fill carries no colour of its own — a
-# red one was tried and dropped, along with a fully-saturated red-to-red pair.
-# Keeping the band neutral is what ties it to the rest of the dash and leaves
-# the red border rule below as the single accent, rather than competing with
-# it across 1280 px.
-# Resolved inside build_banner so palette overrides (skin editor)
-# reach a rebuilt banner.
-def _banner_fill() -> tuple:
-    return Color.DARK_GREY.rgb(), Color.BLACK.rgb()
-
-# Thin outline so the band has a defined edge instead of bleeding into the
-# panel. It ramps rather than being one flat colour because the two rules do
-# different jobs. The bottom one is the banner's accent: a bright red hairline
-# on the black end of the fill, the one piece of colour in the whole widget,
-# and — now that the fill itself is neutral — what makes the band read as an
-# alert at a glance rather than as another dark panel. The top one only has to
-# stop the band bleeding into the panel behind it, so it stays a quiet
-# low-chroma step over the fill; a second saturated line up there would box
-# the band in instead of ruling it off, and would split the eye between two
-# reds 100 px apart.
-def _banner_border() -> tuple:
-    accent = active_skin().overlays.no_signal_accent_color
-    return Color.GREY.rgb(), Color[accent].rgb()
+# The wording carries the diagnosis: "No Telemetry" names what is missing
+# (the feed), where "no signal" read like a display/input problem. The
+# trailing dots read as an ongoing wait, not a verdict.
+PILL_TEXT = "No Telemetry ..."
 
 
-BANNER_BORDER_WIDTH = 2
-
-# Rounded on the top corners only — the band stops just short of the footer
-# row, close enough that its lower corners read as meeting it, and reading
-# square is right there. The corners are cut out of the surface rather than merely
-# outlined, or the gradient would still square them off behind the arc.
-BANNER_CORNER_RADIUS = 2
-
-# Mask values, not colours. The mask is multiplied into the gradient
-# (BLEND_RGB_MULT), so the opaque value has to be the identity multiplier —
-# 255, not Color.WHITE, which is (210, 210, 210) and would darken the whole
-# band by ~18%. The clear value only needs alpha 0; its RGB is irrelevant,
-# so it takes the palette's black.
-_MASK_OPAQUE = (255, 255, 255, 255)
-_MASK_CLEAR = (0, 0, 0, 0)
-
-
-def banner_rect() -> pygame.Rect:
-    """Screen-space rect of the banner (native px from the active skin)."""
-    return pygame.Rect(active_skin().overlays.no_signal_rect)
-
-
-def build_banner(size: tuple[int, int]) -> pygame.Surface:
-    """Gradient band, rounded at the top, with the warning text centred."""
-    width, height = size
-    radius = BANNER_CORNER_RADIUS
-
-    # Mask first: opaque where the band shows, clear outside the rounded top
-    # corners. Multiplying the gradient through it keeps those corners
-    # transparent, so the panel behind shows and the radius actually reads
-    # instead of being an arc drawn over square pixels.
-    banner = pygame.Surface(size, pygame.SRCALPHA)
-    pygame.draw.rect(
-        banner,
-        _MASK_OPAQUE,
-        banner.get_rect(),
-        border_top_left_radius=radius,
-        border_top_right_radius=radius,
-    )
-    fill_top, fill_bottom = _banner_fill()
-    banner.blit(
-        vertical_gradient(size, fill_top, fill_bottom),
-        (0, 0),
-        special_flags=pygame.BLEND_RGB_MULT,
-    )
-
-    o = active_skin().overlays
-    font = load_font_px(o.no_signal_font, FontFamily[o.no_signal_font_family])
-    text = font.render(BANNER_TEXT, True, Color.WHITE.rgb())
-    banner.blit(text, text.get_rect(center=(width // 2, height // 2)))
-
-    # Drawn last so nothing can paint over the edge. The band is full width,
-    # so the left/right sides land on the screen edges and it reads as a top
-    # and bottom rule. Same mask trick as the corners: the outline is drawn
-    # opaque, then its own gradient is multiplied through it.
-    width_px = BANNER_BORDER_WIDTH
-    outline = pygame.Surface(size, pygame.SRCALPHA)
-    pygame.draw.rect(
-        outline,
-        _MASK_OPAQUE,
-        outline.get_rect(),
-        width_px,
-        border_top_left_radius=radius,
-        border_top_right_radius=radius,
-    )
-
-    # Strip the vertical sides, keeping the rounded top corners. The band is
-    # full width, so the sides would be hairlines hugging the screen edges —
-    # that reads as a box drawn around the panel instead of a rule across it.
-    side = pygame.Rect(0, radius, width_px, height - radius - width_px)
-    outline.fill(_MASK_CLEAR, side)
-    outline.fill(_MASK_CLEAR, side.move(width - width_px, 0))
-
-    border_top, border_bottom = _banner_border()
-    outline.blit(
-        vertical_gradient(size, border_top, border_bottom),
-        (0, 0),
-        special_flags=pygame.BLEND_RGB_MULT,
-    )
-    banner.blit(outline, (0, 0))
-    return banner
+def build_no_telemetry_pill() -> pygame.sprite.DirtySprite:
+    """The alert pill: the shared shape and colours, alert wording."""
+    return build_pill(PILL_TEXT, active_skin().overlays.wifi_pill_border_color)
 
 
 class NoSignalWindow(OverlayWindow):
-    """Shows the NO SIGNAL band while the telemetry link is dead."""
+    """Shows the no-telemetry pill while the telemetry link is dead."""
 
     layer = WindowLayer.SYSTEM_ALERT
-    # A dead link is read alone. Sharing the screen with a notification card
-    # was not merely untidy: the band runs the full width of the free strip
-    # and a centred card reaches into it, so the band sliced through the
-    # card's lower edge — and the card's own 35% dimming knocked back the
-    # very gauges the band is there to mark as stale. The card is withdrawn
+    # A dead link is read alone: a notification card sharing the screen
+    # competes for the same glance, and the card's own 35% dimming knocks
+    # back the very gauges this alert marks as stale. The card is withdrawn
     # while this is up and returns on recovery, so nothing is lost by making
-    # it wait. The remedy stays reachable meanwhile: the band clears the
+    # it wait. The remedy stays reachable meanwhile: the pill clears the
     # footer, so the Setup button — and its "Telemetry (update)" row — is
     # still there.
     occludes_below = True
@@ -171,14 +62,7 @@ class NoSignalWindow(OverlayWindow):
         self._bus = vehicle_bus
         self._state_manager = state_manager
 
-        rect = banner_rect()
-        sprite = pygame.sprite.DirtySprite()
-        sprite.image = build_banner(rect.size)
-        sprite.rect = rect
-        sprite.visible = 1
-        sprite.dirty = 1
-        self.sprites = [sprite]
-
+        self.sprites = [build_no_telemetry_pill()]
         self._was_showing = False
 
     @property
@@ -192,7 +76,7 @@ class NoSignalWindow(OverlayWindow):
         return bool(getattr(state, "allows_system_alert", False))
 
     def update(self, dt: float) -> None:
-        # The banner image never changes, so its sprite would stay clean
+        # The pill image never changes, so its sprite would stay clean
         # after the first paint and a later reappearance would composite
         # nothing. Re-dirty it on the rising edge of actually being up —
         # `showing`, not `visible`, or a window that was withdrawn by

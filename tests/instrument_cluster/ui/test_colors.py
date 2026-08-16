@@ -40,9 +40,8 @@ def test_widget_constructed_after_override_picks_it_up():
 
 def test_overlay_builders_pick_up_overrides():
     from instrument_cluster.ui.feed_update_window import _card_color
-    from instrument_cluster.ui.no_signal_window import _banner_fill
+    from instrument_cluster.ui.status_pill import _pill_bg
 
     set_palette_override(Color.DARKER_GREY, (5, 6, 7))
-    set_palette_override(Color.DARK_GREY, (8, 9, 10))
     assert _card_color() == (5, 6, 7)
-    assert _banner_fill()[0] == (8, 9, 10)
+    assert _pill_bg()[:3] == (5, 6, 7)
