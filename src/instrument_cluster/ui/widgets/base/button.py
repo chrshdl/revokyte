@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Literal, Tuple
+from typing import Literal
 
 import pygame
 from pygame.sprite import DirtySprite
@@ -32,7 +32,7 @@ class ButtonEvents:
 class AbstractButton(DirtySprite):
     """Base class for buttons with unified mouse/touch handling."""
 
-    LONG_PRESS_SECONDS = 3.0
+    LONG_PRESS_SECONDS = 2.0
 
     def __init__(
         self,
@@ -276,12 +276,14 @@ class Button(AbstractButton):
         text_position: Literal["left", "right", "top", "bottom"] | None = None,
         text_gap: int | None = None,
         content_align: Literal["center", "left", "right", "top", "bottom"] = "center",
-        padding: Tuple[int, int, int, int] | Tuple[int, int] | int = 0,
+        padding: tuple[int, int, int, int] | tuple[int, int] | int = 0,
         icon_cell_width: int | None = None,
         bg_color: tuple[int, int, int] | None = None,
         # None disables the pressed fill; the sentinel resolves to the
         # palette default at construction (live palette overrides).
-        pressed_gradient: tuple[tuple[int, int, int], tuple[int, int, int]] | None | str = "default",
+        pressed_gradient: tuple[tuple[int, int, int], tuple[int, int, int]]
+        | None
+        | str = "default",
         gradient_dir: Literal["vertical", "horizontal"] = "vertical",
         border_top_left_radius=None,
         border_top_right_radius=None,
@@ -420,7 +422,9 @@ class Button(AbstractButton):
             self._font_fingerprint(self.font),
         )
         if key != self._text_cache_key:
-            self._text_surf = self.font.render(self._text, self.antialias, effective_color)
+            self._text_surf = self.font.render(
+                self._text, self.antialias, effective_color
+            )
             self._text_cache_key = key
             self._invalidate_layout_and_composite()
         return self._text_surf
@@ -601,7 +605,7 @@ class Button(AbstractButton):
         return a + int((b - a) * t)
 
     @staticmethod
-    def _rounded_mask(size: Tuple[int, int], radius: int = 4) -> pygame.Surface:
+    def _rounded_mask(size: tuple[int, int], radius: int = 4) -> pygame.Surface:
         w, h = size
         m = pygame.Surface((w, h), pygame.SRCALPHA)
         pygame.draw.rect(m, (255, 255, 255, 255), m.get_rect(), border_radius=radius)
@@ -609,9 +613,9 @@ class Button(AbstractButton):
 
     def _get_gradient_surface(
         self,
-        size: Tuple[int, int],
-        c1: Tuple[int, int, int],
-        c2: Tuple[int, int, int],
+        size: tuple[int, int],
+        c1: tuple[int, int, int],
+        c2: tuple[int, int, int],
         horizontal: bool,
         radius: int = 4,
     ) -> pygame.Surface:
@@ -759,9 +763,7 @@ class Button(AbstractButton):
         """
         surface.blit(self.image, self.rect)
 
-    def set_text(
-        self, text: str, *, color: tuple[int, int, int] | None = None
-    ) -> None:
+    def set_text(self, text: str, *, color: tuple[int, int, int] | None = None) -> None:
         """
         Update button text (and optionally its colour) and redraw if changed.
         """

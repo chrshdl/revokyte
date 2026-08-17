@@ -200,7 +200,7 @@ def run(conf: Config) -> None:
                     now = time.monotonic()
                     if now - last_touch_log >= 1.0:
                         last_touch_log = now
-                        logger.debug("touch down received")
+                        # logger.debug("touch down received")
                 if event.type == pygame.QUIT:
                     state_manager.is_running = False
                 elif event.type in (

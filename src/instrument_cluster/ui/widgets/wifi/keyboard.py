@@ -9,7 +9,6 @@ actually changed so the caller knows a rebuild is needed.
 from __future__ import annotations
 
 from ...colors import Color
-from ...icons import Icon
 from ...events import (
     WIFI_CONNECT_PRESSED,
     WIFI_CONNECT_RELEASED,
@@ -22,6 +21,7 @@ from ...events import (
     WIFI_SHIFT_PRESSED,
     WIFI_SHIFT_RELEASED,
 )
+from ...icons import Icon
 from ...skins import active_skin
 from ...utils import FontFamily, load_font_px
 from ..base.button import Button, ButtonEvents
@@ -63,9 +63,7 @@ class WifiKeyboard:
 
         # First two rows: plain character keys, centered.
         for r in range(2):
-            keys.extend(
-                self._char_row(rows[r], kb.top + r * kb.row_step, key_font)
-            )
+            keys.extend(self._char_row(rows[r], kb.top + r * kb.row_step, key_font))
 
         # Third row: shift + chars + password-reveal (backspace moved
         # up beside the password field).
@@ -108,9 +106,7 @@ class WifiKeyboard:
             Button(
                 rect=self._key_rect(x, y3, kb.special_w, kb.key_h),
                 text="ABC" if self.symbols else "123",
-                font=load_font_px(
-                    kb.small_font, FontFamily[kb.small_font_family]
-                ),
+                font=load_font_px(kb.small_font, FontFamily[kb.small_font_family]),
                 antialias=True,
                 events=ButtonEvents(
                     pressed=WIFI_MODE_PRESSED, released=WIFI_MODE_RELEASED
@@ -123,15 +119,13 @@ class WifiKeyboard:
             Button(
                 rect=self._key_rect(x, y3, kb.space_w, kb.key_h),
                 text="space",
-                font=load_font_px(
-                    kb.small_font, FontFamily[kb.small_font_family]
-                ),
+                font=load_font_px(kb.small_font, FontFamily[kb.small_font_family]),
                 antialias=True,
                 events=ButtonEvents(
                     pressed=WIFI_KEY_PRESSED, released=WIFI_KEY_RELEASED
                 ),
                 event_data={"label": " "},
-                text_color=Color.LIGHT_GREY.rgb(),
+                # text_color=Color.LIGHT_GREY.rgb(),
             )
         )
         x += kb.space_w + kb.gap

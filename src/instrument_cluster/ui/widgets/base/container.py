@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 import pygame
 from pygame.sprite import LayeredDirty, Sprite
@@ -26,16 +26,17 @@ class Container:
             self._children.append(w)
 
             if hasattr(w, "rect"):
-                self._locals[w] = pygame.Rect(getattr(w, "rect"))
+                self._locals[w] = pygame.Rect(w.rect)
                 self._apply_world_rect(w)
             elif isinstance(w, Container):
                 # container-within-container; treat its .pos as local,
                 w.set_pos(int(self.pos.x + w.pos.x), int(self.pos.y + w.pos.y))
 
-    def remove(self, w: object) -> None:
-        if w in self._children:
-            self._children.remove(w)
-        self._locals.pop(w, None)
+    def remove(self, *widgets: Iterable[object]) -> None:
+        for w in widgets:
+            if w in self._children:
+                self._children.remove(w)
+            self._locals.pop(w, None)
 
     def clear(self) -> None:
         self._children.clear()
@@ -48,7 +49,7 @@ class Container:
         # shift all rects by (dx, dy)
         for w in self._children:
             if hasattr(w, "rect"):
-                getattr(w, "rect").move_ip(dx, dy)
+                w.rect.move_ip(dx, dy)
             elif isinstance(w, Container):
                 w.set_pos(int(w.pos.x + dx), int(w.pos.y + dy))
 
@@ -61,7 +62,7 @@ class Container:
         if w not in self._children:
             return
         if hasattr(w, "rect"):
-            local = self._locals.setdefault(w, pygame.Rect(getattr(w, "rect")))
+            local = self._locals.setdefault(w, pygame.Rect(w.rect))
             local.topleft = (x, y)
             self._apply_world_rect(w)
         elif isinstance(w, Container):
@@ -73,7 +74,7 @@ class Container:
             local = self._locals.get(w)
             if local is None:
                 return
-            getattr(w, "rect").topleft = (
+            w.rect.topleft = (
                 int(self.pos.x + local.x),
                 int(self.pos.y + local.y),
             )

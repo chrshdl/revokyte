@@ -21,10 +21,10 @@ import pygame
 from ...core.system.wifi_manager import Network
 from ...peripherals.display import active_profile
 from ..colors import Color
-from ..icons import Icon
 from ..events import (
     BUTTON_BACK_PRESSED,
     BUTTON_BACK_RELEASED,
+    WIFI_BACKSPACE_LONGPRESSED,
     WIFI_BACKSPACE_PRESSED,
     WIFI_BACKSPACE_RELEASED,
     WIFI_RESCAN_PRESSED,
@@ -32,6 +32,7 @@ from ..events import (
     WIFI_SKIP_PRESSED,
     WIFI_SKIP_RELEASED,
 )
+from ..icons import Icon
 from ..skins import active_skin
 from ..utils import FontFamily, load_font, load_font_px, su
 from ..widgets.base.button import Button, ButtonEvents
@@ -166,9 +167,7 @@ class WifiSetupView(View):
             rect=(x, corner[1], width, height),
             text="Scan",
             text_visible=True,
-            font=load_font_px(
-                kb.rescan_font, FontFamily[kb.rescan_font_family]
-            ),
+            font=load_font_px(kb.rescan_font, FontFamily[kb.rescan_font_family]),
             antialias=True,
             events=ButtonEvents(
                 pressed=WIFI_RESCAN_PRESSED,
@@ -275,6 +274,7 @@ class WifiSetupView(View):
             events=ButtonEvents(
                 pressed=WIFI_BACKSPACE_PRESSED,
                 released=WIFI_BACKSPACE_RELEASED,
+                long_pressed=WIFI_BACKSPACE_LONGPRESSED,
             ),
             icon=Icon.BACKSPACE.glyph(),
             icon_size=46,

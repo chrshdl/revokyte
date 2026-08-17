@@ -10,6 +10,7 @@ from ..states.state import State
 from ..ui.events import (
     BUTTON_BACK_PRESSED,
     BUTTON_BACK_RELEASED,
+    WIFI_BACKSPACE_LONGPRESSED,
     WIFI_BACKSPACE_RELEASED,
     WIFI_CONNECT_RELEASED,
     WIFI_KEY_RELEASED,
@@ -359,6 +360,11 @@ class WifiSetupState(State):
             self._backspace()
             return True
 
+        if event.type == WIFI_BACKSPACE_LONGPRESSED:
+            self._clear()
+            self.logger.info("TODO: implement WIFI_BACKSPACE_LONGPRESSED")
+            return True
+
         if event.type == WIFI_SHIFT_RELEASED:
             self.view.toggle_shift()
             return True
@@ -444,3 +450,7 @@ class WifiSetupState(State):
         field = self.view.active_field()
         if field is not None and field.text:
             field.set_text(field.text[:-1])
+
+    def _clear(self):
+        self.view.license_input.set_text("")
+        self.license_input.cursor_position = 0

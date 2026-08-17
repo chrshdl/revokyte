@@ -1,15 +1,14 @@
-import pygame
 from pygame.sprite import LayeredDirty
 
 from ...config import ConfigManager
 from ...core.plugin_system.plugin_layout import LayoutContext
 from ...ui.colors import Color
-from ...ui.icons import Icon
 from ...ui.events import (
     BUTTON_SETUP_LONGPRESSED,
     BUTTON_SETUP_PRESSED,
     BUTTON_SETUP_RELEASED,
 )
+from ...ui.icons import Icon
 from ...ui.skins import active_skin
 from ...ui.utils import FontFamily, load_font_px
 from ...ui.widgets.base.button import Button, ButtonEvents
@@ -17,6 +16,7 @@ from ...ui.widgets.slot_dots_widget import SlotDotsWidget
 from ...ui.widgets.slot_name_widget import SlotNameWidget
 from ...ui.widgets.status_lights_widget import StatusLightsWidget
 from .base import View
+
 
 class DashboardView(View):
     """The dashboard's chrome and compositor.
@@ -123,9 +123,7 @@ class DashboardView(View):
             icon=Icon.SETTINGS_GEAR.glyph(),
             icon_color=Color.WHITE.rgb(),
             icon_size=d.setup_button_icon,
-            icon_font=load_font_px(
-                d.setup_button_icon, FontFamily.MATERIAL_SYMBOLS
-            ),
+            icon_font=load_font_px(d.setup_button_icon, FontFamily.MATERIAL_SYMBOLS),
             icon_position="center",
             icon_gap=0,
             content_align="center",
