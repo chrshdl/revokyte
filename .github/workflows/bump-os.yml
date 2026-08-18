@@ -96,17 +96,11 @@ jobs:
           sed -i "s/^PYTHON_INSTRUMENT_CLUSTER_VERSION = .*/PYTHON_INSTRUMENT_CLUSTER_VERSION = ${VERSION}/" "$MK"
           sed -i "s|^sha256  [0-9a-f]*  python-instrument-cluster-.*\.tar\.gz$|sha256  ${SHA256}  python-instrument-cluster-${VERSION}.tar.gz|" "$HASH"
 
-      - name: Patch .mk (pro package version)
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          MK="os-pro/package/python-instrument-cluster-pro/python-instrument-cluster-pro.mk"
-          sed -i "s/^PYTHON_INSTRUMENT_CLUSTER_PRO_VERSION = .*/PYTHON_INSTRUMENT_CLUSTER_PRO_VERSION = ${VERSION}/" "$MK"
-
       - name: Commit and push (pro-os)
         working-directory: os-pro
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package/python-instrument-cluster/ package/python-instrument-cluster-pro/
-          git commit -m "python-instrument-cluster, python-instrument-cluster-pro: bump to ${{ github.ref_name }}"
+          git add package/python-instrument-cluster/
+          git commit -m "python-instrument-cluster: bump to ${{ github.ref_name }}"
           git push
