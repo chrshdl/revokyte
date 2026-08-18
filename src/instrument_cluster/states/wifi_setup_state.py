@@ -20,7 +20,6 @@ from ..ui.events import (
     WIFI_RESCAN_RELEASED,
     WIFI_REVEAL_RELEASED,
     WIFI_SHIFT_RELEASED,
-    WIFI_SKIP_RELEASED,
 )
 from ..ui.views.wifi_setup_view import WifiSetupView
 
@@ -86,12 +85,10 @@ class WifiSetupState(State):
         self.pipeline = pipeline
 
         # Back is only meaningful when there's something to go back to
-        # (settings). On the first-boot gate we instead offer a "Use demo"
-        # skip so the device stays usable when no network is available.
-        self.view = WifiSetupView(
-            show_back=(entry == ENTRY_SETTINGS),
-            show_skip=(entry == ENTRY_BOOT),
-        )
+        # (settings). On the first-boot gate there is nowhere to go back to
+        # and no offline escape hatch: the user must connect before
+        # continuing, so only the Scan control is shown in the header.
+        self.view = WifiSetupView(show_back=(entry == ENTRY_SETTINGS))
 
         self._networks: list[Network] = []
         self._selected_ssid: str | None = None
@@ -301,16 +298,6 @@ class WifiSetupState(State):
         self.view.show_connected(ssid)
         self._connected_timer = 2.0
 
-    def _on_skip(self) -> bool:
-        """First-boot 'Use demo' escape hatch: run offline in demo mode."""
-        from ..config import ConfigManager
-        from ..telemetry.mode import TelemetryMode
-
-        self.logger.info("Wi-Fi setup skipped; starting in offline/demo mode.")
-        ConfigManager.set_telemetry_mode(TelemetryMode.DEMO)
-        self._enter_dashboard()
-        return True
-
     def _enter_dashboard(self):
         # Route through the entry gate — always the dashboard. The gate
         # links UI plugins exactly as main.run() does.
@@ -336,9 +323,6 @@ class WifiSetupState(State):
         if event.type == WIFI_RESCAN_RELEASED:
             self._start_scan()
             return True
-
-        if event.type == WIFI_SKIP_RELEASED:
-            return self._on_skip()
 
         if event.type == WIFI_NETWORK_SELECTED:
             return self._on_network_selected(event)

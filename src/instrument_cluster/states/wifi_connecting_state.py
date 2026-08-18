@@ -38,7 +38,7 @@ class WifiConnectingState(State):
         self.plugin_manager = plugin_manager
         self.pipeline = pipeline
 
-        self.view = WifiSetupView(show_back=False, show_skip=False)
+        self.view = WifiSetupView(show_back=False)
         self.view.show_status("Please wait ...", show_header=True)
 
         self._elapsed: float = 0.0

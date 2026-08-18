@@ -29,8 +29,6 @@ from ..events import (
     WIFI_BACKSPACE_RELEASED,
     WIFI_RESCAN_PRESSED,
     WIFI_RESCAN_RELEASED,
-    WIFI_SKIP_PRESSED,
-    WIFI_SKIP_RELEASED,
 )
 from ..icons import Icon
 from ..skins import active_skin
@@ -64,10 +62,9 @@ class WifiSetupView(View):
 
     _DEFAULT_TITLE = "Connect to Wi-Fi"
 
-    def __init__(self, show_back: bool = True, show_skip: bool = False):
+    def __init__(self, show_back: bool = True):
         self.background_color = Color.BLACK.rgb()
         self.show_back = show_back
-        self.show_skip = show_skip
 
         self.phase = self.PHASE_SCAN
         self.status_message = ""
@@ -96,7 +93,7 @@ class WifiSetupView(View):
     # ------------------------------------------------------------------
     def _make_back_button(self) -> Button:
         return corner_button(
-            icon=Icon.CLOSE.glyph(),
+            icon=Icon.BACK.glyph(),
             events=ButtonEvents(
                 pressed=BUTTON_BACK_PRESSED,
                 released=BUTTON_BACK_RELEASED,
@@ -148,18 +145,15 @@ class WifiSetupView(View):
         )
 
     def _scan_controls(self) -> list[Button]:
-        controls = [self._rescan_button()]
-        if self.show_skip:
-            controls.append(self._skip_button())
-        return controls
+        return [self._rescan_button()]
 
     def _rescan_button(self) -> Button:
-        # Sits left of the back/skip button, or hard right when it is alone.
+        # Sits left of the back button, or hard right when it is alone.
         skin = active_skin()
         kb = skin.keyboard
         width, height = kb.rescan_size
         corner = corner_button_rect()
-        if self.show_back or self.show_skip:
+        if self.show_back:
             x = corner[0] - corner[2] - width
         else:
             x = skin.width - skin.header.back_button_gap - width
@@ -180,15 +174,6 @@ class WifiSetupView(View):
             icon_gap=su(10),
             text_color=Color.WHITE.rgb(),
             text_offset_y=su(6),
-        )
-
-    def _skip_button(self) -> Button:
-        return corner_button(
-            icon=Icon.CLOSE.glyph(),
-            events=ButtonEvents(
-                pressed=WIFI_SKIP_PRESSED,
-                released=WIFI_SKIP_RELEASED,
-            ),
         )
 
     # ------------------------------------------------------------------

@@ -82,9 +82,6 @@ WIFI_REVEAL_RELEASED = pygame.event.custom_type()
 WIFI_CONNECT_PRESSED = pygame.event.custom_type()
 WIFI_CONNECT_RELEASED = pygame.event.custom_type()
 
-WIFI_SKIP_PRESSED = pygame.event.custom_type()  # first boot: proceed offline (demo)
-WIFI_SKIP_RELEASED = pygame.event.custom_type()
-
 WIFI_NETWORK_ROW_PRESSED = pygame.event.custom_type()  # visual-only press; no handler
 WIFI_OTHER_ROW_PRESSED = pygame.event.custom_type()  # visual-only press; no handler
 
