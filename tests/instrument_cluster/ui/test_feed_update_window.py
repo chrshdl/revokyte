@@ -187,6 +187,32 @@ def test_falls_back_to_the_last_typed_address(monkeypatch):
     assert _FakeInstall.last["ip"] == "10.0.0.9"
 
 
+def test_listener_feed_update_never_asks_for_an_address(monkeypatch):
+    """FH6 never had an IP typed for it in the first place — its address is
+    this device's own, recomputed fresh rather than read back from an env
+    file or a recent-connected list that were never populated for it."""
+    from instrument_cluster.states import agent_setup_state
+
+    pushed = []
+    manager = _StateManager()
+    manager.push_state = pushed.append
+
+    cfg = _config(
+        telemetry_feed="forza-horizon-6",
+        telemetry_feed_version="v0.0.1",
+    )
+    _patch_install(monkeypatch, cfg)
+    monkeypatch.setattr(agent_setup_state, "cluster_lan_ip", lambda: "192.168.1.42")
+
+    win = FeedUpdateWindow(cfg, manager, SCREEN)
+    win.start_update()
+
+    assert len(pushed) == 1
+    assert _FakeInstall.last["ip"] == "192.168.1.42"
+    assert _FakeInstall.last["descriptor"].id == "forza-horizon-6"
+    assert _FakeInstall.last["auto_start"] is True
+
+
 def test_update_now_asks_for_an_address_only_when_none_is_known(monkeypatch):
     """A device with no recoverable address — a feed installed before one was
     ever recorded — is the only case that still prompts."""

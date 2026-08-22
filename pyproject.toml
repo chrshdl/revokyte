@@ -26,6 +26,7 @@ dependencies = [
 pc = [
     "granturismo @ git+https://github.com/chrshdl/granturismo@v0.3.18",
     "acc-telemetry @ git+https://github.com/chrshdl/assettocorsa@v0.1.4",
+    "fh6-telemetry @ git+https://github.com/chrshdl/forza-horizon-6@v0.1.0",
 ]
 
 [project.scripts]

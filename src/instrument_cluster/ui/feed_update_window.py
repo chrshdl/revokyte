@@ -221,13 +221,32 @@ class FeedUpdateWindow(OverlayWindow):
         Only a device with no recoverable address at all falls back to
         asking, which in practice means a feed installed before the address
         was ever recorded.
+
+        A listener feed (``descriptor.listener_port`` set) never had an IP
+        typed for it in the first place — its address is this device's own,
+        recomputed fresh rather than read back from anywhere — so it always
+        goes straight to the running install, never to IP entry.
         """
-        from ..addons.installer import installed_feed_ip
-        from ..config import ConfigManager
-        from ..states.enter_ip_state import EnterIPState
         from ..states.install_state import InstallState
 
         self.dismiss()
+
+        if self._descriptor.listener_port is not None:
+            from ..states.agent_setup_state import cluster_lan_ip
+
+            self._state_manager.push_state(
+                InstallState(
+                    self._state_manager,
+                    descriptor=self._descriptor,
+                    ip=cluster_lan_ip(),
+                    auto_start=True,
+                )
+            )
+            return
+
+        from ..addons.installer import installed_feed_ip
+        from ..config import ConfigManager
+        from ..states.enter_ip_state import EnterIPState
 
         config = ConfigManager.get_config()
         recent = list(config.recent_connected or [])

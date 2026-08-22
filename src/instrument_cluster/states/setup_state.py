@@ -169,6 +169,19 @@ class SetupState(State):
                 )
                 return True
 
+            # A feed that pushes telemetry to an address we choose, rather
+            # than one this device connects out to, needs no IP typed here
+            # at all — show it the address instead (see ListenerSetupState).
+            if descriptor is not None and descriptor.listener_port is not None:
+                from .listener_setup_state import ListenerSetupState
+
+                self.state_manager.change_state(
+                    ListenerSetupState(
+                        state_manager=self.state_manager, descriptor=descriptor
+                    )
+                )
+                return True
+
             self.state_manager.change_state(
                 EnterIPState(
                     state_manager=self.state_manager,

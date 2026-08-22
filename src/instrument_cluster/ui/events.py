@@ -31,6 +31,10 @@ INSTALL_RELEASED = pygame.event.custom_type()
 AGENT_BASIC_PRESSED = pygame.event.custom_type()
 AGENT_BASIC_RELEASED = pygame.event.custom_type()
 
+# Listener-feed setup (feeds that push telemetry to an address we show)
+LISTENER_CONTINUE_PRESSED = pygame.event.custom_type()
+LISTENER_CONTINUE_RELEASED = pygame.event.custom_type()
+
 CHECK_UPDATES_PRESSED = pygame.event.custom_type()
 CHECK_UPDATES_RELEASED = pygame.event.custom_type()
 

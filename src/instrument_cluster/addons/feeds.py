@@ -33,6 +33,7 @@ ACTIVE_LINK = f"{INSTALL_BASE}/active"
 # descriptor.
 GRANTURISMO_SIGNING_PUBKEY_B64 = "LxAQOYejrNcIEESiT7UiZklyDa+iyPgqvJK7IzBF97I="
 ACC_SIGNING_PUBKEY_B64 = "Of2lY9Z9YbtebmGwK5OFcizQTK2gUQjw/+tjTxKdnJo="
+FH6_SIGNING_PUBKEY_B64 = "O65BKWICRoafdEzfbNE1WlcNJYoWMukB5Tt8nttL0m8="
 
 
 @dataclass(frozen=True)
@@ -86,6 +87,14 @@ class FeedDescriptor:
     # program on the game PC is the only way to read them. None = everything
     # this feed can offer arrives over the network.
     agent: PcAgent | None = None
+    # Set when the feed's proxy *listens* for telemetry the game pushes to an
+    # address configured in-game, rather than connecting out to one this
+    # device supplies. None = the normal connect-out shape (env_builder's
+    # `ip` is a console/PC address the proxy dials). When set, this is the
+    # local port the proxy binds — Setup shows the cluster's own LAN address
+    # and this port for the player to enter into the game, instead of
+    # prompting for an address to type here (see ListenerSetupState).
+    listener_port: int | None = None
 
     @property
     def install_dir(self) -> str:
@@ -120,6 +129,32 @@ def _acc_direct_reader(ip: str) -> TelemetryReaderProtocol:
     return AccDirectReader(ip)
 
 
+# Must match forza-horizon-6's fh6.intake.feed.Feed.DEFAULT_BIND_PORT — this
+# is the port its proxy binds, and what Setup tells the player to enter into
+# FH6's own Data Out settings alongside the cluster's LAN address.
+_FH6_LISTEN_PORT = 7300
+
+
+def _fh6_env(_ip: str) -> str:
+    # No `_IP` key: FH6 is a pure listener, so there is no console/PC address
+    # for the proxy to dial. `_ip` is unused (Setup routes this feed through
+    # ListenerSetupState, which never solicits one) but the parameter stays
+    # so this fits the same `Callable[[str], str]` shape as every other feed.
+    return f"FH6_LISTEN_PORT={_FH6_LISTEN_PORT}\nFH6_JSONL_OUTPUT={JSONL_OUTPUT}\n"
+
+
+def _fh6_direct_reader(ip: str) -> TelemetryReaderProtocol:
+    # Deferred import: forza-horizon-6 is an optional dependency (the "pc"
+    # extra) that the appliance image doesn't ship. `ip` is unused — see
+    # Fh6DirectReader's docstring — but every direct_reader takes one, so
+    # SignalPipeline._make_direct_reader's "no console IP configured" guard
+    # (satisfied by ListenerSetupState passing the cluster's own address)
+    # doesn't need a listener-specific carve-out.
+    from ..telemetry.fh6_direct import Fh6DirectReader
+
+    return Fh6DirectReader(ip)
+
+
 FEEDS: list[FeedDescriptor] = [
     FeedDescriptor(
         id="granturismo",
@@ -150,6 +185,20 @@ FEEDS: list[FeedDescriptor] = [
             port=8321,
             unlocks="RPM, tyre temperatures, pedals and fuel",
         ),
+    ),
+    FeedDescriptor(
+        id="forza-horizon-6",
+        label="Forza Horizon 6",
+        github_repo="chrshdl/forza-horizon-6",
+        version="v0.1.0",
+        asset_prefix="forza-horizon-6-selfcontained-",
+        ip_prompt_title="",  # unused: listener_port routes past EnterIPState
+        env_builder=_fh6_env,
+        # Signed with the forza-horizon-6 repo's own Ed25519 release key
+        # (FH6_SIGNING_KEY secret)
+        signing_pubkey_b64=FH6_SIGNING_PUBKEY_B64,
+        listener_port=_FH6_LISTEN_PORT,
+        direct_reader=_fh6_direct_reader,
     ),
 ]
 

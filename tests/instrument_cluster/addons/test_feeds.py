@@ -15,6 +15,11 @@ def test_registry_has_gt7_and_acc():
     assert {"granturismo", "acc"} <= ids
 
 
+def test_registry_has_forza_horizon_6():
+    ids = {f.id for f in FEEDS}
+    assert "forza-horizon-6" in ids
+
+
 def test_feed_by_id_roundtrip():
     assert feed_by_id("acc").label == "Assetto Corsa Competizione"
     assert feed_by_id("granturismo").github_repo == "chrshdl/granturismo"
@@ -24,6 +29,10 @@ def test_feed_by_id_roundtrip():
 def test_each_feed_installs_into_its_own_subdir():
     assert feed_by_id("granturismo").install_dir == "/opt/telemetry/granturismo"
     assert feed_by_id("acc").install_dir == "/opt/telemetry/assettocorsa"
+    assert (
+        feed_by_id("forza-horizon-6").install_dir
+        == "/opt/telemetry/forza-horizon-6"
+    )
 
 
 def test_env_content_is_feed_specific():
@@ -35,6 +44,24 @@ def test_env_content_is_feed_specific():
     assert "ACC_PC_IP=192.168.1.20" in acc
     assert "ACC_UDP_PORT=9000" in acc
     assert f"ACC_JSONL_OUTPUT={JSONL_OUTPUT}" in acc
+
+
+def test_listener_feed_env_content_ignores_the_ip_argument():
+    """FH6 is a pure listener: there is no console/PC address to dial, so its
+    env file carries no ``_IP`` key at all, and the value passed in (never
+    actually solicited from the user — see ListenerSetupState) is ignored."""
+    descriptor = feed_by_id("forza-horizon-6")
+    fh6 = descriptor.env_content("this value must be ignored")
+
+    assert f"FH6_LISTEN_PORT={descriptor.listener_port}" in fh6
+    assert f"FH6_JSONL_OUTPUT={JSONL_OUTPUT}" in fh6
+    assert "_IP=" not in fh6
+
+
+def test_only_listener_feeds_declare_a_listener_port():
+    assert feed_by_id("granturismo").listener_port is None
+    assert feed_by_id("acc").listener_port is None
+    assert feed_by_id("forza-horizon-6").listener_port is not None
 
 
 def test_telemetry_choices_lead_with_demo_then_feeds():
@@ -69,6 +96,10 @@ def test_current_choice_udp_unknown_feed_falls_back_to_first_feed():
 def test_both_feeds_support_direct_reading():
     assert feed_by_id("granturismo").direct_reader is not None
     assert feed_by_id("acc").direct_reader is not None
+
+
+def test_forza_horizon_6_supports_direct_reading():
+    assert feed_by_id("forza-horizon-6").direct_reader is not None
 
 
 def test_direct_choices_offer_both_feeds():
