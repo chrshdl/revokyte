@@ -32,7 +32,9 @@ def _write_config_dict(config_dict: dict, path: Path) -> None:
 @dataclass
 class Config:
     # Display profile selector: "auto" (detect by panel resolution),
-    # "rpi_display_2", "waveshare_7", "waveshare_5", or "dev". See display.py.
+    # "rpi_display_2", "waveshare_7", "waveshare_5", "hdmi_5", or "dev".
+    # "hdmi_5" is not auto-detected (same resolution as "waveshare_5") and
+    # must be set explicitly. See display.py.
     display: str = field(default="auto")
     telemetry_mode: str = field(default=TelemetryMode.DEMO.value)
     # Opaque id (see addons/feeds.py) of the last-installed feed, used only so

@@ -18,6 +18,14 @@ Supported panels:
   renderer (1:1 pixels, no resampling).
 * **Waveshare 7" DSI** – 1024 x 600 landscape panel, rendered natively.
 * **Waveshare 5" DSI** – 800 x 480 landscape panel, rendered natively.
+* **HDMI 5" (800x480)** – HDMI-connector panel at the same resolution as the
+  Waveshare 5" DSI (Zero 2 W has no DSI connector; see Buildroot's
+  ``raspberrypizero2w-64`` board). Same physical=logical=800x480, no
+  rotation — the rendering path is connector-agnostic (neither the software
+  present() path nor SDL2_KMSDRM cares what's behind the KMS output), so
+  this profile is otherwise identical to Waveshare 5". Not auto-detected by
+  resolution (would collide with Waveshare 5" at the same physical size);
+  select explicitly via config ``"display": "hdmi_5"``.
 * **Dev** – a resizable desktop window (also the PC app). The window opens
   at 1280 x 720 and pygame's SCALED mode stretches the logical surface to
   whatever size the user drags it to (aspect preserved, input mapped back
@@ -57,6 +65,7 @@ LOGICAL_SIZE = DESIGN_SIZE
 RPI_DISPLAY_2 = "rpi_display_2"
 WAVESHARE_7 = "waveshare_7"
 WAVESHARE_5 = "waveshare_5"
+HDMI_5 = "hdmi_5"
 DEV = "dev"
 
 _FINGER_EVENTS = (pygame.FINGERDOWN, pygame.FINGERUP, pygame.FINGERMOTION)
@@ -148,6 +157,16 @@ _PROFILES = {
         rotation=0,
         renderer="software",
     ),
+    HDMI_5: DisplayProfile(
+        name=HDMI_5,
+        physical_size=(800, 480),
+        # Same native resolution as Waveshare 5" — HDMI vs DSI is a connector
+        # difference only, not a rendering one. Not registered in
+        # _match_by_resolution (see module docstring); select via config.
+        logical_size=(800, 480),
+        rotation=0,
+        renderer="software",
+    ),
     DEV: DisplayProfile(
         name=DEV,
         physical_size=LOGICAL_SIZE,
@@ -234,6 +253,9 @@ def _detect_physical_size() -> tuple[int, int] | None:
 
 
 def _match_by_resolution(size: tuple[int, int]) -> DisplayProfile | None:
+    # HDMI_5 deliberately excluded: it shares WAVESHARE_5's 800x480 physical
+    # size, so resolution alone can't tell the two apart. Must be selected
+    # explicitly via config ("display": "hdmi_5").
     for profile in (
         _PROFILES[RPI_DISPLAY_2],
         _PROFILES[WAVESHARE_7],

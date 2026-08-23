@@ -37,6 +37,7 @@ ALL_SKINS = [SKIN_1280, SKIN_1024, SKIN_800]
         ("rpi_display_2", SKIN_1280),
         ("waveshare_7", SKIN_1024),
         ("waveshare_5", SKIN_800),
+        ("hdmi_5", SKIN_800),
     ],
 )
 def test_active_skin_per_profile(force_profile, profile_name, expected):
