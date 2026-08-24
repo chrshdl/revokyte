@@ -138,6 +138,27 @@ _PROFILES = {
         # scales the 1280x720 design down to this), so no post-scale blur.
         logical_size=(1024, 600),
         rotation=0,
+        # Software, and measured: renderer="gpu" was tried here on 2026-08-25
+        # (Pi 4, 1024x600, arm_freq=1000) and is worse on every axis.
+        #
+        #                     software      gpu
+        #   cpu median         29.0%       38.5%   (% of one core)
+        #   cpu max            32%         83%
+        #   rss                90.0 MB    109.8 MB
+        #
+        # It also inverted touch by 180 degrees — rendering was correct, but a
+        # press in the lower left registered upper right. to_logical() is
+        # identity at rotation 0, so the inversion comes from below us: with
+        # pygame.OPENGL|FULLSCREEN, SDL takes a different KMS path and
+        # normalises touch against a differently-oriented display.
+        #
+        # The cost is structural, not a bug. This path renders off-screen and
+        # uploads the whole 1024x600x4 frame every vsync (~147 MB/s), so the
+        # dirty-rect flip that keeps the software path at 29% is lost — a
+        # mostly-static dashboard then pays full price every frame. GPU-side
+        # rendering (per-widget textures, needles as rotated quads, a glyph
+        # atlas) would skip the upload and could still win; uploading a
+        # CPU-rendered frame as one texture cannot.
         renderer="software",
     ),
     WAVESHARE_5: DisplayProfile(
