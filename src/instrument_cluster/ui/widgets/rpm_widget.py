@@ -293,7 +293,16 @@ class RpmWidget(Widget):
     def _render_scale(self, bar_left, bar_right, bar_top, bar_height, _rpm_to_x):
         """Background + ticks + labels for the current RPM configuration, at
         widget-image coordinates (only the value area is ever blitted)."""
-        surf = pygame.Surface((self.w, self.h)).convert_alpha()
+        # Opaque on purpose. This surface is filled edge to edge with
+        # bg_color (an RGB triple, so alpha 255 everywhere) and is re-blitted
+        # onto self.image on every RPM change. With convert_alpha() that blit
+        # is a per-pixel alpha blend of the whole value area — measured at
+        # 2143 us for 900x120 on a Pi 4 at 1000 MHz, i.e. ~12.9% of a core at
+        # 60 fps, which was the single largest cost in this widget. Opaque,
+        # the same blit is ~206 us. Antialiased text and lines still composite
+        # correctly: they blend against the filled background as they are
+        # drawn, so only the redundant per-pixel alpha channel goes away.
+        surf = pygame.Surface((self.w, self.h)).convert()
         surf.fill(self.bg_color)
 
         # --- Ticks below bar ---
