@@ -1,4 +1,5 @@
 import json
+import select
 import socket
 import threading
 import time
@@ -22,6 +23,10 @@ class UdpJsonlReader:
         self.bufsize = bufsize
         self._sock: socket.socket | None = None
         self._thread: threading.Thread | None = None
+        # Shutdown wakeup: stop() writes a byte here so the reader thread
+        # leaves select() at once instead of waiting out a socket timeout.
+        self._wake_r: socket.socket | None = None
+        self._wake_w: socket.socket | None = None
         self._running = False
         self._latest: TelemetryFrame = TelemetryFrame()
         self._dropped = 0
@@ -37,9 +42,17 @@ class UdpJsonlReader:
 
         # receive-only on configured address
         self._sock.bind(self.addr)
-        # 1-second timeout: loop wakes at most once/s when idle instead of
-        # busy-polling with sleep(0.002) (~500 wakeups/s).
-        self._sock.settimeout(1.0)
+        # No socket timeout: the loop blocks in select() until either a frame
+        # arrives or stop() nudges the wake pair, so it costs zero wakeups
+        # while idle AND shuts down immediately. It previously polled with
+        # settimeout(1.0), which meant stop() had to wait out the current
+        # recvfrom - up to a full second of the caller's thread. That caller
+        # is the UI thread (back button -> on_resume -> sync_mode ->
+        # switch_mode -> stop), so leaving Gran Turismo 7 for demo dropped
+        # the dashboard to 10-20 fps for a frame-second, at 3-6% CPU because
+        # it was blocked rather than busy.
+        self._wake_r, self._wake_w = socket.socketpair()
+        self._wake_r.setblocking(False)
         self._running = True
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
@@ -54,8 +67,20 @@ class UdpJsonlReader:
         # from that address to reject injection from other LAN hosts.
         bound_host = self.addr[0]
         check_source = bound_host not in ("0.0.0.0", "")
+        # Present only when the reader was brought up through start(). Unit
+        # tests inject a fake socket and call _run() directly; without a wake
+        # pair the loop falls back to a plain blocking read, which is exactly
+        # the contract those fakes implement (recvfrom raising TimeoutError).
+        wake = self._wake_r
 
         while self._running:
+            if wake is not None:
+                try:
+                    ready, _, _ = select.select([sock, wake], [], [])
+                except OSError:
+                    break
+                if wake in ready:
+                    break
             try:
                 data, addr = sock.recvfrom(self.bufsize)
             except TimeoutError:
@@ -114,16 +139,37 @@ class UdpJsonlReader:
         return self._latest
 
     def stop(self) -> None:
-        """Stop listening and clean up resources."""
+        """Stop listening and clean up resources.
+
+        Signals the reader through the wake pair BEFORE joining, so the join
+        returns in microseconds. Closing the socket is deliberately left until
+        after the join: on Linux, closing an fd another thread is blocked on
+        does not reliably wake it (the blocked call keeps its own reference),
+        so close() was never the shutdown mechanism it looked like.
+        """
         self._running = False
+        if self._wake_w is not None:
+            try:
+                self._wake_w.send(b"\0")
+            except OSError:
+                pass
+        if self._thread is not None:
+            self._thread.join(timeout=2.0)
+            if self._thread.is_alive():
+                self.logger.warning("UDP reader thread did not exit within 2s")
+            self._thread = None
         try:
             if self._sock:
                 self._sock.close()
         finally:
             self._sock = None
-        if self._thread is not None:
-            self._thread.join(timeout=2.0)
-            self._thread = None
+        for s_ in (self._wake_r, self._wake_w):
+            if s_ is not None:
+                try:
+                    s_.close()
+                except OSError:
+                    pass
+        self._wake_r = self._wake_w = None
 
 
 class ReplayReader:
