@@ -403,8 +403,27 @@ again. That is what stops the contract accreting.
 now".** Writing it for a transient or environmental condition would withhold
 `mark-good` for something a rollback cannot fix. The blast radius is bounded —
 the check never forces a reboot, so a wrong marker costs attempts on reboots
-that would have happened anyway — but the discipline is the whole point, and it
-belongs in the app's own review checklist, not here.
+that would have happened anyway — but the discipline is the whole point.
+
+**And it cannot be left to a review checklist.** As drafted, this rule was
+unenforceable: views read `/data` during construction, so "a view failed to
+build" did *not* imply "the image is defective". `SetupView` read
+`config.json` and the installed feed version, `DashboardView` read
+`status_lights`, `EnterIPView` read `recent_connected` and `get_ip_prefill()`
+(the live network interface), and a `SetupEntry`'s callable `button_text` can
+reach anything the extension likes — Pro's licence row reads its tier. Any of
+those raising would have withheld `mark-good` and rolled the device back to a
+slot with the same unreadable `/data`: the update lost, the fault kept, which
+is strictly worse than having no check.
+
+The fix is the lifecycle contract this document already declares but the code
+did not honour — `build()` creates widgets, `reset(ctx)` binds data.
+Construction now touches only image-resident things (fonts, skins, icons,
+`is_raspberry_pi()`, which feeds exist, which extensions are installed), so the
+implication holds *structurally* rather than by anyone remembering the rule.
+`test_build_is_image_only.py` pins it: every view builds while
+`ConfigManager.get_config()` and `get_ip_prefill()` raise. Against the commit
+before the split, that test fails on three views and writes three faults.
 
 The existing retry loop needs no change. The marker is written during registry
 build, well before the health check runs 15 s after the app signals ready, so
