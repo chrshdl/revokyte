@@ -458,15 +458,33 @@ with a partial collection visible at cycle 18. The after series is
 `64.8, 64.8, 64.9, 64.9, …` for all twenty. Sawtooth means churn remains; flat
 means the refactor did its job.
 
-**What is still unmeasured.** The frame-rate rows are *steady-state* dashboard
-numbers from `PerfMonitor` (45 × 1 Hz samples). The original defect — one ~1 s
-stall at 3 fps — happens during a gen-2 collection after menu navigation, and
-reproducing it on the panel needs real taps, which the unattended harness
-cannot generate (`/dev/uinput` exists on the image but there is no `evdev`
-module). The allocation result above is the direct evidence; the absence of the
-stall follows from it but has not been observed with a stopwatch. Likewise
-`boot to first frame` is app init from `Active display` to systemd ready, not a
-cold reboot.
+### Confirmed by hand on the panel
+
+The programmatic harness cannot tap, so the run above was repeated with a
+person navigating Dashboard → Setup → back ten times on the touchscreen, with
+`PerfMonitor` streaming at 1 Hz. 176 samples over ~199 s:
+
+| | |
+|---|---|
+| fps | min **61.4**, median 62.1, max 62.5 |
+| samples under 60 fps | **0** |
+| RSS | 104.0 → 104.3 MB, max 104.3, growth **+0.3 MB** |
+| mean RSS, first half → second half | 104.04 → **104.30 MB** |
+| CPU | 6.8% median, 23.4% peak while Setup draws |
+
+This is the real touch path — hit-testing, dropdowns, the scrollable viewport's
+immediate-mode redraw — not just `push_state`/`pop_state`, and it stays flat.
+No stall was observed because there was nothing to collect.
+
+One excursion in the trace is *not* this refactor and is worth recording so it
+is not misread later: RSS ramped 104 → 131 MB over four seconds and was freed
+in one step, with an fps dip to 50.2 on the free. The journal identifies it —
+`serving acc-agent-win-0.1.4.zip on :8321`, then `pairing window closed`. That
+is `AgentSetupState` reading the ~27 MB agent bundle into memory to serve it
+over HTTP, on a different screen, doing exactly what it is supposed to do.
+
+**What is still unmeasured.** `boot to first frame` is app init from
+`Active display` to systemd ready, not a cold reboot.
 
 Method: run 20 switches with the perf viewer recording, then compare growth in
 the first half against the second. Sawtooth means churn remains; flat means the
