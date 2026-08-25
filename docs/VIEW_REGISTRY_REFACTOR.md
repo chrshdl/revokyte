@@ -427,13 +427,46 @@ The instrumentation already exists — the perf stream carries `fps`, `rss_mb` a
 `load_pct`, and `tools/perf_viewer.py` records it. Acceptance is measured, not
 asserted:
 
-| metric | before | target |
+| metric | before | target | **measured after** |
+|---|---|---|---|
+| RSS across 20 view switches | 125 → 150 MB, sawtooth | flat ±2 MB | **flat ±0.1 MB** |
+| `SetupView` constructions per 20 visits | 20 | 1 | **1** |
+| peak RSS during the run | 103.4 MB | lower | **64.9 MB** |
+| frames under 60 fps (steady state) | — | 0 | **0 / 45 samples** |
+| worst frame (steady state) | 3.0 fps at collection | > 55 fps | **61.8 fps** |
+| steady-state CPU | 7–8% (of 4 cores) | unchanged | **6.3% median** |
+| app init (display → systemd ready) | 0.66–0.82 s | no regression | **0.81 s** |
+
+### Measured 2026-08-25, Pi 4, Waveshare 7″ (1024×600), `0.2.40.dev2+g431ca81`
+
+Taken by driving `StateManager` push/pop directly on the board rather than
+tapping the panel, so the run is unattended and identical on both sides of the
+change. Before and after are the same device in the same session — the refactor
+was deployed as bytecode between the two runs.
+
+| | before | after |
 |---|---|---|
-| RSS across 20 view switches | 125 → 150 MB, sawtooth | flat ±2 MB |
-| frames under 60 fps | 1 per gen-2 collection | 0 |
-| worst frame | 3.0 fps | > 55 fps |
-| steady-state CPU | 7–8% (of 4 cores) | unchanged |
-| boot to first frame | baseline | no regression |
+| `SetupView` constructions | 20 | **1** |
+| RSS start → end | 62.6 → 97.4 MB | 62.2 → **64.9 MB** |
+| total growth over 20 switches | +34.8 MB | **+2.7 MB** (all of it the one build) |
+| mean RSS, first half → second half | 79.5 → 95.8 MB | 64.9 → **64.9 MB** |
+| peak RSS | 103.4 MB | **64.9 MB** |
+
+The before series is the staircase the design predicted —
+`69.8, 74.6, 72.2, …, 98.6, 103.4, 95.2, …` — climbing about 1.7 MB per visit
+with a partial collection visible at cycle 18. The after series is
+`64.8, 64.8, 64.9, 64.9, …` for all twenty. Sawtooth means churn remains; flat
+means the refactor did its job.
+
+**What is still unmeasured.** The frame-rate rows are *steady-state* dashboard
+numbers from `PerfMonitor` (45 × 1 Hz samples). The original defect — one ~1 s
+stall at 3 fps — happens during a gen-2 collection after menu navigation, and
+reproducing it on the panel needs real taps, which the unattended harness
+cannot generate (`/dev/uinput` exists on the image but there is no `evdev`
+module). The allocation result above is the direct evidence; the absence of the
+stall follows from it but has not been observed with a stopwatch. Likewise
+`boot to first frame` is app init from `Active display` to systemd ready, not a
+cold reboot.
 
 Method: run 20 switches with the perf viewer recording, then compare growth in
 the first half against the second. Sawtooth means churn remains; flat means the
