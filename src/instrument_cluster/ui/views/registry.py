@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import weakref
 
+from ...core.system import unhealthy
 from ...logger import Logger
 
 
@@ -85,9 +86,13 @@ class ViewRegistry:
         except Exception:
             # Fail open: one unbuildable view must not blank the dashboard.
             # The owning state degrades to a view-less screen and everything
-            # else comes up.
+            # else comes up. But a view is baked into the image, so rolling
+            # back is exactly the cure — publish it where the OTA health check
+            # can withhold mark-good, or a bad update would be marked good and
+            # never roll back.
             self.logger.exception("View %s failed to build", cls.__name__)
             self._failed.add(cls)
+            unhealthy.report(f"view {cls.__name__} failed to build")
             return None
         self._views[cls] = view
         return view

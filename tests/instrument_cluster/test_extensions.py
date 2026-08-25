@@ -130,3 +130,122 @@ def test_crashing_processor_is_dropped_not_fatal(monkeypatch):
     assert runtime.update_signals() == {"ok": True}
     # The crashing processor is gone; the healthy one keeps publishing.
     assert runtime.update_signals() == {"ok": True}
+
+
+# --------------------------------------------------------------------------
+# Extension-declared views (§6 of docs/VIEW_REGISTRY_REFACTOR.md)
+# --------------------------------------------------------------------------
+class _AView:
+    pass
+
+
+class _BView:
+    pass
+
+
+def _entry(label, view_class=None):
+    from instrument_cluster.extensions import SetupEntry
+
+    return SetupEntry(
+        icon="",
+        label=label,
+        button_text="go",
+        make_state=lambda sm: None,
+        view_class=view_class,
+    )
+
+
+def test_register_views_collects_what_an_extension_declares(monkeypatch):
+    from instrument_cluster.extensions import ExtensionRuntime
+
+    runtime = ExtensionRuntime()
+
+    def wire(rt):
+        rt.register_views([_AView, _BView])
+
+    monkeypatch.setattr(
+        "instrument_cluster.extensions._wire_hooks", lambda: [("demo", wire)]
+    )
+    runtime.load(
+        vehicle_bus=None, state_manager=None, window_manager=None, plugin_manager=None
+    )
+
+    assert runtime.view_classes == [_AView, _BView]
+
+
+def test_a_broken_extension_rolls_back_its_views_too(monkeypatch):
+    """Views join the same wire()-granularity rollback as every other
+    registration — a half-wired extension must not leave the registry
+    preloading a view whose owner never finished setting itself up."""
+    from instrument_cluster.extensions import ExtensionRuntime
+
+    runtime = ExtensionRuntime()
+
+    def good(rt):
+        rt.register_views([_AView])
+
+    def broken(rt):
+        rt.register_views([_BView])
+        raise RuntimeError("half-wired")
+
+    monkeypatch.setattr(
+        "instrument_cluster.extensions._wire_hooks",
+        lambda: [("good", good), ("broken", broken)],
+    )
+    runtime.load(
+        vehicle_bus=None, state_manager=None, window_manager=None, plugin_manager=None
+    )
+
+    assert runtime.view_classes == [_AView], "the broken one's view survived"
+    assert runtime.loaded == ["good"]
+
+
+def test_a_row_whose_view_failed_to_build_is_dropped():
+    """Fail-open must not leave a button that opens nothing."""
+    from instrument_cluster.extensions import ExtensionRuntime
+
+    runtime = ExtensionRuntime()
+    keep = _entry("Licence", view_class=_AView)
+    lose = _entry("Updates", view_class=_BView)
+    runtime.setup_entries.extend([keep, lose])
+
+    dropped = runtime.drop_rows_missing_views({_BView})
+
+    assert runtime.setup_entries == [keep]
+    assert dropped == [lose]
+
+
+def test_software_rows_are_pruned_as_well():
+    from instrument_cluster.extensions import ExtensionRuntime
+
+    runtime = ExtensionRuntime()
+    lose = _entry("Updates", view_class=_BView)
+    runtime.software_entries.append(lose)
+
+    runtime.drop_rows_missing_views({_BView})
+
+    assert runtime.software_entries == []
+
+
+def test_rows_without_a_declared_view_are_left_alone():
+    """view_class is optional — a row that builds its own view, or opens a
+    core screen, has no registry dependency to break."""
+    from instrument_cluster.extensions import ExtensionRuntime
+
+    runtime = ExtensionRuntime()
+    plain = _entry("Plain")
+    runtime.setup_entries.append(plain)
+
+    runtime.drop_rows_missing_views({_AView, _BView})
+
+    assert runtime.setup_entries == [plain]
+
+
+def test_nothing_failed_means_nothing_dropped():
+    from instrument_cluster.extensions import ExtensionRuntime
+
+    runtime = ExtensionRuntime()
+    runtime.setup_entries.append(_entry("Licence", view_class=_AView))
+
+    assert runtime.drop_rows_missing_views(()) == []
+    assert len(runtime.setup_entries) == 1
