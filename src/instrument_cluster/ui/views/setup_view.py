@@ -46,6 +46,16 @@ def _entry_text(entry) -> str:
     return entry.button_text() if callable(entry.button_text) else entry.button_text
 
 
+def _entry_text_static(entry) -> str:
+    """The part of an extension row's label that construction may safely read.
+
+    A callable button_text can reach anything the extension likes — Pro's
+    reads licence state off /data — so it is not evaluated while building.
+    reset() fills it in before the row is ever shown.
+    """
+    return "" if callable(entry.button_text) else entry.button_text
+
+
 class SetupView(ScrollableRowsView, View):
     STEP_PERCENT = 10
     DIFF_REFERENCE_OPTIONS = [DiffReferenceMode.PREVIOUS, DiffReferenceMode.FASTEST]
@@ -148,15 +158,18 @@ class SetupView(ScrollableRowsView, View):
         )
         self.horizontal_line = header_line()
 
-        config = ConfigManager.get_config()
+        # Nothing here may read /data. The row *set* comes from the image
+        # (which feeds exist, whether this is a Pi, which extensions are
+        # installed); every value shown in it is bound by reset() before the
+        # screen is displayed. That split is what lets a build() failure mean
+        # "this image is defective" — see core/system/unhealthy.py.
+        #
         # Desktop builds have no proxy installer, so only feeds that can be
         # read in-process (plus Demo) are offered off the appliance.
         telemetry_options = telemetry_choices(direct_only=not is_raspberry_pi())
         self.telemetry_mode_dropdown = self._row_dropdown(
             options=telemetry_options,
-            selected=current_choice(
-                telemetry_options, config.telemetry_mode, config.telemetry_feed
-            ),
+            selected=telemetry_options[0],
             events=ButtonEvents(
                 pressed=TELEMETRY_MODE_PRESSED,
                 released=TELEMETRY_MODE_RELEASED,
@@ -166,7 +179,7 @@ class SetupView(ScrollableRowsView, View):
         self.brightness_widget = BrightnessWidget(x=active_skin().setup.value_x)
         self.diff_reference_mode_dropdown = self._row_dropdown(
             options=self.DIFF_REFERENCE_OPTIONS,
-            selected=DiffReferenceMode(config.diff_reference_mode),
+            selected=self.DIFF_REFERENCE_OPTIONS[0],
             # Without these the row would read a bare, lowercase "fastest" —
             # the raw config value. Same source as the gauge header.
             labels={mode: mode.label for mode in self.DIFF_REFERENCE_OPTIONS},
@@ -177,7 +190,7 @@ class SetupView(ScrollableRowsView, View):
             ),
         )
         self.status_lights_toggle = self._row_toggle(
-            checked=config.status_lights,
+            checked=False,
             events=ButtonEvents(
                 pressed=STATUS_LIGHTS_PRESSED,
                 released=STATUS_LIGHTS_RELEASED,
@@ -185,7 +198,7 @@ class SetupView(ScrollableRowsView, View):
             ),
         )
         self.shift_lights_toggle = self._row_toggle(
-            checked=config.shift_lights,
+            checked=False,
             events=ButtonEvents(
                 pressed=SHIFT_LIGHTS_PRESSED,
                 released=SHIFT_LIGHTS_RELEASED,
@@ -210,7 +223,7 @@ class SetupView(ScrollableRowsView, View):
         # window the OS owns both; the widgets above are still built so
         # SetupState can address them unconditionally.
         on_pi = is_raspberry_pi()
-        self._telemetry_caption = row_label(self._telemetry_label_text(config))
+        self._telemetry_caption = row_label(self._DEFAULT_TELEMETRY_LABEL)
         row_contents = [
             (
                 Icon.TELEMETRY_MODE.glyph(),
@@ -245,7 +258,7 @@ class SetupView(ScrollableRowsView, View):
         self._extension_rows = []
         for entry in extensions.setup_entries:
             button = row_button(
-                text=_entry_text(entry),
+                text=_entry_text_static(entry),
                 icon=Icon.CHEVRON_RIGHT.glyph(),
                 events=ButtonEvents(
                     pressed=entry.pressed,
@@ -299,6 +312,8 @@ class SetupView(ScrollableRowsView, View):
     # ------------------------------------------------------------------
     # per-entry rebinding
     # ------------------------------------------------------------------
+    _DEFAULT_TELEMETRY_LABEL = "Telemetry Mode"
+
     @staticmethod
     def _telemetry_label_text(config) -> str:
         # A feed left behind by an earlier image is flagged on the row that
@@ -308,7 +323,7 @@ class SetupView(ScrollableRowsView, View):
         )
         if config.telemetry_mode != TelemetryMode.DEMO.value and stale is not None:
             return "Telemetry (update)"
-        return "Telemetry Mode"
+        return SetupView._DEFAULT_TELEMETRY_LABEL
 
     def reset(self, ctx=None) -> None:
         """Make this view indistinguishable from a freshly built one.

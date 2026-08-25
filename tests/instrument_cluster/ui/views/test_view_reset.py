@@ -148,6 +148,12 @@ def test_an_extension_row_label_is_re_evaluated_on_every_entry():
     extensions.setup_entries.append(entry)
     try:
         view = SetupView()
+        # Not evaluated while building: a callable can reach anything the
+        # extension likes (Pro's reads licence state off /data), and build()
+        # must depend only on the image.
+        assert view._extension_rows[0][1].text == ""
+
+        view.reset()
         assert view._extension_rows[0][1].text == "Enter Key"
 
         tier["value"] = "Pro License"

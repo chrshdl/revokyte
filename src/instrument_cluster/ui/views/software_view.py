@@ -98,6 +98,12 @@ def _entry_text(entry) -> str:
     return entry.button_text() if callable(entry.button_text) else entry.button_text
 
 
+def _entry_text_static(entry) -> str:
+    """The part of the label construction may safely read: a callable can
+    reach /data (Pro's licence row does), so reset() evaluates it instead."""
+    return "" if callable(entry.button_text) else entry.button_text
+
+
 class SoftwareView(ScrollableRowsView, View):
     _FACTORY_RESET_IDLE_TEXT = "Factory Reset"
     _FACTORY_RESET_ARMED_TEXT = "Tap again to reset"
@@ -162,7 +168,7 @@ class SoftwareView(ScrollableRowsView, View):
         self._extension_rows = []
         for entry in extensions.software_entries:
             button = row_button(
-                text=_entry_text(entry),
+                text=_entry_text_static(entry),
                 icon=Icon.CHEVRON_RIGHT.glyph(),
                 events=ButtonEvents(
                     pressed=entry.pressed,

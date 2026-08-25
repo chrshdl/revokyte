@@ -48,6 +48,9 @@ def test_view_owns_only_chrome(config_path):
 def test_status_lights_on_reserves_the_bezel_strips(config_path):
     _write_config(config_path, status_lights=True)
     view = DashboardView()
+    # Config is bound by reset(), not construction: build() may not read
+    # /data, so a build failure means the image is defective and nothing else.
+    view.reset()
 
     assert view.status_lights_enabled is True
     assert len(_status_lights_widgets(view)) == 2

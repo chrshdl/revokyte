@@ -195,6 +195,7 @@ def test_open_dropdown_stays_clear_of_the_header_line(
 
 def test_status_lights_toggle_reflects_config_default(view):
     # Fresh config defaults to status lights off.
+    view.reset()
     assert view.status_lights_toggle.checked is False
 
 
@@ -202,6 +203,10 @@ def test_shift_lights_toggle_defaults_on(view):
     # The physical LED bar is a headline feature: shipped default ON;
     # the toggle exists for photosensitive users (TF-03 O1) and
     # dark-room driving.
+    #
+    # Bound by reset(), not construction: build() may not read /data, so a
+    # build failure can mean "this image is defective" and nothing else.
+    view.reset()
     assert view.shift_lights_toggle.checked is True
 
 
