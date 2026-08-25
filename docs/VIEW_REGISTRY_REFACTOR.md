@@ -534,12 +534,27 @@ over HTTP, on a different screen, doing exactly what it is supposed to do.
   surface did go to `StateManager`, which already owned the screen. Splitting
   the two is what kept either from growing awkward: views need no screen,
   backgrounds need only its size.
-- **What is the budget ceiling?** The measured cost is **10.73 MB for eight
-  views** (§4), ~1% of a 1 GB board — not the ≈28 MB estimated. `SetupView`
-  alone is 26% of it. A ceiling of **24 MB** leaves room for roughly a dozen
-  more average views while still catching a screen that costs what `SetupView`
-  does. `test_view_budget.py` pins the view count so a ninth shows up as a
-  reviewable change.
+- **What is the budget ceiling?** *There isn't one, and there should not be.*
+  The measured cost is **10.73 MB for eight views** (§4), ~1% of a 1 GB board —
+  not the ≈28 MB estimated. But a byte ceiling cannot be a gate: surfaces scale
+  with the panel, so it would need re-measuring for every skin (1280x720,
+  1024x600, 800x480, and whatever comes next) and every variant, and would rot
+  into a number nobody trusts. What a screen costs is a *measurement* — true of
+  one panel at one moment — while a gate has to assert an *invariant*.
+
+  So `test_view_budget.py` gates the **set**: the eight views are declared, and
+  a ninth fails until someone adds it deliberately. That is resolution- and
+  variant-independent, and it is what §6 actually wanted — a new screen showing
+  up as a reviewable change. Pro's three are gated the same way in its own
+  repo, since `core_views()` cannot see them. The numbers stay here, next to
+  the panel they were taken on.
+
+  Worth being precise: the set gate is a notification, not enforcement. It
+  cannot stop a view being added, only make it a visible act. The genuinely
+  load-bearing assertion in that file is that every view constructs with no
+  arguments and survives `reset(None)` — that is what makes a view poolable at
+  all, and it is what caught Pro's `ProFeaturesView(status_text)` and
+  `LicenseActivationView(device_id)`.
 - **Is `DashboardView` in scope?** *Yes.* The premise that it was already
   long-lived was wrong — see §11.3.
 

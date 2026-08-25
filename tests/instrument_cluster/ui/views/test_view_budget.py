@@ -1,9 +1,19 @@
-"""The view set is a budget, and it should change only on purpose.
+"""The view set is bounded, and changes to it should be deliberate.
 
-Preallocation swaps per-transition churn for a permanent reservation. That is
-the right trade — 10.73 MB measured on a Pi 4 against 34.8 MB of churn over 20
-switches — but it only stays right if a new screen is a visible decision rather
-than a quiet addition. See §4 and §10 of docs/VIEW_REGISTRY_REFACTOR.md.
+Preallocation swaps per-transition churn for a permanent reservation — the
+right trade at the measured cost, but only while the set stays small on
+purpose. This file gates the *set*, not its size: a byte budget would have to
+be re-measured for every skin (1280x720, 1024x600, 800x480, and whatever comes
+next) and every variant, so it would rot into a number nobody trusts.
+
+What a screen actually costs is a measurement, not an invariant. It depends on
+the panel, so it belongs in docs/VIEW_REGISTRY_REFACTOR.md next to the panel it
+was taken on, regenerated when someone needs it — not re-derived by CI on a
+machine with no panel at all.
+
+The load-bearing test here is the last one: every view must construct with no
+arguments and survive reset(None). That is what makes a view poolable, and it
+is the check that catches a screen arriving with constructor arguments.
 """
 
 import pytest
@@ -11,41 +21,25 @@ import pytest
 from instrument_cluster.ui.views.base import View
 from instrument_cluster.ui.views.registry import core_views
 
-# Measured with ViewRegistry.preload() on a Pi 4 at 1024x600, v0.2.40, RSS
-# sampled after a forced collection between each view.
-MEASURED_MB = {
-    "SetupView": 2.83,
-    "EnterIPView": 1.77,
-    "SoftwareView": 0.71,
-    "InstallView": 0.56,
-    "DashboardView": 0.45,
-    "AgentSetupView": 0.45,
-    "ListenerSetupView": 0.35,
-    "WifiSetupView": 0.19,
+# The community screen set. Not derived from core_views() — that is the thing
+# under test. Adding a screen means editing this too, which is the point: a
+# permanent reservation should be a visible act, not a quiet one.
+EXPECTED_VIEWS = {
+    "DashboardView",
+    "SetupView",
+    "SoftwareView",
+    "EnterIPView",
+    "WifiSetupView",
+    "InstallView",
+    "AgentSetupView",
+    "ListenerSetupView",
 }
 
-# Headroom for roughly a dozen more average views, while still catching a
-# screen that costs what SetupView does.
-CEILING_MB = 24.0
 
-
-def test_the_shipped_view_set_is_the_one_that_was_measured():
-    """A ninth view is a budget change. Update MEASURED_MB (re-measure on
-    device) in the same commit that adds it, so the cost lands in review."""
-    assert {cls.__name__ for cls in core_views()} == set(MEASURED_MB)
-
-
-def test_the_community_budget_is_under_the_ceiling():
-    total = sum(MEASURED_MB.values())
-    assert total < CEILING_MB, f"{total:.2f} MB exceeds the {CEILING_MB} MB ceiling"
-
-
-def test_no_single_view_dominates_the_budget():
-    """SetupView is 26% of the total. Much past that and the eager preload
-    stops being the obvious choice for that view."""
-    total = sum(MEASURED_MB.values())
-    worst = max(MEASURED_MB.values())
-    assert worst / total < 0.40
+def test_the_shipped_view_set_is_the_declared_one():
+    """A ninth view is a permanent reservation. Declaring it here in the same
+    commit that adds it is what puts the decision in front of a reviewer."""
+    assert {cls.__name__ for cls in core_views()} == EXPECTED_VIEWS
 
 
 def test_every_core_view_really_is_a_view():
