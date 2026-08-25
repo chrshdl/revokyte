@@ -22,23 +22,16 @@ from .state import State
 
 
 class SetupState(State):
+    view_class = SetupView
+
     def __init__(self, state_manager: StateManager | None = None):
         super().__init__(state_manager)
         self.logger = Logger(__class__.__name__).get()
 
-        self.view = SetupView()
         self._backlight = Backlight()
 
-    def background_color(self):
-        # return the color defined in the view
-        return self.view.background_color
-
-    def draw_static_background(self, bg):
-        # delegate drawing to the view
-        self.view.draw_static_elements(bg)
-
     def enter(self, screen):
-        super().enter(screen)
+        rects = super().enter(screen)
 
         # load brightness from config, we do not read the hardware here.
         brightness = ConfigManager.get_config().brightness
@@ -47,10 +40,14 @@ class SetupState(State):
             self._backlight.set_percent(brightness)
         # update UI
         self.view.set_brightness_text(brightness)
+        return rects
 
     def exit(self):
-        # clean up view state
-        self.view.close_dropdowns()
+        # clean up view state. The view is None when enter() never ran, or
+        # when the registry failed to build it — the settings flush below
+        # must still happen either way.
+        if self.view is not None:
+            self.view.close_dropdowns()
         # All settings changes were applied in-memory (persist=False) as they
         # happened; queue the single disk write here so every way of leaving
         # the view — back button, change_state to another settings screen —
@@ -58,17 +55,6 @@ class SetupState(State):
         # snapshots identical to what's already on disk.
         ConfigManager.persist()
         super().exit()
-
-    def create_group(self):
-        # override to prevent State from creating a default group
-        return None
-
-    def full_paint(self, surface):
-        self.view.full_paint(surface, self.background)
-
-    def draw(self, surface):
-        # Delegate to view
-        return self.view.draw(surface, self.background)
 
     def update(self, dt):
         super().update(dt)

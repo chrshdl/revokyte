@@ -110,6 +110,25 @@ class Scrollbar:
     def max_offset(self) -> float:
         return max(0.0, self.content_height - self.viewport_height)
 
+    def reset(self) -> None:
+        """Back to the top, with no gesture or glide in flight.
+
+        The owning view outlives the state that scrolled it, so re-entering a
+        settings screen would otherwise land wherever the last visit left off
+        — mid-list, or still coasting.
+        """
+        self.offset = 0.0
+        self._velocity = 0.0
+        self._snap_goal = None
+        self._thumb_dragging = False
+        self._thumb_finger_id = None
+        self._gesture_id = None
+        self._gesture_start = None
+        self._gesture_dragging = False
+        self._gesture_base_offset = 0.0
+        self._last_touch_y = 0.0
+        self._last_touch_t = 0.0
+
     @property
     def is_scrollable(self) -> bool:
         return self.content_height > self.viewport_height

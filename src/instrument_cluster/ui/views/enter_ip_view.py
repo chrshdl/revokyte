@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from collections.abc import Iterable
 
 from pygame.sprite import LayeredDirty
@@ -25,7 +26,19 @@ from .base import View
 from .header import corner_button, header_line, header_title
 
 
+@dataclass(frozen=True)
+class EnterIPContext:
+    """What EnterIPView rebinds on every entry (was its constructor args)."""
+
+    recent_connected: list[str] | None = None
+    title: str | None = None
+
+
 class EnterIPView(View):
+    # How many recent connections the numpad screen offers. Fixed so the
+    # button set can be built once.
+    RECENT_SLOTS = 3
+
     def __init__(
         self, recent_connected: list[str] | None = None, title: str | None = None
     ):
@@ -128,18 +141,20 @@ class EnterIPView(View):
                 np.button_dims,
             )
         )
-        self.button_group.extend_buttons(
-            self._button_grid_generator(
-                recent_connected[0:3],
-                np.recent_per_row,
-                (
-                    np.recent_dims[0] + np.recent_margin,
-                    np.recent_dims[1] + np.recent_margin,
-                ),
-                np.recent_offset,
-                np.recent_dims,
-            )
+        # All RECENT_SLOTS buttons are built here and never rebuilt; reset()
+        # retexts them and hides the ones this visit has no address for. A
+        # variable-length grid would put allocation back in the hot path.
+        self.recent_buttons = self._button_grid_generator(
+            [""] * self.RECENT_SLOTS,
+            np.recent_per_row,
+            (
+                np.recent_dims[0] + np.recent_margin,
+                np.recent_dims[1] + np.recent_margin,
+            ),
+            np.recent_offset,
+            np.recent_dims,
         )
+        self.button_group.extend_buttons(self.recent_buttons)
         self.button_group.add(self.back_button, self.del_button, self.ok_button)
 
         # 5. Add everything to UI Layer
@@ -180,6 +195,31 @@ class EnterIPView(View):
             )
             for i, val in enumerate(labels or [])
         ]
+
+    # ------------------------------------------------------------------
+    # context
+    # ------------------------------------------------------------------
+    def reset(self, ctx=None) -> None:
+        ctx = ctx or EnterIPContext()
+        self._title = ctx.title or "Enter Playstation IP"
+        self.title_label.set_text(self._title)
+
+        recent = list(ctx.recent_connected or [])[: self.RECENT_SLOTS]
+        for i, button in enumerate(self.recent_buttons):
+            if i < len(recent):
+                button.text = recent[i]
+                button.event_data = {"label": recent[i]}
+                button.visible = 1
+            else:
+                # Hidden, not removed: leaving it in the group keeps the
+                # sprite bookkeeping stable across visits.
+                button.text = ""
+                button.event_data = {"label": ""}
+                button.visible = 0
+        self.recent_label.visible = 1 if recent else 0
+
+        self.textfield.set_text(get_ip_prefill())
+        self.release_presses(self.ui_layer)
 
     # --- Draw / Update Hooks ---
 

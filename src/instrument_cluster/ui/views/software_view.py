@@ -91,6 +91,12 @@ def component_versions(path: str = _OS_RELEASE_PATH) -> list[tuple[str, str]]:
     return rows
 
 
+def _entry_text(entry) -> str:
+    """An extension row's label, re-evaluated per entry when it is callable
+    (the Pro update row reads "Check for updates" vs a pending version)."""
+    return entry.button_text() if callable(entry.button_text) else entry.button_text
+
+
 class SoftwareView(View):
     _FACTORY_RESET_IDLE_TEXT = "Factory Reset"
     _FACTORY_RESET_ARMED_TEXT = "Tap again to reset"
@@ -123,9 +129,14 @@ class SoftwareView(View):
         # the control column. Base rows carry their own glyphs; any name
         # not in the map came from an extension and gets the puzzle piece.
         base_icons = {"App": Icon.APP, "OS": Icon.OS_IMAGE}
+        # Held so reset() can re-read them: extension version entries may be
+        # callables, and a pooled view would otherwise pin them to boot.
+        self._version_values = [
+            (name, row_value(value)) for name, value in component_versions()
+        ]
         row_contents = [
-            (base_icons.get(name, Icon.EXTENSION).glyph(), name, row_value(value))
-            for name, value in component_versions()
+            (base_icons.get(name, Icon.EXTENSION).glyph(), name, widget)
+            for name, widget in self._version_values
         ]
 
         # Data reset (Wi-Fi credentials, entered IPs, installed feed) only
@@ -147,26 +158,18 @@ class SoftwareView(View):
 
         # Action rows contributed by extensions (none installed = none
         # shown) — the Pro update flow lives here.
+        self._extension_rows = []
         for entry in extensions.software_entries:
-            text = (
-                entry.button_text()
-                if callable(entry.button_text)
-                else entry.button_text
+            button = row_button(
+                text=_entry_text(entry),
+                icon=Icon.CHEVRON_RIGHT.glyph(),
+                events=ButtonEvents(
+                    pressed=entry.pressed,
+                    released=entry.released,
+                ),
             )
-            row_contents.append(
-                (
-                    entry.icon,
-                    entry.label,
-                    row_button(
-                        text=text,
-                        icon=Icon.CHEVRON_RIGHT.glyph(),
-                        events=ButtonEvents(
-                            pressed=entry.pressed,
-                            released=entry.released,
-                        ),
-                    ),
-                )
-            )
+            self._extension_rows.append((entry, button))
+            row_contents.append((entry.icon, entry.label, button))
 
         s = active_skin().setup
         self.rows = ListItemGroup(
@@ -187,6 +190,26 @@ class SoftwareView(View):
 
         self.ui_layer.add(self.title_label, self.back_button)
         self.rows.add_to_layered(self.rows_layer)
+
+    def reset(self, ctx=None) -> None:
+        """Back to a first-visit Software screen.
+
+        The arming state is the one that matters: a row left reading "Tap
+        again to reset" from a previous visit would make the *first* tap of
+        the next visit the destructive one.
+        """
+        self.scrollbar.reset()
+        self.rows.scroll_to(0.0)
+        self.set_factory_reset_armed(False)
+        self.release_presses(self.ui_layer, self.rows_layer)
+
+        current = dict(component_versions())
+        for name, widget in self._version_values:
+            if name in current:
+                widget.set_text(current[name])
+
+        for entry, button in self._extension_rows:
+            button.set_text(_entry_text(entry))
 
     def set_factory_reset_armed(self, armed: bool) -> None:
         """Reflect the factory-reset arming state on its row.

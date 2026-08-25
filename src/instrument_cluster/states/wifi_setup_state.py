@@ -21,7 +21,7 @@ from ..ui.events import (
     WIFI_REVEAL_RELEASED,
     WIFI_SHIFT_RELEASED,
 )
-from ..ui.views.wifi_setup_view import WifiSetupView
+from ..ui.views.wifi_setup_view import WifiSetupContext, WifiSetupView
 
 if TYPE_CHECKING:
     from ..core.plugin_system.plugin_manager import PluginManager
@@ -59,6 +59,8 @@ _CONNECT_HINTS = {
 
 
 class WifiSetupState(State):
+    view_class = WifiSetupView
+
     """Let the user join a Wi-Fi network from the display.
 
     Used both as a first-boot gate (``ENTRY_BOOT`` — replaces itself with the
@@ -84,12 +86,6 @@ class WifiSetupState(State):
         self.plugin_manager = plugin_manager
         self.pipeline = pipeline
 
-        # Back is only meaningful when there's something to go back to
-        # (settings). On the first-boot gate there is nowhere to go back to
-        # and no offline escape hatch: the user must connect before
-        # continuing, so only the Scan control is shown in the header.
-        self.view = WifiSetupView(show_back=(entry == ENTRY_SETTINGS))
-
         self._networks: list[Network] = []
         self._selected_ssid: str | None = None
         self._selected_secured: bool = False
@@ -110,29 +106,27 @@ class WifiSetupState(State):
 
         self._connected_timer: float = 0.0
 
+    def view_context(self):
+        # Back is only meaningful when there's something to go back to
+        # (settings). On the first-boot gate there is nowhere to go back to
+        # and no offline escape hatch: the user must connect before
+        # continuing, so only the Scan control is shown in the header.
+        return WifiSetupContext(show_back=(self.entry == ENTRY_SETTINGS))
+
+    def enter(self, screen):
+        # Kicked off here, not in __init__: the view is only borrowed on entry,
+        # and a scan started at construction would write into a view the
+        # outgoing state is still showing.
+        rects = super().enter(screen)
         if not self.manager.available:
             self.view.show_status("Wi-Fi  not  available", error=True)
         else:
             self._start_scan()
+        return rects
 
     # ------------------------------------------------------------------
     # State plumbing
     # ------------------------------------------------------------------
-    def background_color(self):
-        return self.view.background_color
-
-    def draw_static_background(self, bg):
-        self.view.draw_static_elements(bg)
-
-    def create_group(self):
-        return None
-
-    def full_paint(self, surface):
-        self.view.full_paint(surface, self.background)
-
-    def draw(self, surface):
-        return self.view.draw(surface, self.background)
-
     # ------------------------------------------------------------------
     # async work
     # ------------------------------------------------------------------

@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pygame.sprite import LayeredDirty
 
 from ...ui.colors import Color
@@ -13,6 +14,14 @@ from ...ui.widgets.base.button import Button, ButtonEvents, ButtonGroup
 from ...ui.widgets.base.label import Label
 from .base import View
 from .header import header_line, header_title
+
+
+@dataclass(frozen=True)
+class AgentSetupContext:
+    """What AgentSetupView rebinds on every entry (was its constructor args)."""
+
+    feed_label: str | None = None
+    unlocks: str | None = None
 
 
 class AgentSetupView(View):
@@ -39,13 +48,7 @@ class AgentSetupView(View):
         self.horizontal_line = header_line()
 
         info_font = load_font(size=44, family=FontFamily.PIXEL_TYPE)
-        info_lines = [
-            f"{self._unlocks} are not sent over the network by",
-            f"{self._feed_label}. Reading them needs a small program",
-            "running on the same PC as the game.",
-            "",
-            "On your gaming PC, open this address in a browser:",
-        ]
+        info_lines = self._info_lines()
 
         self.info_labels = []
         x = self._w // 8 - su(4)
@@ -149,11 +152,39 @@ class AgentSetupView(View):
         self.status_label.set_text(text)
         if text:
             self.error_label.set_text("")
+        self.release_presses(self.ui_layer, self.btns)
 
     def set_error(self, text: str):
         self.error_label.set_text(text)
         if text:
             self.status_label.set_text("")
+
+    # ------------------------------------------------------------------
+    # context
+    # ------------------------------------------------------------------
+    def _info_lines(self) -> list[str]:
+        return [
+            f"{self._unlocks} are not sent over the network by",
+            f"{self._feed_label}. Reading them needs a small program",
+            "running on the same PC as the game.",
+            "",
+            "On your gaming PC, open this address in a browser:",
+        ]
+
+    def reset(self, ctx=None) -> None:
+        ctx = ctx or AgentSetupContext()
+        self._feed_label = ctx.feed_label or "your game"
+        self._unlocks = ctx.unlocks or "the remaining channels"
+        rendered = [line for line in self._info_lines() if line]
+        for label, text in zip(self.info_labels, rendered):
+            label.set_text(text)
+
+        # A failed install / no-network error from a previous visit
+        # would otherwise still be on screen before the state writes
+        # anything of its own.
+        self.status_label.set_text("")
+        self.error_label.set_text("")
+        self.url_label.set_text("")
 
     def draw_static_elements(self, background_surface):
         self.horizontal_line.draw(background_surface)

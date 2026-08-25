@@ -6,6 +6,8 @@ connect to Wi-Fi before continuing, so ENTRY_BOOT hides both Back and Skip
 and leaves only the Scan control in the header.
 """
 
+import pygame
+
 from instrument_cluster.states.wifi_setup_state import (
     ENTRY_BOOT,
     ENTRY_SETTINGS,
@@ -43,6 +45,8 @@ def _make_boot_state():
 
 def test_boot_entry_hides_back_and_skip_shows_only_scan():
     state = _make_boot_state()
+    # A state has no view until enter() borrows one from the ViewRegistry.
+    state.enter(pygame.Surface((1280, 720)))
 
     assert state.view.show_back is False
 
@@ -60,6 +64,8 @@ def test_settings_entry_shows_back_and_scan():
         manager=_FakeWifiManager(),
         entry=ENTRY_SETTINGS,
     )
+    # A state has no view until enter() borrows one from the ViewRegistry.
+    state.enter(pygame.Surface((1280, 720)))
 
     assert state.view.show_back is True
 

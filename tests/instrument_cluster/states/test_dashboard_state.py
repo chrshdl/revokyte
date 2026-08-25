@@ -47,6 +47,10 @@ def test_plugin_sprites_link_into_the_plugin_layer():
     pm = make_manager([make_plugin(sprite)])
 
     state = DashboardState(state_manager=MockStateManager(), plugin_manager=pm)
+    # A state has no view until enter() borrows one from the ViewRegistry;
+    # linking and the page dots moved there with it.
+    state.pipeline = MagicMock()
+    state.enter(pygame.Surface((1280, 720)))
 
     assert sprite in state.view.plugin_layer
 
@@ -54,6 +58,10 @@ def test_plugin_sprites_link_into_the_plugin_layer():
 def test_generation_change_relinks_new_sprites():
     pm = make_manager([], generation=1)
     state = DashboardState(state_manager=MockStateManager(), plugin_manager=pm)
+    # A state has no view until enter() borrows one from the ViewRegistry;
+    # linking and the page dots moved there with it.
+    state.pipeline = MagicMock()
+    state.enter(pygame.Surface((1280, 720)))
 
     # A reload replaced the plugin set (e.g. a feature grant added fuel).
     sprite = make_sprite()
@@ -89,6 +97,7 @@ def test_status_lights_toggle_relayouts_plugins_before_view(monkeypatch):
     pm = make_manager()
     state = DashboardState(state_manager=MockStateManager(), plugin_manager=pm)
     state.pipeline = MagicMock()
+    state.enter(pygame.Surface((1280, 720)))
 
     calls = []
     pm.relayout.side_effect = lambda layout: calls.append(("plugins", layout))
@@ -165,9 +174,14 @@ def _swipe(state, start, end):
 
 
 def make_state(pm=None):
-    return DashboardState(
+    state = DashboardState(
         state_manager=MockStateManager(), plugin_manager=pm or make_manager()
     )
+    # A state has no view until enter() borrows one from the ViewRegistry;
+    # linking and the page dots moved there with it.
+    state.pipeline = MagicMock()
+    state.enter(pygame.Surface((1280, 720)))
+    return state
 
 
 def test_no_provider_hides_dots_and_ignores_swipes(isolated_environment):

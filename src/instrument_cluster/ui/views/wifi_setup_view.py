@@ -16,6 +16,8 @@ add/remove of widgets trivial at no real cost — it's a setup screen, not the
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import pygame
 
 from ...core.system.wifi_manager import Network
@@ -54,6 +56,13 @@ def _del_x() -> float:
     return skin.width - _kb_left() - skin.keyboard.special_w
 
 
+@dataclass(frozen=True)
+class WifiSetupContext:
+    """What WifiSetupView rebinds on every entry (was its constructor arg)."""
+
+    show_back: bool = True
+
+
 class WifiSetupView(View):
     PHASE_SCAN = "scan"
     PHASE_PASSWORD = "password"
@@ -87,6 +96,37 @@ class WifiSetupView(View):
 
         # currently active drawables
         self._widgets: list = []
+
+    def reset(self, ctx=None) -> None:
+        """Back to a first-visit scan screen, with nothing typed.
+
+        The password field is the reason this is not optional. This view is
+        pooled for the life of the process and the owning state reads
+        ``self.phase`` as authoritative, so without this the screen would
+        re-open in PHASE_PASSWORD with the previous visit's Wi-Fi password
+        still sitting in the field.
+        """
+        # show_back decides whether the back button is *enrolled*, not whether
+        # it exists — _header_widgets() and _rescan_button() consult it every
+        # time they run, so a plain reassignment is the whole migration.
+        ctx = ctx or WifiSetupContext()
+        self.show_back = ctx.show_back
+
+        self.phase = self.PHASE_SCAN
+        self.status_message = ""
+        self.status_is_error = False
+        self.hint_message = ""
+        self._connected_ssid = ""
+
+        self.ssid_field = None
+        self.password_field = None
+        self._focused = None
+        self._widgets = []
+
+        self._set_title(self._DEFAULT_TITLE)
+        self.keyboard.reset()
+        self.network_list.clear()
+        self.release_presses([self._back_button])
 
     # ------------------------------------------------------------------
     # shared widgets

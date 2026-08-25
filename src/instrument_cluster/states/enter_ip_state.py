@@ -14,7 +14,7 @@ from ..ui.events import (
     ENTER_IP_KEYPAD_BUTTON_RELEASED,
     ENTER_IP_OK_BUTTON_RELEASED,
 )
-from ..ui.views.enter_ip_view import EnterIPView
+from ..ui.views.enter_ip_view import EnterIPContext, EnterIPView
 
 if TYPE_CHECKING:
     from ..addons.feeds import FeedDescriptor
@@ -22,6 +22,8 @@ if TYPE_CHECKING:
 
 
 class EnterIPState(State):
+    view_class = EnterIPView
+
     def __init__(
         self,
         state_manager: StateManager = None,
@@ -31,25 +33,13 @@ class EnterIPState(State):
         super().__init__(state_manager)
 
         self.descriptor = descriptor
-        self.view = EnterIPView(
-            recent_connected=recent_connected,
-            title=descriptor.ip_prompt_title if descriptor else None,
+        self._recent_connected = recent_connected or []
+
+    def view_context(self):
+        return EnterIPContext(
+            recent_connected=self._recent_connected,
+            title=self.descriptor.ip_prompt_title if self.descriptor else None,
         )
-
-    def background_color(self):
-        return self.view.background_color
-
-    def draw_static_background(self, bg):
-        self.view.draw_static_elements(bg)
-
-    def create_group(self):
-        return None
-
-    def full_paint(self, surface):
-        self.view.full_paint(surface, self.background)
-
-    def draw(self, surface):
-        return self.view.draw(surface, self.background)
 
     def update(self, dt):
         super().update(dt)

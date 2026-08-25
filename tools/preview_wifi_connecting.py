@@ -1,9 +1,11 @@
 """Preview the Wi-Fi connecting screen in a desktop window.
 
-Renders exactly what WifiConnectingState shows at boot on the appliance —
-WifiSetupView in its status phase — so fonts and copy can be checked without
-a Pi. The screen has no interactive widgets; close the window or press
-Esc/Q to quit.
+Renders WifiSetupView in its status phase — a centred message with the header
+shown — so fonts and copy can be checked without a Pi. The screen has no
+interactive widgets; close the window or press Esc/Q to quit.
+
+The boot-time "Connecting to Wi-Fi" pill itself is WifiStatusWindow; preview
+that with tools/preview_wifi_connecting_pill.py.
 
 Usage (from the repo root, venv active):
 
@@ -21,9 +23,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import pygame
 
 from instrument_cluster.peripherals.display import Display
-from instrument_cluster.ui.views.wifi_setup_view import WifiSetupView
+from instrument_cluster.ui.views.wifi_setup_view import (
+    WifiSetupContext,
+    WifiSetupView,
+)
 
-# The text WifiConnectingState actually shows (states/wifi_connecting_state.py).
 DEFAULT_TEXT = "Please wait ..."
 
 
@@ -42,9 +46,10 @@ def main() -> None:
     display = Display(args.display)
     surface = display.surface
 
-    # Mirror WifiConnectingState: status phase with the header shown. Its
-    # draw_static_background is a no-op, so no static elements are painted.
-    view = WifiSetupView(show_back=False, show_skip=False)
+    # Status phase with the header shown. This view paints no static
+    # elements, so the background stays a plain fill.
+    view = WifiSetupView()
+    view.reset(WifiSetupContext(show_back=False))
     view.show_status(args.text, error=args.error, show_header=True)
 
     background = pygame.Surface(surface.get_size())

@@ -1,6 +1,13 @@
 # ViewRegistry Refactor
 
-**Status:** Proposed · **Scope:** `states/` + `ui/views/` · **Drafted:** 2026-08-25 · **Board measured:** Raspberry Pi 4, 1024x600, `arm_freq=1000`
+**Status:** Implemented (community tree; §6 deferred) · **Scope:** `states/` + `ui/views/` · **Drafted:** 2026-08-25 · **Board measured:** Raspberry Pi 4, 1024x600, `arm_freq=1000`
+
+> **What shipped.** §§1–5 and 7–9 are implemented in `revokyte`. §6
+> (extension-declared views, the variant budget assertion, the `/run` failure
+> marker and the `ota-health-check.sh` check) is deferred — it spans
+> `instrument-cluster-pro` and `instrument-cluster-os` and is worth doing once
+> the pattern here has run on a device. Five findings from the implementation
+> correct the design as drafted; they are recorded in §11.
 
 Separating view lifetime from state lifetime, so screen transitions allocate
 nothing and the frame loop never pays for a garbage collection.
@@ -463,3 +470,74 @@ from the source and is not measurement-dependent.
 A related but separate line of work reduced per-frame blit cost by removing
 redundant alpha compositing (`revokyte@f42ce92`); it does not affect the
 allocation churn this document addresses.
+
+
+---
+
+## 11. Corrections from the implementation
+
+Five things the design got wrong about the code it was describing. Recorded
+here because §6 will be planned against the same assumptions.
+
+**1. The `WifiSetupView` variant problem does not exist.** §5 calls
+`show_back` the one "genuinely structural" case, needing its own phase (P5) and
+a decision between a visibility toggle and keying the registry on
+`(class, variant)`. Neither was needed: `_back_button` is always constructed
+(`wifi_setup_view.py`), and `_header_widgets()` / `_rescan_button()` read the
+flag every time they run. `show_back` moving into `reset(ctx)` is a single
+assignment. The second instantiator, `WifiConnectingState`, was dead code —
+constructed nowhere in `src/` since `WifiStatusWindow` replaced the boot gate —
+and has been deleted.
+
+**2. The "no constructor args → Direct" views were the hardest.** §5 lists
+`SetupView` and `SoftwareView` as trivial. Both bake live state into their
+widget tree at construction: config, `is_raspberry_pi()`, the
+`feed_needs_reinstall()` label flip, and each extension entry's `button_text`,
+which is documented as re-evaluated per entry and which Pro uses to show
+licence tier. A pooled view freezes all of it at boot. Their `reset()`
+implementations are the largest in the change. `InstallView` is the only view
+whose widget *set* genuinely varies with its context (Cancel alone while
+updating, versus Install + Cancel), and it resolves the way §5 suggested for
+`show_back`: build both, re-enrol on reset.
+
+**3. `DashboardView` was not long-lived.** §4 and §10 assume it is.
+`gate.entry_state()` built a fresh `DashboardState` — and view — on every call:
+boot, Wi-Fi setup success, Wi-Fi connect success. Pooling it also required
+making plugin linking authoritative (`plugin_layer.empty()` before re-adding):
+adding is idempotent but never removes, so a plugin set that changed between
+dashboard visits left the old gauges drawn underneath.
+
+**4. Acquire must happen in `enter()`, and the reason is ordering, not
+taste.** §5 puts it there without saying why. `change_state()` pops and
+`exit()`s the outgoing state, but the incoming state object is constructed by
+the *caller* first. Acquiring in `__init__` would let an incoming state reset a
+view the outgoing one is still drawing. This also forced view-touching work out
+of three constructors (`DashboardState`'s plugin linking, `WifiSetupState`'s
+scan kickoff, and the deleted `WifiConnectingState`'s status message).
+
+**5. Two hazards the design does not list.**
+
+- *A typed Wi-Fi password survives.* `WifiSetupView` holds `password_field`
+  and `phase`, and `WifiSetupState` reads `view.phase` as authoritative. Pooled
+  without a hard reset, the screen re-opens in `PHASE_PASSWORD` with the
+  previous visit's password still in the field. `reset()` forces `PHASE_SCAN`
+  and clears both fields; `test_view_reset.py` names the test after it.
+- *Worker threads write into a shared view.* Surveying the three suspects
+  found only one real case. `WifiSetupState`'s scan and connect workers and
+  `InstallState`'s installer all publish to state fields that `update()` drains
+  on the main thread — already safe. `AgentSetupState._prepare` was the
+  exception: it called `view.set_error(...)` directly off the UI thread, so a
+  worker finishing after the user left would paint onto whatever screen was
+  showing, or onto this screen's next visit after `reset()` had cleared it.
+  Fixed with an epoch taken in `enter()` and dropped in `exit()`, checked by a
+  `_publish()` helper before every worker→view write — the same generation
+  guard `WifiSetupState._connect_gen` already used.
+
+### Also worth knowing for §6
+
+`tools/perf_viewer.py` and the `fps`/`rss_mb`/`load_pct` stream referenced by
+§9 live in the **Pro** tree (`instrument_cluster_pro/perf/monitor.py`, armed
+off `PERF_DEST` or `/data/perf-dest`), not here. This repo's
+`core/system/performance_sender.py` is dead code — never instantiated — and
+reports system-wide `MemTotal - MemAvailable` rather than process RSS. On-device
+acceptance therefore runs on a Pro dev image.

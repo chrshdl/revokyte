@@ -10,7 +10,7 @@ from ..logger import Logger
 from ..states.state import State
 from ..telemetry.mode import TelemetryMode
 from ..ui.events import AGENT_BASIC_RELEASED, BUTTON_BACK_RELEASED
-from ..ui.views.agent_setup_view import AgentSetupView
+from ..ui.views.agent_setup_view import AgentSetupContext, AgentSetupView
 
 if TYPE_CHECKING:
     from ..addons.feeds import FeedDescriptor
@@ -37,6 +37,8 @@ def cluster_lan_ip() -> str:
 
 
 class AgentSetupState(State):
+    view_class = AgentSetupView
+
     """Pairing screen for a feed whose PC agent unlocks the rest of its data.
 
     Preparing the bundle means a download and a signature check, so it happens
@@ -54,31 +56,31 @@ class AgentSetupState(State):
         self.logger = Logger(__class__.__name__).get()
 
         self.descriptor = descriptor
-        agent = descriptor.agent if descriptor else None
-        self.view = AgentSetupView(
-            feed_label=descriptor.label if descriptor else None,
-            unlocks=agent.unlocks if agent else None,
-        )
         self._server: AgentHandoffServer | None = None
         self._worker: threading.Thread | None = None
         self._cancelled = threading.Event()
         self._ip = ""
+        # Bumped on every entry; a worker captures it and only writes to the
+        # view while it still matches. _live_epoch is None while off screen.
+        self._epoch = 0
+        self._live_epoch: int | None = None
 
-    def background_color(self):
-        return self.view.background_color
-
-    def draw_static_background(self, bg):
-        self.view.draw_static_elements(bg)
-
-    def create_group(self):
-        return None
+    def view_context(self):
+        agent = self.descriptor.agent if self.descriptor else None
+        return AgentSetupContext(
+            feed_label=self.descriptor.label if self.descriptor else None,
+            unlocks=agent.unlocks if agent else None,
+        )
 
     def enter(self, screen):
-        super().enter(screen)
+        rects = super().enter(screen)
+        self._cancelled.clear()
+        self._epoch += 1
+        self._live_epoch = self._epoch
         self._ip = cluster_lan_ip()
         if not self._ip:
             self.view.set_error("No network connection")
-            return
+            return rects
         port = self.descriptor.agent.port
         self.view.set_url(f"http://{self._ip}:{port}")
         self.view.set_status("Preparing download...")
@@ -87,6 +89,23 @@ class AgentSetupState(State):
             target=self._prepare, name="agent-prepare", daemon=True
         )
         self._worker.start()
+        return rects
+
+    def _publish(self, setter: str, text: str) -> None:
+        """Write to the view from the worker thread, if it is still ours.
+
+        The view outlives this state, so a worker that finishes after the user
+        has left would otherwise paint a stale error onto whatever screen is
+        showing now — or onto this screen's *next* visit, after reset() had
+        cleared it. The epoch is taken in enter() and dropped in exit(), the
+        same generation guard WifiSetupState uses for its connect worker.
+        """
+        if self._cancelled.is_set() or self._epoch != self._live_epoch:
+            self.logger.info("Abandoned agent worker wanted to say: %s", text)
+            return
+        view = self.view
+        if view is not None:
+            getattr(view, setter)(text)
 
     def _prepare(self):
         """Fetch, verify and serve the bundle. Runs off the UI thread."""
@@ -94,11 +113,11 @@ class AgentSetupState(State):
             bundle = prepare_bundle(self.descriptor, self._ip)
         except AgentUnavailable as e:
             self.logger.error("agent bundle unavailable: %s", e)
-            self.view.set_error(str(e))
+            self._publish("set_error", str(e))
             return
         except Exception as e:  # noqa: BLE001 - never take the UI down with us
             self.logger.exception("agent bundle failed")
-            self.view.set_error(f"Download failed: {e}")
+            self._publish("set_error", f"Download failed: {e}")
             return
 
         if self._cancelled.is_set():
@@ -108,7 +127,7 @@ class AgentSetupState(State):
         try:
             server.start()
         except OSError as e:
-            self.view.set_error(f"Could not open port: {e}")
+            self._publish("set_error", f"Could not open port: {e}")
             return
         self._server = server
         # Apply the config now, while the user is still at their PC. The
@@ -118,27 +137,24 @@ class AgentSetupState(State):
         # protocol is stateless; the next frame supersedes everything).
         self.apply_full_mode()
         if bundle.verified:
-            self.view.set_status("Ready - open the address above on your PC")
+            self._publish("set_status", "Ready - open the address above on your PC")
         else:
             # Says it here as well as on the download page: whoever is standing
             # at the cluster should not have to visit the page to find out it
             # is serving something unsigned.
-            self.view.set_error("UNVERIFIED build - open the address to read why")
+            self._publish(
+                "set_error", "UNVERIFIED build - open the address to read why"
+            )
 
     def exit(self):
         # The pairing window closes with the screen: nothing keeps listening
         # once the user walks away from it.
         self._cancelled.set()
+        self._live_epoch = None
         if self._server is not None:
             self._server.stop()
             self._server = None
         super().exit()
-
-    def full_paint(self, surface):
-        self.view.full_paint(surface, self.background)
-
-    def draw(self, surface):
-        return self.view.draw(surface, self.background)
 
     def update(self, dt):
         super().update(dt)
