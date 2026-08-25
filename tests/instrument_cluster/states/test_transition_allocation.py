@@ -167,3 +167,44 @@ def test_resuming_queues_a_full_repaint_of_the_screen(manager):
     manager.pop_state()
 
     assert manager._pending_rects == [manager._screen.get_rect()]
+
+
+# --------------------------------------------------------------------------
+# States that predate the registry
+# --------------------------------------------------------------------------
+def test_a_state_that_builds_its_own_view_keeps_it(manager):
+    """Extension-contributed states (instrument_cluster_pro's OTA, licence
+    and features screens) subclass State and build their view in __init__,
+    with no view_class. enter() must not replace it with None."""
+    from instrument_cluster.states.state import State
+    from instrument_cluster.ui.views.base import View
+
+    class _OwnView(View):
+        def __init__(self):
+            self.background_color = (0, 0, 0)
+            self.resets = 0
+
+        def reset(self, ctx=None):
+            self.resets += 1
+
+        def draw(self, surface, background):
+            return []
+
+        def full_paint(self, surface, background):
+            pass
+
+    class _LegacyState(State):
+        def __init__(self, state_manager=None):
+            super().__init__(state_manager)
+            self.view = _OwnView()
+
+    state = _LegacyState(manager)
+    own = state.view
+
+    manager.push_state(state)
+
+    assert state.view is own, "enter() must not clobber a self-built view"
+    assert own.resets == 1, "it still gets the reset() contract"
+
+    manager.pop_state()
+    assert state.view is own

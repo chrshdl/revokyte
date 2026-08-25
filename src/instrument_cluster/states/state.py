@@ -69,7 +69,15 @@ class State(ABC):
         # __init__ because change_state() constructs the incoming state *before*
         # exiting the outgoing one — acquiring at construction would let the new
         # state reset a view the old one is still drawing.
-        self.view = views.acquire(self.view_class, borrower=self)
+        #
+        # Guarded on view_class so a state that predates the registry still
+        # works: extension-contributed states (instrument_cluster_pro's OTA,
+        # licence and features screens) subclass State and build their view in
+        # __init__ with no view_class. Assigning unconditionally would replace
+        # it with None and blank those screens. They get reset() too — the
+        # View default is a no-op — so the contract is uniform either way.
+        if self.view_class is not None:
+            self.view = views.acquire(self.view_class, borrower=self)
         if self.view is not None:
             self.view.reset(self.view_context())
         self.repaint_background()
@@ -103,7 +111,8 @@ class State(ABC):
         self.draw_static_background(self.background)
 
     def exit(self):
-        views.release(self.view_class, borrower=self)
+        if self.view_class is not None:
+            views.release(self.view_class, borrower=self)
 
     def update(self, dt: float):
         if self.process_delayed_transition(self.state_manager):
