@@ -26,6 +26,7 @@ from ...ui.widgets.base.button import ButtonEvents
 from ...ui.widgets.base.list_item import ListItem, ListItemGroup
 from ...ui.widgets.base.scrollbar import Scrollbar
 from .base import View
+from .scrollable_rows import ScrollableRowsView
 from .header import corner_button, header_line, header_title
 from .setup_rows import row_button, row_icon, row_label, row_value
 
@@ -97,7 +98,7 @@ def _entry_text(entry) -> str:
     return entry.button_text() if callable(entry.button_text) else entry.button_text
 
 
-class SoftwareView(View):
+class SoftwareView(ScrollableRowsView, View):
     _FACTORY_RESET_IDLE_TEXT = "Factory Reset"
     _FACTORY_RESET_ARMED_TEXT = "Tap again to reset"
 
@@ -199,7 +200,7 @@ class SoftwareView(View):
         the next visit the destructive one.
         """
         self.scrollbar.reset()
-        self.rows.scroll_to(0.0)
+        self.rows.scroll_to(0.0, force=True)
         self.set_factory_reset_armed(False)
         self.release_presses(self.ui_layer, self.rows_layer)
 
@@ -237,66 +238,6 @@ class SoftwareView(View):
         if self.scrollbar.is_scrollable:
             self.scrollbar.update(dt)
             self.rows.scroll_to(self.scrollbar.offset)
-
-    def draw_static_elements(self, background_surface):
-        self.horizontal_line.draw(background_surface)
-        if not self.scrollbar.is_scrollable:
-            self.rows.draw_static_elements(background_surface)
-
-    def draw(self, surface, background):
-        if self.scrollbar.is_scrollable:
-            return self._draw_scrollable(surface, background)
-
-        self.ui_layer.clear(surface, background)
-        self.rows_layer.clear(surface, background)
-        return self.ui_layer.draw(surface) + self.rows_layer.draw(surface)
-
-    def _draw_scrollable(self, surface, background):
-        """Immediate-mode redraw of the scrollable viewport, every frame —
-        same rationale as SetupView._draw_scrollable."""
-        self.ui_layer.clear(surface, background)
-        self.ui_layer.draw(surface)
-
-        viewport = self.scrollbar.viewport_rect()
-        prev_clip = surface.get_clip()
-        surface.set_clip(viewport)
-
-        if background:
-            surface.blit(background, viewport, viewport)
-        for sprite in self.rows_layer.sprites():
-            sprite.dirty = 1
-        self.rows_layer.draw(surface)
-        self.rows.draw_separators_live(surface, self.scrollbar.offset)
-
-        surface.set_clip(prev_clip)
-        self.scrollbar.draw(surface)
-        return [surface.get_rect()]
-
-    def full_paint(self, surface, background):
-        if background:
-            self.draw_static_elements(background)
-            surface.blit(background, (0, 0))
-
-        for sprite in self.ui_layer.sprites():
-            sprite.dirty = 1
-        for sprite in self.rows_layer.sprites():
-            sprite.dirty = 1
-
-        self.ui_layer.clear(surface, background)
-        self.ui_layer.draw(surface)
-
-        if self.scrollbar.is_scrollable:
-            viewport = self.scrollbar.viewport_rect()
-            prev_clip = surface.get_clip()
-            surface.set_clip(viewport)
-            self.rows_layer.clear(surface, background)
-            self.rows_layer.draw(surface)
-            self.rows.draw_separators_live(surface, self.scrollbar.offset)
-            surface.set_clip(prev_clip)
-            self.scrollbar.draw(surface)
-        else:
-            self.rows_layer.clear(surface, background)
-            self.rows_layer.draw(surface)
 
     def handle_event(self, event) -> bool:
         if self.scrollbar.handle_event(event, self.rows):
