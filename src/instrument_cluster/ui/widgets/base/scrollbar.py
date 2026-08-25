@@ -110,6 +110,25 @@ class Scrollbar:
     def max_offset(self) -> float:
         return max(0.0, self.content_height - self.viewport_height)
 
+    @property
+    def in_motion(self) -> bool:
+        """Is the scroll offset actually changing right now?
+
+        Distinct from :attr:`is_scrollable`, which only says the content
+        overflows. A settings list that overflows but is sitting still needs
+        no per-frame repaint — and on the 7" panel it overflows permanently,
+        so conflating the two made every stationary Setup frame a full-screen
+        flush (22x the cost of a dirty-rect frame, measured on a Pi 4).
+
+        Velocity is the reliable signal: update() zeroes it on settle, while
+        _snap_goal is re-derived and cleared on alternate frames and would
+        flap. A tap that never crosses the drag threshold leaves
+        _gesture_dragging False, so tapping a row stays on the cheap path.
+        """
+        return bool(
+            self._thumb_dragging or self._gesture_dragging or self._velocity
+        )
+
     def reset(self) -> None:
         """Back to the top, with no gesture or glide in flight.
 

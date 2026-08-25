@@ -103,6 +103,8 @@ class ListItemGroup:
 
     def __init__(self, rows: Iterable[ListItem]):
         self.rows = list(rows)
+        # Last offset applied, so a repeated scroll_to() can be skipped.
+        self._offset: float | None = None
 
     def __iter__(self):
         return iter(self.rows)
@@ -130,9 +132,19 @@ class ListItemGroup:
         for row in self.rows:
             row.handle_event(event)
 
-    def scroll_to(self, offset: float) -> None:
+    def scroll_to(self, offset: float, force: bool = False) -> None:
         """Shift every row by a vertical scroll offset (native px) and mark
-        their sprites dirty so the dirty-rect renderer repaints them."""
+        their sprites dirty so the dirty-rect renderer repaints them.
+
+        A repeat of the offset already applied is a no-op: the owning view
+        calls this every frame while the list is scrollable, and dirtying
+        every row unconditionally kept the whole list repainting even when
+        nothing had moved. ``force`` re-applies it regardless, for a view
+        that has rebuilt its rows underneath us.
+        """
+        if not force and self._offset is not None and offset == self._offset:
+            return
+        self._offset = offset
         for row in self.rows:
             row.scroll_to(offset)
             for sprite in row.sprites():

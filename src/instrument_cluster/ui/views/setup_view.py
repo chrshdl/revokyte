@@ -36,6 +36,7 @@ from ...ui.widgets.base.scrollbar import Scrollbar
 from ...ui.widgets.base.toggle import Toggle
 from ...ui.widgets.settings.brightness_widget import BrightnessWidget
 from .base import View
+from .scrollable_rows import ScrollableRowsView
 from .header import corner_button, header_line, header_title
 from .setup_rows import row_button, row_icon, row_label
 
@@ -45,7 +46,7 @@ def _entry_text(entry) -> str:
     return entry.button_text() if callable(entry.button_text) else entry.button_text
 
 
-class SetupView(View):
+class SetupView(ScrollableRowsView, View):
     STEP_PERCENT = 10
     DIFF_REFERENCE_OPTIONS = [DiffReferenceMode.PREVIOUS, DiffReferenceMode.FASTEST]
 
@@ -322,7 +323,7 @@ class SetupView(View):
         self.close_dropdowns()
         self.release_presses(self.ui_layer, self.rows_layer)
         self.scrollbar.reset()
-        self.rows.scroll_to(0.0)
+        self.rows.scroll_to(0.0, force=True)
 
         self._telemetry_caption.set_text(self._telemetry_label_text(config))
 
@@ -360,75 +361,6 @@ class SetupView(View):
         if self.scrollbar.is_scrollable:
             self.scrollbar.update(dt)
             self.rows.scroll_to(self.scrollbar.offset)
-
-    def draw_static_elements(self, background_surface):
-        """
-        Draws non-moving elements (like lines) onto the background.
-        """
-        self.horizontal_line.draw(background_surface)
-        if not self.scrollbar.is_scrollable:
-            self.rows.draw_static_elements(background_surface)
-
-    def draw(self, surface, background):
-        if self.scrollbar.is_scrollable:
-            return self._draw_scrollable(surface, background)
-
-        self.ui_layer.clear(surface, background)
-        self.rows_layer.clear(surface, background)
-        return self.ui_layer.draw(surface) + self.rows_layer.draw(surface)
-
-    def _draw_scrollable(self, surface, background):
-        """Immediate-mode redraw of the scrollable viewport, every frame —
-        row positions change continuously while dragging/bouncing, so the
-        dirty-rect diff (which only repaints previously-dirty rects) can't
-        keep up. The header stays on the normal dirty-rect path.
-        """
-        self.ui_layer.clear(surface, background)
-        self.ui_layer.draw(surface)
-
-        viewport = self.scrollbar.viewport_rect()
-        prev_clip = surface.get_clip()
-        surface.set_clip(viewport)
-
-        if background:
-            surface.blit(background, viewport, viewport)
-        for sprite in self.rows_layer.sprites():
-            sprite.dirty = 1
-        self.rows_layer.draw(surface)
-        self.rows.draw_separators_live(surface, self.scrollbar.offset)
-
-        surface.set_clip(prev_clip)
-        self.scrollbar.draw(surface)
-        return [surface.get_rect()]
-
-    def full_paint(self, surface, background):
-        if background:
-            self.draw_static_elements(background)
-            surface.blit(background, (0, 0))
-
-        for sprite in self.ui_layer.sprites():
-            sprite.dirty = 1
-        for sprite in self.rows_layer.sprites():
-            sprite.dirty = 1
-
-        self.ui_layer.clear(surface, background)
-        self.ui_layer.draw(surface)
-
-        if self.scrollbar.is_scrollable:
-            # Same viewport clip as _draw_scrollable — a repaint while
-            # scrolled (e.g. resuming from Wi-Fi setup) must not paint the
-            # rows that sit above the viewport over the header.
-            viewport = self.scrollbar.viewport_rect()
-            prev_clip = surface.get_clip()
-            surface.set_clip(viewport)
-            self.rows_layer.clear(surface, background)
-            self.rows_layer.draw(surface)
-            self.rows.draw_separators_live(surface, self.scrollbar.offset)
-            surface.set_clip(prev_clip)
-            self.scrollbar.draw(surface)
-        else:
-            self.rows_layer.clear(surface, background)
-            self.rows_layer.draw(surface)
 
     def handle_event(self, event) -> bool:
         """
