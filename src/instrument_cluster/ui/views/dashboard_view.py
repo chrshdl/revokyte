@@ -40,7 +40,10 @@ class DashboardView(View):
         # Gauge plugins render here, between the chrome layers.
         self.plugin_layer = LayeredDirty()
 
-        self.status_lights_enabled = ConfigManager.get_config().status_lights
+        # Neutral at build; bound by reset() on every entry and resume.
+        # Construction may not read /data — a build() failure has to mean the
+        # image is defective, which is what the OTA health marker asserts.
+        self.status_lights_enabled = False
         self._apply_shifts()
 
         # (count, active) of the slot page indicator; kept here so a chrome
@@ -80,6 +83,12 @@ class DashboardView(View):
         self._TRACK_RECT = (x + self._SHIFT_L, y, w, h)
         # Left edge of the track widget; the footer buttons align to it.
         self._COLUMN_LEFT = self._TRACK_RECT[0] - self._TRACK_RECT[2] // 2
+
+    def reset(self, ctx=None) -> None:
+        """Bind the chrome to config. Reflows only when the value actually
+        changed (set_status_lights early-returns otherwise), so the ordinary
+        entry allocates nothing."""
+        self.set_status_lights(ConfigManager.get_config().status_lights)
 
     def set_status_lights(self, enabled: bool) -> None:
         """Reflow the chrome for the status-lights toggle without discarding

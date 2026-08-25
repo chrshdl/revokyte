@@ -68,13 +68,16 @@ class EnterIPView(View):
             pos=np.recent_position,
             center=True,
             antialias=False,
-            visible=len(ConfigManager.get_config().recent_connected) > 0,
+            # Bound by reset(): construction may not read /data.
+            visible=False,
         )
 
         # 2. Input Field
         fx, fy, fw, fh = np.field_rect
         self.textfield = TextField(
-            text=get_ip_prefill(),
+            # Bound by reset(): get_ip_prefill() reads the live network
+            # interface, which construction must not depend on.
+            text="",
             font=load_font_px(np.field_font, FontFamily[np.field_font_family]),
             color=Color.WHITE.rgb(),
             pos=(fx, fy),

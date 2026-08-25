@@ -106,7 +106,10 @@ def test_status_lights_toggle_relayouts_plugins_before_view(monkeypatch):
         "set_status_lights",
         lambda enabled: calls.append(("view", enabled)),
     )
-    # Flip the toggle relative to whatever the view was built with.
+    # Flip the toggle relative to whatever the view was built with. The view's
+    # own reset() binds it too, so stub that out to keep this test about the
+    # ordering the state guarantees: plugins reflow before the view does.
+    monkeypatch.setattr(state.view, "reset", lambda ctx=None: None)
     flipped = not state.view.status_lights_enabled
     monkeypatch.setattr(
         ConfigManager, "get_config", lambda: MagicMock(status_lights=flipped)
