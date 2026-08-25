@@ -1,0 +1,465 @@
+# ViewRegistry Refactor
+
+**Status:** Proposed · **Scope:** `states/` + `ui/views/` · **Drafted:** 2026-08-25 · **Board measured:** Raspberry Pi 4, 1024x600, `arm_freq=1000`
+
+Separating view lifetime from state lifetime, so screen transitions allocate
+nothing and the frame loop never pays for a garbage collection.
+
+---
+
+## 1. The problem
+
+Every `State` builds its own `View` in `__init__`, and allocates a full-screen
+background surface in `enter()`. Both are discarded when the state is popped.
+Navigating the menus therefore churns megabytes of surface memory per
+transition.
+
+Nothing leaks. Teardown is correct. But the memory involved is **allocated in C
+by SDL**, while Python's garbage collector is driven by **object counts** — so
+the runtime cannot see the cost of what it is holding. The result is a long,
+invisible accumulation ended by one abrupt collection.
+
+Measured on device:
+
+| metric | value |
+|---|---|
+| per `SetupView` construction | **3.49 MB** |
+| Python objects per view | 234 |
+| freed in one gen-2 collection | **−47 MB** |
+| frame rate during that collection | **3.0 fps** |
+| RSS sawtooth range | 120–150 MB |
+
+The 1-second stall at 3 fps is the only user-visible defect, and it lands at an
+arbitrary moment — potentially mid-corner.
+
+## 2. What the evidence rules out
+
+| hypothesis | test | result |
+|---|---|---|
+| Memory leak | RSS over 28 switches | Returned to 89.9 MB — below start. Not a leak. |
+| Reference cycles in the view graph | `weakref` + `gc.disable()` | `freed by refcount alone: True` — acyclic. |
+| Leaked reader threads / sockets | `/proc/<pid>` counters | threads 9, fds 44, sockets 4 — stable. |
+| Plugin sprites accumulating | journal `Loaded plugin` count | 2 per plugin = 2 app starts. No reloads. |
+| Dashboard page churn | journal `Swipe to page` count | 0. Pages were never switched. |
+
+**The teardown logic is already correct.** This refactor is not a bug fix — it
+removes an allocation pattern whose cost the runtime cannot account for.
+
+## 3. Rejected alternatives
+
+### `gc.collect()` at a safe point
+
+Placing a collection in `SetupState.exit()` would move the stall to a moment
+where nothing is animating. A few lines, no structural change.
+
+**Rejected:** treats the symptom and reintroduces non-determinism by design —
+the pause still happens, we merely guess when. Frame timing should not depend
+on collector heuristics.
+
+### Caching the `SetupView` instance
+
+Holding one long-lived `SetupView` removes 3.49 MB of churn per visit.
+
+**Rejected:** does not generalise. Applied to one screen it is a special case;
+the ninth screen re-creates the problem. If the pattern is right, it should be
+uniform.
+
+### Sharing one background surface (as a standalone change)
+
+Hoisting the screen-sized background into `StateManager` saves ~1.8 MB per
+state.
+
+**Rejected standalone — adopted inside this design.** States coexist on the
+stack: `DashboardState` stays alive under `SetupState`, and
+`draw_static_background()` is only ever called from `enter()`. Sharing one
+surface today would let Setup paint over the Dashboard's dirty-rect restore
+source, causing persistent visual corruption. It becomes safe only once every
+state has a defined repaint point — which the bind step in §5 provides.
+
+## 4. Principle
+
+Production automotive HMI stacks share
+one rule: allocate at startup, never during runtime. The screen set is
+bounded and known at design time, so every view exists before the first frame.
+Transitions flip visibility and rebind data; they never construct.
+
+That answers the objection to manual collection directly: if nothing is
+allocated per transition, nothing needs collecting. The collector stops being
+part of the frame budget because it has no work.
+
+Budget for this codebase:
+
+| | |
+|---|---|
+| real views (11 files − 3 helpers) | **8** |
+| states | 14 |
+| all views held permanently | **≈ 28 MB** |
+| free RAM on the device | 0.5 GB |
+
+Adding a ninth view costs a known 3.5 MB, visible in review — rather than
+adding unbounded runtime churn. The budget scales *predictably*.
+
+### Boot cost measurements
+
+Preallocation moves view construction to startup, which matters because boot
+time is a tracked product metric (currently ~14 s). Measured on the Pi 4:
+
+| view | cold | warm | | view | cold | warm |
+|---|---|---|---|---|---|---|
+| `DashboardView` | 19.1 ms | 2.3 ms | | `EnterIPView` | 30.4 ms | 12.6 ms |
+| `SetupView` | 38.5 ms | 19.9 ms | | `AgentSetupView` | 12.1 ms | 4.1 ms |
+| `SoftwareView` | 21.4 ms | 8.9 ms | | `ListenerSetupView` | 4.3 ms | 3.6 ms |
+| `WifiSetupView` | 3.0 ms | 1.1 ms | | `InstallView` | 5.6 ms | 4.2 ms |
+
+**Total: 134.4 ms cold, 56.7 ms warm.** The *added* cost is smaller still —
+`DashboardView` is already built at boot today, so preallocation adds the other
+seven at roughly **115 ms, under 1% of a 14 s boot**. For scale,
+`pygame.display.set_mode()` alone costs 158 ms on the same board.
+
+Cold is first construction of a class (paying font and asset cache misses);
+warm is a second construction with those caches populated. The 2.4x gap means
+the marginal view is cheaper than the first, so the budget does not grow
+linearly in wall time as screens are added.
+
+This is the number P2 exists to produce, obtained early. It also weakens the
+case for lazy building: 115 ms does not justify the extra state machine.
+
+**The production board has 1 GB, not the 8 GB development board.** That changes
+the shape of this trade and is the reason to judge it explicitly rather than
+wave it through:
+
+| | share of 1 GB |
+|---|---|
+| app peak RSS (~150 MB observed) | ~15% |
+| the gen-2 garbage spike this refactor removes (47 MB) | ~4.6% |
+| all views held permanently (28 MB) | ~2.7% (≈5.6% of free) |
+
+Preallocation is no longer obviously free — it swaps a *transient* 47 MB spike
+for a *permanent* 28 MB reservation. It is still the right trade, because peak
+is what runs a device out of memory and the peak goes down; but on a 1 GB board
+it is a decision, not a rounding error. It also raises the stakes on the lazy-
+build option in P2: if boot time allows it, building on first use keeps the
+resident set closer to what is actually reachable.
+
+## 5. Design
+
+### Ownership moves
+
+```python
+# today — states/setup_state.py
+class SetupState(State):
+    def __init__(self, state_manager):
+        self.view = SetupView()          # 3.49 MB, per entry
+
+    def enter(self, screen):
+        self.background = pygame.Surface(screen.get_size()).convert()
+        self.draw_static_background(self.background)
+
+# proposed
+class SetupState(State):
+    view_class = SetupView                     # declarative
+
+    def enter(self, screen):
+        self.view = registry.acquire(SetupView)
+        self.view.reset(self.view_context())
+        self.background = registry.background(self.background_color())
+        self.draw_static_background(self.background)   # now also on resume
+```
+
+### View lifecycle contract
+
+`View` (in `ui/views/base.py`) gains two methods alongside the existing
+`draw()` / `full_paint()` contract:
+
+| method | called | responsibility |
+|---|---|---|
+| `build()` | Once, at registry init | Create every widget and surface. Everything expensive happens here. |
+| `reset(ctx)` | Every `enter()` / `on_resume()` | Rebind data, restore scroll to top, close dropdowns, apply context. Allocates nothing. |
+
+`SetupView.close_dropdowns()` is already the beginning of `reset()` — the
+pattern exists, it is just not yet named or uniform.
+
+### The hard part: parameterised views
+
+Five of eight views take constructor arguments, and one class is instantiated
+twice with *different* arguments:
+
+| view | constructor args | migration |
+|---|---|---|
+| `WifiSetupView` | `show_back` | **Two live instances** (`WifiSetupState`, `WifiConnectingState`) with different values. Structural — changes the widget set. |
+| `EnterIPView` | `recent_connected`, `title` | Data only → `reset(ctx)`. |
+| `AgentSetupView` | `feed_label`, `unlocks` | Data only → `reset(ctx)`. |
+| `ListenerSetupView` | `feed_label` | Data only → `reset(ctx)`. |
+| `InstallView` | `feed_label`, `updating` | Data only → `reset(ctx)`. |
+| `DashboardView`, `SetupView`, `SoftwareView` | none | Direct. |
+
+**Key decision.** `show_back` is not data — it decides whether a back button
+*exists*. Two options: build both widget sets once and toggle visibility in
+`reset()`, or key the registry on `(class, variant)` and hold two instances.
+
+**Recommendation:** visibility toggle. Keying on variants reopens the unbounded-
+instances problem the registry exists to close.
+
+### Registry
+
+```python
+class ViewRegistry:
+    """Owns every view for the life of the process.
+
+    Built once after display init, when surface creation is legal and
+    no frame budget applies. acquire() never allocates.
+    """
+    def __init__(self, screen, view_classes):
+        self._views = {}
+        self._background = pygame.Surface(screen.get_size()).convert()
+        for cls in view_classes:          # core + extension-declared
+            try:
+                v = cls(); v.build()
+                self._views[cls] = v
+            except Exception:             # fail-open, see §6
+                log.exception("view %s failed to build", cls.__name__)
+
+    def acquire(self, cls):
+        return self._views[cls]
+
+    def background(self, color):
+        self._background.fill(color)   # reused, never reallocated
+        return self._background
+```
+
+One background surface serves every state because `reset()` gives each state a
+defined repaint point on both `enter()` and `on_resume()` — closing the
+stacked-state hazard described in §3.
+
+## 6. Variants and feature flags
+
+`instrument-cluster-pro` adds views and states for OTA and licensing. A registry
+that preallocates everything must know the full view set before the first frame, so the question is when the set
+becomes known.
+
+### The compile-time flag already exists
+
+`BR2_PACKAGE_PYTHON_INSTRUMENT_CLUSTER_PRO=y` decides whether
+`instrument_cluster_pro` is installed at all. In a community build its views are
+not on target in any form. That is already a compile-time feature flag,
+expressed as package presence.
+
+The gap is elsewhere. Discovery is runtime and entry-point based:
+`extensions.py` calls `importlib.metadata.entry_points(group="instrument_cluster.extensions")`
+and invokes each `wire()`. The app learns its view set by executing extension
+code — which a registry that must allocate before the first frame cannot wait
+for.
+
+### Extensions declare their views
+
+`wire()` already runs at the right moment: after the core objects exist, before
+plugins load. It gains one method, and the registry builds after all wiring
+completes.
+
+```python
+# in instrument_cluster_pro
+def wire(runtime: ExtensionRuntime) -> None:
+    runtime.register_views([ProOtaView, LicenseView, InstallView])
+    runtime.add_setup_entry(SetupEntry(...))
+```
+
+For flags finer than package presence, `FEAT_OTA` separately from
+`FEAT_LICENSE`, generate a `features.py` at build time from the Buildroot
+config. `board/*/post-build.sh` already generates `/etc/os-release` and
+substitutes `@BOARD_COMPATIBLE@` into the RAUC config; same pattern, and it
+keeps flags greppable rather than implicit in packaging.
+
+### The variant matrix
+
+**Decided:** a declared variant matrix, not free-form flags. Independent
+booleans produce 2^n configurations and only a handful can ever be tested.
+
+The build matrix and the *feature* matrix are not the same size. Builds vary on
+three axes - board, dev/release, tree - but the view set varies on exactly
+one. A Pi 4 and a Pi 5 run the same views; so do a dev and a release image.
+Only Pro changes the set.
+
+| variant | tree | boards built in CI | views | budget |
+|---|---|---|---|---|
+| `community` | instrument-cluster-os | pi4, pi5 | 8 | ≈ 28 MB |
+| `pro` | instrument-cluster-pro-os | pi4, pi5 | 8 + N | ≈ 28 + N×3.5 MB |
+
+Two rows, not eight. The rule that keeps it testable: adding a variant means
+adding a row and a CI job. Undeclared flag combinations are refused by the
+build rather than silently produced.
+
+> Pro ships on both boards (Pi 4 support added 2026-08-24). `ci.yml` in the Pro
+> tree was still building `raspberrypi5` only; `raspberrypi4-64` was added to
+> that matrix in `instrument-cluster-pro-os@03816da`.
+
+### The budget becomes assertable
+
+`scripts/assert-release-image.sh` already asserts properties of the *built
+artifact* rather than trusting configuration — that is its stated reason for
+existing. Asserting the declared view count and budget against a ceiling fits
+that philosophy, and makes a new screen show up as a reviewable budget change on
+the PR instead of a surprise on target.
+
+### When a view fails to build
+
+Preallocation moves this failure from "the user taps that row" to "during boot",
+which changes both its timing and its blast radius.
+
+| strategy | dev / manufacturing | in the field |
+|---|---|---|
+| **Fail-closed** (let it propagate) | Brutal. App will not start → watchdog → `StartLimitAction=reboot` → black screen. No SSH on a release image, so diagnosis means pulling the card. | **Self-healing.** Health check never runs → slot never marked good → U-Boot rotates to the previous slot within three reboots. A bad OTA undoes itself. |
+| **Fail-open** (log and skip) | Graceful. Dashboard comes up, one feature missing — matching the promise `extensions.py` already makes. | **Silently permanent.** Display, GPU, wlan and input all pass, so the slot is marked good and the broken build never rolls back. |
+
+**Decided: fail-open at the registry, with the health check made aware of it.**
+Three parts, taking the field safety of one and the user experience of the
+other:
+
+1. The registry catches per view, logs, and skips — the dashboard always comes
+   up.
+2. Rollback is dependency-aware: a missing view also removes the setup entries
+   that need it, so there are no dead buttons. The existing rollback in
+   `extensions.py` does **not** cover this — it operates at `wire()` granularity,
+   and a `build()` failure happens later, after wiring succeeded.
+3. The registry records failures to `/run/instrument-cluster/unhealthy`, and
+   `ota-health-check.sh` fails while that file is non-empty. The slot is never
+   marked good, so a bad update still rolls back — while the driver keeps a
+   working dashboard throughout.
+
+**Why `/run` and not `/data`:** `/run` is tmpfs, cleared every boot, so the
+marker describes *this* boot only. On `/data` it would persist and one transient
+failure would poison every subsequent boot into permanent rollback. Ordering
+already works: the registry builds before the first frame; the health check runs
+15 s after the app signals ready. If the app dies before writing the marker it
+never signals ready either, so the slot is not marked good regardless.
+
+**Two limits of the rollback.** It is *not immediate* — the health check
+deliberately never forces a reboot (a genuine hardware fault would otherwise
+ping-pong both slots forever), so attempts burn on real reboots: roughly three
+power cycles on an appliance users switch off by pulling the plug. And it does
+*nothing on a factory image*, where both slots are identical — no harm, but the
+device runs with the feature missing until someone reflashes. This mechanism
+protects OTA updates, which is where it matters.
+
+### Widening `ota-health-check.sh`
+
+The script looks hardware-only, and its header says it exists to "verify the
+hardware a driver/kernel regression would silently break, not just 'the app
+started'". But its real contract is narrower and more useful than "hardware",
+and `check_wifi` states it outright:
+
+> brcmfmac probed and created the interface. Association is **NOT** required —
+> a device at the track may have no known network, but the driver coming up
+> must never regress silently.
+
+The rule it is actually applying is **report faults the image causes, never
+faults the environment causes.** Association is excluded because no rollback
+fixes an unknown Wi-Fi network. A view that cannot build is the opposite: it is
+baked into the image, and rolling back is exactly the cure.
+
+So this is not scope creep, provided two rules hold:
+
+**1. One generic check, not app knowledge.** The script never learns what a
+view is. It gains a single check against a marker the app owns:
+
+```sh
+check_app() {
+    # The app publishes IMAGE-ATTRIBUTABLE faults here: conditions a rollback
+    # would actually fix (a view that cannot build, a missing bundled asset).
+    # Never environmental ones (no network, no telemetry, no game running) —
+    # same principle as check_wifi above, which deliberately does not require
+    # association. /run is tmpfs, so the marker describes this boot only.
+    [ ! -s /run/instrument-cluster/unhealthy ]
+}
+```
+
+Future faults are added by the app writing a line, never by editing this script
+again. That is what stops the contract accreting.
+
+**2. The marker means "this image is defective", not "something is wrong
+now".** Writing it for a transient or environmental condition would withhold
+`mark-good` for something a rollback cannot fix. The blast radius is bounded —
+the check never forces a reboot, so a wrong marker costs attempts on reboots
+that would have happened anyway — but the discipline is the whole point, and it
+belongs in the app's own review checklist, not here.
+
+The existing retry loop needs no change. The marker is written during registry
+build, well before the health check runs 15 s after the app signals ready, so
+it is already present on the first iteration; a persistent marker simply fails
+all 15 tries and exits non-zero after the 30 s grace window.
+
+## 7. Migration
+
+Ordered so that each phase is independently shippable and revertible. The
+sequence matters: the contract must exist before anything depends on it, and the
+background can only be shared once every state repaints on resume.
+
+| phase | work | notes |
+|---|---|---|
+| **P1** | Define the contract | Add `build()` and `reset(ctx)` to `View` with no-op defaults. Nothing calls them yet. Ships green. |
+| **P2** | Registry alongside the old path | Introduce `ViewRegistry`, built at startup. States still construct their own views. Measures the real preallocation cost on device before anything depends on it. |
+| **P3** | Migrate the parameterless views | `SetupView`, `SoftwareView`, `DashboardView`. Highest value — `SetupView` is the screen in the reported stall — and lowest risk. |
+| **P4** | Migrate the data-parameterised views | Constructor args become `reset(ctx)` fields for `EnterIPView`, `AgentSetupView`, `ListenerSetupView`, `InstallView`. |
+| **P5** | Resolve `WifiSetupView` | Convert `show_back` to a visibility toggle. Isolated deliberately — the only genuinely structural case. |
+| **P6** | Extension-declared views | Add `runtime.register_views()` to `ExtensionRuntime`, call it from `instrument_cluster_pro`'s `wire()`. Build the registry after wiring. Add the variant budget assertion to CI, the `/run` failure marker, and the matching check in `ota-health-check.sh`. |
+| **P7** | Share the background | Requires P3–P5. Move background ownership to the registry and repaint static elements on `on_resume()` as well as `enter()`. |
+| **P8** | Consider `gc.freeze()` after init | Optional. With steady-state allocation near zero, moving the startup heap out of collector scope makes remaining collections cheaper. Measure before adopting. |
+
+## 8. Risks
+
+| risk | why it matters | mitigation |
+|---|---|---|
+| Stale view state between visits | A reused view keeps scroll position, dropdown state, error text. Leaks information across screens. | `reset()` is mandatory, not optional. Assert in `enter()` that it ran. |
+| Dirty-rect corruption from the shared background | Failure is subtle, state-dependent visual artefacts — passes tests, shows on hardware. | Gated behind P7. Verify each screen on device, including back-navigation from every child state. |
+| Startup time regression | All eight views build before the first frame; boot time is a tracked product metric (~14 s). | **Measured: 134 ms for all eight, ~115 ms added** (see §4). Under 1% of boot. Lazy building remains the fallback if a future view is heavy, but is not needed today. |
+| A Pro view fails to build at startup | Preallocation runs before the first frame; an exception there could blank the dashboard rather than degrade — or, handled naively, mark a broken update as good. | Fail-open per view, dependency-aware entry rollback, and a `/run` marker that makes `ota-health-check.sh` withhold `mark-good` (§6). |
+| Two states sharing one view instance | A state pushed over another using the same view class would corrupt the one underneath. | Registry asserts single-borrower per view; caught at development time, not in the field. |
+
+## 9. Verification
+
+The instrumentation already exists — the perf stream carries `fps`, `rss_mb` and
+`load_pct`, and `tools/perf_viewer.py` records it. Acceptance is measured, not
+asserted:
+
+| metric | before | target |
+|---|---|---|
+| RSS across 20 view switches | 125 → 150 MB, sawtooth | flat ±2 MB |
+| frames under 60 fps | 1 per gen-2 collection | 0 |
+| worst frame | 3.0 fps | > 55 fps |
+| steady-state CPU | 7–8% (of 4 cores) | unchanged |
+| boot to first frame | baseline | no regression |
+
+Method: run 20 switches with the perf viewer recording, then compare growth in
+the first half against the second. Sawtooth means churn remains; flat means the
+refactor did its job.
+
+## 10. Open questions
+
+- **Lazy or eager build?** Eager is simpler and fully deterministic; lazy
+  protects boot time. P2 measures which matters.
+- **Where does the registry live?** `StateManager` already owns the screen and
+  the state stack, making it the natural owner — at the cost of growing its
+  responsibilities.
+- **What is the budget ceiling?** The assertion needs a number to check against.
+  The smallest intended target is the **1 GB production Pi 4**, so the ceiling
+  should be derived from that and not from the 8 GB development board — with
+  headroom for CMA and the GPU reservation, which are taken off the top before
+  userspace sees anything.
+- **Is `DashboardView` in scope?** It is already long-lived, so it gains nothing
+  directly — but including it keeps the pattern uniform.
+
+---
+
+## Measurement notes
+
+Measurements were taken on a Raspberry Pi 4 dev image, 2026-08-24/25, with
+`tools/perf_viewer.py` and `/proc` sampling.
+
+The 3.49 MB per-view figure was measured on macOS via `ru_maxrss` (a peak, not a
+current reading) with pygame 2.6.1 / SDL 2.28. The device runs SDL 2.30 at
+1024x600, so treat the magnitude as indicative. The structural finding — a
+full-screen surface allocated per state in `State.enter()` — is read directly
+from the source and is not measurement-dependent.
+
+A related but separate line of work reduced per-frame blit cost by removing
+redundant alpha compositing (`revokyte@f42ce92`); it does not affect the
+allocation churn this document addresses.
