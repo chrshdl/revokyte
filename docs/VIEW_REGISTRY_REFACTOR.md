@@ -133,20 +133,37 @@ case for lazy building: 115 ms does not justify the extra state machine.
 
 **The production board has 1 GB, not the 8 GB development board.** That changes
 the shape of this trade and is the reason to judge it explicitly rather than
-wave it through:
+wave it through. The estimate above was ~3.5 MB per view and ≈28 MB held; the
+measurement below replaces it.
+
+### Measured budget — Pi 4, 1024x600, v0.2.40
+
+`ViewRegistry.preload()`, one view at a time, RSS sampled after a forced
+collection between each:
+
+| view | build ms | RSS MB | | view | build ms | RSS MB |
+|---|---|---|---|---|---|---|
+| `SetupView` | 35.2 | **2.83** | | `InstallView` | 8.9 | 0.56 |
+| `EnterIPView` | 29.5 | 1.77 | | `DashboardView` | 17.7 | 0.45 |
+| `SoftwareView` | 20.3 | 0.71 | | `AgentSetupView` | 5.5 | 0.45 |
+| `ListenerSetupView` | 3.4 | 0.35 | | `WifiSetupView` | 3.0 | 0.19 |
+
+**Total: 123.7 ms, 10.73 MB for all eight.** The 3.49 MB/view figure came from
+macOS `ru_maxrss` — a peak, not a current reading — and was 2.6x pessimistic;
+only `SetupView` approaches it. Build time matched the prediction well (123.7
+vs 134.4 ms).
 
 | | share of 1 GB |
 |---|---|
-| app peak RSS (~150 MB observed) | ~15% |
-| the gen-2 garbage spike this refactor removes (47 MB) | ~4.6% |
-| all views held permanently (28 MB) | ~2.7% (≈5.6% of free) |
+| app RSS on the dashboard (104 MB observed) | ~10% |
+| the per-transition churn this removes (34.8 MB over 20 switches) | ~3.4%, transient |
+| all views held permanently (**10.73 MB**) | **~1%** |
 
-Preallocation is no longer obviously free — it swaps a *transient* 47 MB spike
-for a *permanent* 28 MB reservation. It is still the right trade, because peak
-is what runs a device out of memory and the peak goes down; but on a 1 GB board
-it is a decision, not a rounding error. It also raises the stakes on the lazy-
-build option in P2: if boot time allows it, building on first use keeps the
-resident set closer to what is actually reachable.
+So preallocation swaps a transient 34.8 MB of churn for a permanent 10.7 MB
+reservation, and peak RSS fell 103.4 -> 64.9 MB in the harness (§9). The
+lazy-build hedge is not needed: `acquire()` still builds on demand, so
+dropping the `preload()` call in `main.py` is a one-line fallback if a future
+view is heavy, but nothing today argues for it.
 
 ## 5. Design
 
@@ -423,9 +440,9 @@ background can only be shared once every state repaints on resume.
 
 ## 9. Verification
 
-The instrumentation already exists — the perf stream carries `fps`, `rss_mb` and
-`load_pct`, and `tools/perf_viewer.py` records it. Acceptance is measured, not
-asserted:
+Acceptance is measured, not asserted. The perf stream carrying `fps`, `rss_mb`
+and `load_pct` lives in the **Pro** tree (see the note at the end of §11), so
+these runs are taken on a Pro dev image:
 
 | metric | before | target | **measured after** |
 |---|---|---|---|
@@ -486,24 +503,26 @@ over HTTP, on a different screen, doing exactly what it is supposed to do.
 **What is still unmeasured.** `boot to first frame` is app init from
 `Active display` to systemd ready, not a cold reboot.
 
-Method: run 20 switches with the perf viewer recording, then compare growth in
-the first half against the second. Sawtooth means churn remains; flat means the
-refactor did its job.
+## 10. Open questions — resolved
 
-## 10. Open questions
-
-- **Lazy or eager build?** Eager is simpler and fully deterministic; lazy
-  protects boot time. P2 measures which matters.
-- **Where does the registry live?** `StateManager` already owns the screen and
-  the state stack, making it the natural owner — at the cost of growing its
-  responsibilities.
-- **What is the budget ceiling?** The assertion needs a number to check against.
-  The smallest intended target is the **1 GB production Pi 4**, so the ceiling
-  should be derived from that and not from the 8 GB development board — with
-  headroom for CMA and the GPU reservation, which are taken off the top before
-  userspace sees anything.
-- **Is `DashboardView` in scope?** It is already long-lived, so it gains nothing
-  directly — but including it keeps the pattern uniform.
+- **Lazy or eager build?** *Both, and they share one path.* `acquire()` builds
+  on first use; `preload()` builds a known set eagerly. Eager is what ships, so
+  no transition allocates; lazy is what makes the fallback a one-line change
+  and what keeps tests and preview tools working without a registry.
+- **Where does the registry live?** *A module-level singleton* (`views`),
+  mirroring `extensions.runtime`, rather than on `StateManager` — that would
+  have meant threading it through 19 state constructors. The *background*
+  surface did go to `StateManager`, which already owned the screen. Splitting
+  the two is what kept either from growing awkward: views need no screen,
+  backgrounds need only its size.
+- **What is the budget ceiling?** The measured cost is **10.73 MB for eight
+  views** (§4), ~1% of a 1 GB board — not the ≈28 MB estimated. `SetupView`
+  alone is 26% of it. A ceiling of **24 MB** leaves room for roughly a dozen
+  more average views while still catching a screen that costs what `SetupView`
+  does. `test_view_budget.py` pins the view count so a ninth shows up as a
+  reviewable change.
+- **Is `DashboardView` in scope?** *Yes.* The premise that it was already
+  long-lived was wrong — see §11.3.
 
 ---
 
