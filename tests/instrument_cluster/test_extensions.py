@@ -143,7 +143,7 @@ class _BView:
     pass
 
 
-def _entry(label, view_class=None):
+def _entry(label, *view_classes):
     from instrument_cluster.extensions import SetupEntry
 
     return SetupEntry(
@@ -151,7 +151,7 @@ def _entry(label, view_class=None):
         label=label,
         button_text="go",
         make_state=lambda sm: None,
-        view_class=view_class,
+        view_classes=view_classes,
     )
 
 
@@ -205,8 +205,8 @@ def test_a_row_whose_view_failed_to_build_is_dropped():
     from instrument_cluster.extensions import ExtensionRuntime
 
     runtime = ExtensionRuntime()
-    keep = _entry("Licence", view_class=_AView)
-    lose = _entry("Updates", view_class=_BView)
+    keep = _entry("Licence", _AView)
+    lose = _entry("Updates", _BView)
     runtime.setup_entries.extend([keep, lose])
 
     dropped = runtime.drop_rows_missing_views({_BView})
@@ -219,7 +219,7 @@ def test_software_rows_are_pruned_as_well():
     from instrument_cluster.extensions import ExtensionRuntime
 
     runtime = ExtensionRuntime()
-    lose = _entry("Updates", view_class=_BView)
+    lose = _entry("Updates", _BView)
     runtime.software_entries.append(lose)
 
     runtime.drop_rows_missing_views({_BView})
@@ -228,7 +228,7 @@ def test_software_rows_are_pruned_as_well():
 
 
 def test_rows_without_a_declared_view_are_left_alone():
-    """view_class is optional — a row that builds its own view, or opens a
+    """view_classes is optional — a row that builds its own view, or opens a
     core screen, has no registry dependency to break."""
     from instrument_cluster.extensions import ExtensionRuntime
 
@@ -245,7 +245,22 @@ def test_nothing_failed_means_nothing_dropped():
     from instrument_cluster.extensions import ExtensionRuntime
 
     runtime = ExtensionRuntime()
-    runtime.setup_entries.append(_entry("Licence", view_class=_AView))
+    runtime.setup_entries.append(_entry("Licence", _AView))
 
     assert runtime.drop_rows_missing_views(()) == []
     assert len(runtime.setup_entries) == 1
+
+
+def test_a_row_that_can_open_two_screens_needs_both():
+    """Pro's licence row picks between the activation flow and the
+    entitlement overview at press time. If either is missing the row is a
+    coin-flip dead button, so it goes."""
+    from instrument_cluster.extensions import ExtensionRuntime
+
+    runtime = ExtensionRuntime()
+    runtime.setup_entries.append(_entry("License", _AView, _BView))
+
+    dropped = runtime.drop_rows_missing_views({_BView})
+
+    assert len(dropped) == 1
+    assert runtime.setup_entries == []
