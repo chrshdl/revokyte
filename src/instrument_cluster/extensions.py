@@ -76,12 +76,15 @@ class SetupEntry:
     make_state: Callable[[Any], Any]  # state_manager -> State
     pressed: int = field(default_factory=pygame.event.custom_type)
     released: int = field(default_factory=pygame.event.custom_type)
-    # The view the row's screen needs, when that view is registry-owned.
-    # Declared rather than derived: make_state() is a callable, so the only
-    # way to learn the dependency without constructing the state is to be
-    # told. If the view fails to build, the row is dropped instead of
-    # becoming a button that opens nothing (see drop_rows_missing_views).
-    view_class: type | None = None
+    # Every view this row might open, when they are registry-owned. Plural
+    # because make_state() decides at press time and may pick between
+    # screens — Pro's licence row opens the activation flow or the
+    # entitlement overview depending on licence state, and a row that works
+    # for only one of them is a coin-flip dead button. Declared rather than
+    # derived: make_state() is a callable, so the only way to learn the
+    # dependency without constructing the state is to be told. If any of
+    # them fails to build the row is dropped (see drop_rows_missing_views).
+    view_classes: tuple[type, ...] = ()
 
 
 class ExtensionRuntime:
@@ -204,17 +207,20 @@ class ExtensionRuntime:
         if not failed:
             return []
 
+        def broken(entry) -> tuple[type, ...]:
+            return tuple(c for c in entry.view_classes if c in failed)
+
         dropped = []
         for rows in (self.setup_entries, self.software_entries):
-            kept = [e for e in rows if e.view_class not in failed]
-            dropped.extend(e for e in rows if e.view_class in failed)
+            kept = [e for e in rows if not broken(e)]
+            dropped.extend(e for e in rows if broken(e))
             rows[:] = kept
 
         for entry in dropped:
             self.logger.error(
-                "Dropping the '%s' row: its view %s failed to build",
+                "Dropping the '%s' row: %s failed to build",
                 entry.label,
-                entry.view_class.__name__,
+                ", ".join(c.__name__ for c in broken(entry)),
             )
         return dropped
 
