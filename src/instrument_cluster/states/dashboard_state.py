@@ -49,6 +49,8 @@ class DashboardState(State):
     # it with the alert would obscure the remedy.
     allows_system_alert = True
 
+    view_class = DashboardView
+
     def __init__(
         self,
         state_manager: StateManager = None,
@@ -76,21 +78,17 @@ class DashboardState(State):
         else:
             self.debug_sender = None
 
-        self.view = DashboardView()
-        self._link_plugins()
-
         self._swipe_start: tuple[int, int] | None = None
         # Slide transition state machine (see draw()): None, or a dict
         # walking snapshot -> wait (reload) -> anim.
         self._slide: dict | None = None
-        self._refresh_slot_dots()
 
     @property
     def plugins(self) -> list:
         return list(self.plugin_manager.plugins) if self.plugin_manager else []
 
     def _link_plugins(self) -> None:
-        """Add every plugin's sprites to the view's plugin layer.
+        """Make the view's plugin layer hold exactly the current plugins.
 
         Idempotent per view and safe to call again after a reload or view
         rebuild; a sprite may live in several groups, and killed sprites
@@ -99,10 +97,18 @@ class DashboardState(State):
         # Explicit None checks: an empty LayeredDirty is falsy, so `or`
         # would skip a perfectly good (just empty) plugin layer.
         target = getattr(self.view, "plugin_layer", None)
+        dedicated = target is not None
         if target is None:
             target = getattr(self.view, "ui_layer", None)
         if target is None:
             return
+        if dedicated:
+            # The view outlives this state, so sprites from a previous
+            # dashboard visit are still in the layer. Adding is idempotent
+            # but never *removes*, so a plugin set that changed between
+            # visits would leave the old gauges drawn underneath. Only safe
+            # on the dedicated layer — ui_layer also holds the chrome.
+            target.empty()
         for plugin in self.plugins:
             sprites = getattr(plugin, "sprites", None)
             if sprites is not None:
@@ -184,15 +190,12 @@ class DashboardState(State):
             self._slide = {"phase": "snapshot", "next": dx < 0}
         return True
 
-    def background_color(self):
-        return self.view.background_color
-
-    def draw_static_background(self, bg):
-        if hasattr(self.view, "draw_static_elements"):
-            self.view.draw_static_elements(bg)
-
     def enter(self, screen):
-        super().enter(screen)
+        rects = super().enter(screen)
+        # Linking and the page dots need the borrowed view, so they happen here
+        # rather than in __init__ (which runs before the view is acquired).
+        self._link_plugins()
+        self._refresh_slot_dots()
         self.pipeline.start()
         if self.plugin_manager is not None:
             self.plugin_manager.set_dashboard_active(True)
@@ -206,6 +209,7 @@ class DashboardState(State):
         bl = Backlight()
         if bl.available:
             bl.set_percent(ConfigManager.get_config().brightness)
+        return rects
 
     def exit(self):
         if self.debug_sender is not None:
@@ -224,6 +228,7 @@ class DashboardState(State):
             self.plugin_manager.set_dashboard_active(False)
 
     def on_resume(self):
+        super().on_resume()
         self.pipeline.sync_mode()
         if self.plugin_manager is not None:
             self.plugin_manager.set_dashboard_active(True)
@@ -242,12 +247,6 @@ class DashboardState(State):
         self._relink_if_stale()
         # Slots may have been synced/edited while Setup was open.
         self._refresh_slot_dots()
-
-    def create_group(self):
-        return None
-
-    def full_paint(self, surface):
-        self.view.full_paint(surface, self.background)
 
     def draw(self, surface):
         if self._slide is not None:

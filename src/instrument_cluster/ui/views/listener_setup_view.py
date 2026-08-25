@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pygame.sprite import LayeredDirty
 
 from ...ui.colors import Color
@@ -13,6 +14,13 @@ from ...ui.widgets.base.button import Button, ButtonEvents, ButtonGroup
 from ...ui.widgets.base.label import Label
 from .base import View
 from .header import header_line, header_title
+
+
+@dataclass(frozen=True)
+class ListenerSetupContext:
+    """What ListenerSetupView rebinds on every entry (was its ctor args)."""
+
+    feed_label: str | None = None
 
 
 class ListenerSetupView(View):
@@ -37,12 +45,7 @@ class ListenerSetupView(View):
         self.horizontal_line = header_line()
 
         info_font = load_font(size=44, family=FontFamily.PIXEL_TYPE)
-        info_lines = [
-            f"{self._feed_label} sends telemetry to an address you",
-            "configure in its own settings, rather than the other",
-            "way around. Enter the address below there, then",
-            "press Continue.",
-        ]
+        info_lines = self._info_lines()
 
         self.info_labels = []
         x = self._w // 8 - su(4)
@@ -143,11 +146,37 @@ class ListenerSetupView(View):
         self.status_label.set_text(text)
         if text:
             self.error_label.set_text("")
+        self.release_presses(self.ui_layer, self.btns)
 
     def set_error(self, text: str):
         self.error_label.set_text(text)
         if text:
             self.status_label.set_text("")
+
+    # ------------------------------------------------------------------
+    # context
+    # ------------------------------------------------------------------
+    def _info_lines(self) -> list[str]:
+        return [
+            f"{self._feed_label} sends telemetry to an address you",
+            "configure in its own settings, rather than the other",
+            "way around. Enter the address below there, then",
+            "press Continue.",
+        ]
+
+    def reset(self, ctx=None) -> None:
+        ctx = ctx or ListenerSetupContext()
+        self._feed_label = ctx.feed_label or "your game"
+        rendered = [line for line in self._info_lines() if line]
+        for label, text in zip(self.info_labels, rendered):
+            label.set_text(text)
+
+        # A failed install / no-network error from a previous visit
+        # would otherwise still be on screen before the state writes
+        # anything of its own.
+        self.status_label.set_text("")
+        self.error_label.set_text("")
+        self.address_label.set_text("")
 
     def draw_static_elements(self, background_surface):
         self.horizontal_line.draw(background_surface)

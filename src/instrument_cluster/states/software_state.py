@@ -17,28 +17,14 @@ class SoftwareState(State):
     # the (destructive, irreversible) reset. No tap within the window disarms.
     FACTORY_RESET_ARM_TIMEOUT_S = 5.0
 
+    view_class = SoftwareView
+
     def __init__(self, state_manager: StateManager | None = None):
         super().__init__(state_manager)
         self.logger = Logger(__class__.__name__).get()
 
-        self.view = SoftwareView()
         # >0 while the factory-reset row is armed; counts down in update().
         self._factory_reset_armed_s = 0.0
-
-    def background_color(self):
-        return self.view.background_color
-
-    def create_group(self):
-        return None
-
-    def draw_static_background(self, bg):
-        self.view.draw_static_elements(bg)
-
-    def full_paint(self, surface):
-        self.view.full_paint(surface, self.background)
-
-    def draw(self, surface):
-        return self.view.draw(surface, self.background)
 
     def update(self, dt):
         super().update(dt)
@@ -89,7 +75,9 @@ class SoftwareState(State):
         if self._factory_reset_armed_s > 0.0:
             self.logger.debug("Factory reset disarmed")
         self._factory_reset_armed_s = 0.0
-        self.view.set_factory_reset_armed(False)
+        # exit() disarms, and it can run before enter() ever borrowed a view.
+        if self.view is not None:
+            self.view.set_factory_reset_armed(False)
 
     def _perform_factory_reset(self):
         # Imported lazily so importing SoftwareState never pulls the reset

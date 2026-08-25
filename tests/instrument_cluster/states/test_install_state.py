@@ -54,6 +54,8 @@ def test_auto_start_says_it_is_updating(screen):
         ip="1.2.3.4",
         auto_start=True,
     )
+    # A state has no view until enter() borrows one from the ViewRegistry.
+    state.enter(screen)
     text = " ".join(lbl.text for lbl in state.view.info_labels)
 
     assert "Press Install" not in text

@@ -19,6 +19,12 @@ class StateManager(SupportsStateChange):
         self.vehicle_bus = vehicle_bus
         self._stack: list[State] = []
         self._pending_rects: list[pygame.Rect] = []
+        # One screen-sized background for every state, instead of one per
+        # entry. Safe because every state repaints it on enter() *and* on
+        # on_resume() — a stacked state's dirty-rect restore source is
+        # re-derived when it comes back, never inherited from the screen
+        # that covered it.
+        self._background: pygame.Surface | None = None
 
         if initial_state is not None:
             self.push_state(initial_state)
@@ -72,6 +78,13 @@ class StateManager(SupportsStateChange):
             return rects
 
         return s.draw(surface) or []
+
+    def background(self, color) -> pygame.Surface:
+        """The shared background, filled with `color`. Allocated once."""
+        if self._background is None:
+            self._background = pygame.Surface(self._screen.get_size()).convert()
+        self._background.fill(color)
+        return self._background
 
     def request_full_paint(self):
         """Repaint the whole active state on the next draw — used by the

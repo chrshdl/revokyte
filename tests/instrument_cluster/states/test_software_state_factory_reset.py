@@ -48,6 +48,8 @@ def _make_state():
     manager = _FakeStateManager()
     state = SoftwareState(manager)
     manager.state = state
+    # A state has no view until enter() borrows one from the ViewRegistry.
+    state.enter(pygame.Surface((1280, 720)))
     return state
 
 
@@ -126,9 +128,10 @@ def test_reset_failure_does_not_propagate(config_path, monkeypatch):
 
 def test_enter_runs_the_full_state_contract(config_path):
     # SoftwareState must satisfy everything State.enter() calls
-    # (background_color, draw_static_background, create_group) — the
-    # missing create_group shipped as an on-device crash when the
-    # Software row was first pressed.
+    # (background_color, draw_static_background). Both now live on the base
+    # and delegate to the view, so a state can no longer forget one — this
+    # used to be an on-device crash the first time the Software row was
+    # pressed, and the test stays as the guard on that contract.
     import pygame
 
     state = _make_state()

@@ -23,7 +23,7 @@ from ..ui.events import (
     INSTALL_PRESSED,
     INSTALL_RELEASED,
 )
-from ..ui.views.install_view import InstallView
+from ..ui.views.install_view import InstallContext, InstallView
 
 if TYPE_CHECKING:
     from ..addons.feeds import FeedDescriptor
@@ -95,6 +95,8 @@ def _resolve_pinned_url(descriptor: FeedDescriptor) -> str:
 
 
 class InstallState(State):
+    view_class = InstallView
+
     """
     Downloads and installs a telemetry feed's self-contained tarball, as
     described by the given FeedDescriptor (game-neutral — see addons/feeds.py).
@@ -116,36 +118,23 @@ class InstallState(State):
         # notice's "Update now"). Asking again would be a second
         # confirmation for one choice, so the screen only reports progress.
         self.auto_start = bool(auto_start)
-        self.view = InstallView(
-            feed_label=descriptor.label if descriptor else None,
-            updating=self.auto_start,
-        )
 
         self._is_installing: bool = False
         self._install_thread: threading.Thread | None = None
         self._install_result: InstallResult | None = None
         self._install_exception: Exception | None = None
 
+    def view_context(self):
+        return InstallContext(
+            feed_label=self.descriptor.label if self.descriptor else None,
+            updating=self.auto_start,
+        )
+
     def enter(self, screen):
         rects = super().enter(screen)
         if self.auto_start:
             self._start_install()
         return rects
-
-    def background_color(self):
-        return self.view.background_color
-
-    def draw_static_background(self, bg):
-        self.view.draw_static_elements(bg)
-
-    def create_group(self):
-        return None
-
-    def full_paint(self, surface):
-        self.view.full_paint(surface, self.background)
-
-    def draw(self, surface):
-        return self.view.draw(surface, self.background)
 
     def update(self, dt):
         super().update(dt)

@@ -39,6 +39,12 @@ from .base import View
 from .header import corner_button, header_line, header_title
 from .setup_rows import row_button, row_icon, row_label
 
+def _entry_text(entry) -> str:
+    """An extension row's label. Callable button_text is re-evaluated on every
+    entry to the screen, which is the whole point of allowing a callable."""
+    return entry.button_text() if callable(entry.button_text) else entry.button_text
+
+
 class SetupView(View):
     STEP_PERCENT = 10
     DIFF_REFERENCE_OPTIONS = [DiffReferenceMode.PREVIOUS, DiffReferenceMode.FASTEST]
@@ -203,16 +209,13 @@ class SetupView(View):
         # window the OS owns both; the widgets above are still built so
         # SetupState can address them unconditionally.
         on_pi = is_raspberry_pi()
-        # A feed left behind by an earlier image is flagged on the row that
-        # re-installs it — picking the game again runs the install flow.
-        stale = feed_needs_reinstall(
-            config.telemetry_feed, config.telemetry_feed_version
-        )
-        telemetry_label = "Telemetry Mode"
-        if config.telemetry_mode != TelemetryMode.DEMO.value and stale is not None:
-            telemetry_label = "Telemetry (update)"
+        self._telemetry_caption = row_label(self._telemetry_label_text(config))
         row_contents = [
-            (Icon.TELEMETRY_MODE.glyph(), telemetry_label, self.telemetry_mode_dropdown)
+            (
+                Icon.TELEMETRY_MODE.glyph(),
+                self._telemetry_caption,
+                self.telemetry_mode_dropdown,
+            )
         ]
         if on_pi:
             row_contents.append((Icon.BRIGHTNESS.glyph(), "Brightness", self.brightness_widget))
@@ -234,31 +237,31 @@ class SetupView(View):
             ),
         )
         row_contents.append((Icon.SOFTWARE.glyph(), "Software", self.software_button))
+        # Held as (entry, button) pairs: button_text may be a callable that is
+        # re-evaluated on every entry to Setup (an extension's licence row
+        # reads its tier that way), and a pooled view would otherwise show
+        # whatever it said at boot forever.
+        self._extension_rows = []
         for entry in extensions.setup_entries:
-            text = (
-                entry.button_text()
-                if callable(entry.button_text)
-                else entry.button_text
+            button = row_button(
+                text=_entry_text(entry),
+                icon=Icon.CHEVRON_RIGHT.glyph(),
+                events=ButtonEvents(
+                    pressed=entry.pressed,
+                    released=entry.released,
+                ),
             )
-            row_contents.append(
-                (
-                    entry.icon,
-                    entry.label,
-                    row_button(
-                        text=text,
-                        icon=Icon.CHEVRON_RIGHT.glyph(),
-                        events=ButtonEvents(
-                            pressed=entry.pressed,
-                            released=entry.released,
-                        ),
-                    ),
-                )
-            )
+            self._extension_rows.append((entry, button))
+            row_contents.append((entry.icon, entry.label, button))
         s = active_skin().setup
         self.rows = ListItemGroup(
             ListItem(
                 y=s.row_top + i * s.row_pitch,
-                widgets=[row_icon(icon), row_label(text), control],
+                widgets=[
+                    row_icon(icon),
+                    text if not isinstance(text, str) else row_label(text),
+                    control,
+                ],
             )
             for i, (icon, text, control) in enumerate(row_contents)
         )
@@ -291,6 +294,57 @@ class SetupView(View):
                 menu_layer=Dropdown.DROPDOWN_MENU_LAYER,
                 open_header_layer=Dropdown.DROPDOWN_HEADER_OPEN_LAYER,
             )
+
+    # ------------------------------------------------------------------
+    # per-entry rebinding
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _telemetry_label_text(config) -> str:
+        # A feed left behind by an earlier image is flagged on the row that
+        # re-installs it — picking the game again runs the install flow.
+        stale = feed_needs_reinstall(
+            config.telemetry_feed, config.telemetry_feed_version
+        )
+        if config.telemetry_mode != TelemetryMode.DEMO.value and stale is not None:
+            return "Telemetry (update)"
+        return "Telemetry Mode"
+
+    def reset(self, ctx=None) -> None:
+        """Make this view indistinguishable from a freshly built one.
+
+        Everything here is state the *previous* visit left behind, or config
+        that changed while Setup was closed — the install flow writes the
+        telemetry mode and feed, and an extension's row label tracks live
+        state. A pooled view shows all of it stale otherwise.
+        """
+        config = ConfigManager.get_config()
+
+        self.close_dropdowns()
+        self.release_presses(self.ui_layer, self.rows_layer)
+        self.scrollbar.reset()
+        self.rows.scroll_to(0.0)
+
+        self._telemetry_caption.set_text(self._telemetry_label_text(config))
+
+        options = self.telemetry_mode_dropdown.options
+        selection = current_choice(
+            options, config.telemetry_mode, config.telemetry_feed
+        )
+        if selection in options:
+            self.telemetry_mode_dropdown.set_selected_index(options.index(selection))
+
+        diff_mode = DiffReferenceMode(config.diff_reference_mode)
+        if diff_mode in self.DIFF_REFERENCE_OPTIONS:
+            self.diff_reference_mode_dropdown.set_selected_index(
+                self.DIFF_REFERENCE_OPTIONS.index(diff_mode)
+            )
+
+        self.status_lights_toggle.set_checked(config.status_lights)
+        self.shift_lights_toggle.set_checked(config.shift_lights)
+        self.set_brightness_text(config.brightness)
+
+        for entry, button in self._extension_rows:
+            button.set_text(_entry_text(entry))
 
     def set_brightness_text(self, value):
         self.brightness_widget.set_percent(value)

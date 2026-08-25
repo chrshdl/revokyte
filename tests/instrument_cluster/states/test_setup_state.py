@@ -33,6 +33,8 @@ def _make_state() -> SetupState:
     manager = _FakeStateManager()
     state = SetupState(manager)
     manager.state = state
+    # A state has no view until enter() borrows one from the ViewRegistry.
+    state.enter(pygame.Surface((1280, 720)))
     return state
 
 

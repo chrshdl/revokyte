@@ -59,3 +59,18 @@ def reset_config_manager():
     ConfigManager.reset()
     yield
     ConfigManager.reset()
+
+
+@pytest.fixture(autouse=True)
+def reset_view_registry():
+    """Drop every pooled view before and after each test.
+
+    Views resolve active_skin() at construction, so a view cached from a test
+    that used the force_profile fixture would hand the wrong panel geometry to
+    the next test. Same reasoning as reset_config_manager above.
+    """
+    from instrument_cluster.ui.views.registry import views
+
+    views.clear()
+    yield
+    views.clear()

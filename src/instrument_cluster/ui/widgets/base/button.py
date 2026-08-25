@@ -82,6 +82,20 @@ class AbstractButton(DirtySprite):
     def draw(self, surface: pygame.Surface) -> None:
         raise NotImplementedError("draw() must be overridden.")
 
+    def release_press(self) -> None:
+        """Drop any in-flight press without firing an event.
+
+        A transition triggered from a button's own released handler leaves
+        that button visually pressed (and, for a long-press, mid-count).
+        Views outlive the state that was on screen, so the next visit would
+        open with a stuck-looking control.
+        """
+        if self.state is not ButtonState.IDLE:
+            self.state = ButtonState.IDLE
+        self._active_pointer = None
+        self._pressed_time = 0.0
+        self._long_fired = False
+
     def is_pressed(self) -> bool:
         # Treat LONGPRESSED as pressed for visuals.
         return self.state in (ButtonState.PRESSED, ButtonState.LONGPRESSED)

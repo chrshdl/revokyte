@@ -3,6 +3,7 @@ appliance, configure the in-process reader on desktop."""
 
 import json
 
+import pygame
 import pytest
 
 from instrument_cluster.addons.feeds import feed_by_id
@@ -36,6 +37,8 @@ def isolated_config(tmp_path):
 def _make_state(descriptor):
     manager = _FakeStateManager()
     state = EnterIPState(state_manager=manager, descriptor=descriptor)
+    # A state has no view until enter() borrows one from the ViewRegistry.
+    state.enter(pygame.Surface((1280, 720)))
     return manager, state
 
 

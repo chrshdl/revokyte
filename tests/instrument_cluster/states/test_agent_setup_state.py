@@ -108,3 +108,25 @@ def test_exit_closes_the_pairing_window(monkeypatch):
     state.exit()
     assert _Server.stopped
     assert state._server is None
+
+
+def test_a_worker_that_finishes_after_the_user_left_does_not_write_to_the_view():
+    """The pairing worker runs off the UI thread and is not joined on exit.
+    The view is pooled for the life of the process, so a late write would
+    land on whatever screen is showing now — or on this screen's next visit,
+    after reset() had already cleared it."""
+    import pygame
+
+    from instrument_cluster.addons.feeds import feed_by_id
+
+    state = AgentSetupState(state_manager=None, descriptor=feed_by_id("acc"))
+    state.enter(pygame.Surface((1280, 720)))
+    view = state.view
+
+    state.exit()
+    view.set_error("")
+
+    # The worker finishes now, long after the screen was left.
+    state._publish("set_error", "Download failed: connection reset")
+
+    assert view.error_label.text == "", "a departed state must not paint"

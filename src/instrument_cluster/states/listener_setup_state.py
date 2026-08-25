@@ -9,7 +9,7 @@ from ..states.install_state import InstallState
 from ..states.state import State
 from ..telemetry.mode import TelemetryMode
 from ..ui.events import BUTTON_BACK_RELEASED, LISTENER_CONTINUE_RELEASED
-from ..ui.views.listener_setup_view import ListenerSetupView
+from ..ui.views.listener_setup_view import ListenerSetupContext, ListenerSetupView
 
 if TYPE_CHECKING:
     from ..addons.feeds import FeedDescriptor
@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 
 
 class ListenerSetupState(State):
+    view_class = ListenerSetupView
+
     """Setup screen for a feed that listens rather than connects out.
 
     Some games (Forza Horizon 6's "Data Out") push telemetry to whatever
@@ -42,19 +44,12 @@ class ListenerSetupState(State):
     ):
         super().__init__(state_manager)
         self.descriptor = descriptor
-        self.view = ListenerSetupView(
-            feed_label=descriptor.label if descriptor else None
-        )
         self._ip = ""
 
-    def background_color(self):
-        return self.view.background_color
-
-    def draw_static_background(self, bg):
-        self.view.draw_static_elements(bg)
-
-    def create_group(self):
-        return None
+    def view_context(self):
+        return ListenerSetupContext(
+            feed_label=self.descriptor.label if self.descriptor else None
+        )
 
     def enter(self, screen):
         rects = super().enter(screen)
@@ -65,12 +60,6 @@ class ListenerSetupState(State):
             self.view.set_address(f"{self._ip}:{self.descriptor.listener_port}")
             self.view.set_status("Enter this address, then press Continue")
         return rects
-
-    def full_paint(self, surface):
-        self.view.full_paint(surface, self.background)
-
-    def draw(self, surface):
-        return self.view.draw(surface, self.background)
 
     def update(self, dt):
         super().update(dt)

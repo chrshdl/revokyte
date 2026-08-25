@@ -20,6 +20,7 @@ from .telemetry.mode import TelemetryMode
 from .ui.feed_update_window import FeedUpdateWindow
 from .ui.no_signal_window import NoSignalWindow
 from .ui.wifi_status_window import WifiStatusWindow
+from .ui.views.registry import core_views, views
 from .ui.window_layering import WindowManager
 
 logger = Logger("InstrumentClusterOS").get()
@@ -132,6 +133,19 @@ def run(conf: Config) -> None:
             plugin_manager=plugin_manager,
         )
         plugin_manager.load_plugins()
+
+        # Build every view before the first frame, so no screen transition
+        # ever allocates one. This is the whole point of the ViewRegistry:
+        # view surfaces are allocated in C by SDL, invisible to a collector
+        # driven by Python object counts, so per-transition churn used to
+        # accumulate unseen and then cost a ~1 s gen-2 collection at an
+        # arbitrary moment — potentially mid-corner. After extensions.load()
+        # so extension-declared views (when that lands) join the same pass.
+        #
+        # Measured at ~115 ms added on a Pi 4, under 1% of boot. If a future
+        # view is heavy enough to change that, delete this line: acquire()
+        # falls back to building on first use.
+        views.preload(core_views())
 
         # Wi-Fi never gates the dashboard. With credentials provisioned the
         # boot goes straight to the gauges and association completes in the
