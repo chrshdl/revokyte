@@ -294,6 +294,11 @@ wheels = [
 ]
 
 [[package]]
+name = "fh6-telemetry"
+version = "0.1.0"
+source = { git = "https://github.com/chrshdl/forza-horizon-6?rev=v0.1.0#8358b134adbcf4cb4f68c3de047c04768c8cf7fd" }
+
+[[package]]
 name = "fonttools"
 version = "4.63.0"
 source = { registry = "https://pypi.org/simple" }
@@ -362,6 +367,7 @@ dependencies = [
 [package.optional-dependencies]
 pc = [
     { name = "acc-telemetry" },
+    { name = "fh6-telemetry" },
     { name = "granturismo" },
 ]
 
@@ -380,6 +386,7 @@ dev = [
 requires-dist = [
     { name = "acc-telemetry", marker = "extra == 'pc'", git = "https://github.com/chrshdl/assettocorsa?rev=v0.1.4" },
     { name = "cryptography", specifier = ">=44.0.0" },
+    { name = "fh6-telemetry", marker = "extra == 'pc'", git = "https://github.com/chrshdl/forza-horizon-6?rev=v0.1.0" },
     { name = "granturismo", marker = "extra == 'pc'", git = "https://github.com/chrshdl/granturismo?rev=v0.3.18" },
     { name = "numpy", specifier = ">=2.4.2" },
     { name = "pydantic", specifier = ">=2.11.7" },
