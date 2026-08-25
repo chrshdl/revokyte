@@ -76,6 +76,12 @@ class SetupEntry:
     make_state: Callable[[Any], Any]  # state_manager -> State
     pressed: int = field(default_factory=pygame.event.custom_type)
     released: int = field(default_factory=pygame.event.custom_type)
+    # The view the row's screen needs, when that view is registry-owned.
+    # Declared rather than derived: make_state() is a callable, so the only
+    # way to learn the dependency without constructing the state is to be
+    # told. If the view fails to build, the row is dropped instead of
+    # becoming a button that opens nothing (see drop_rows_missing_views).
+    view_class: type | None = None
 
 
 class ExtensionRuntime:
@@ -98,6 +104,10 @@ class ExtensionRuntime:
         self.setup_entries: list[SetupEntry] = []
         self.software_entries: list[SetupEntry] = []
         self.version_entries: list[tuple[str, str | Callable[[], str]]] = []
+        # View classes an extension wants the ViewRegistry to own. Collected
+        # during wire() and preloaded with the core set, so the registry still
+        # knows its whole view set before the first frame.
+        self.view_classes: list[type] = []
 
     @property
     def active(self) -> bool:
@@ -109,6 +119,16 @@ class ExtensionRuntime:
         """``processor.update() -> dict`` merged into bus.signals every
         frame; ``processor.stop()`` (optional) called at shutdown."""
         self._signal_processors.append(processor)
+
+    def register_views(self, classes) -> None:
+        """Hand view classes to the ViewRegistry.
+
+        Called from wire(). The registry preloads these alongside the core
+        views once every extension has wired, which is the only moment the
+        full view set is known: discovery is entry-point based, so the app
+        learns what it has to build by executing extension code.
+        """
+        self.view_classes.extend(classes)
 
     def add_setup_entry(self, entry: SetupEntry) -> None:
         self.setup_entries.append(entry)
@@ -153,6 +173,7 @@ class ExtensionRuntime:
             entries_before = len(self.setup_entries)
             software_before = len(self.software_entries)
             versions_before = len(self.version_entries)
+            views_before = len(self.view_classes)
             try:
                 wire(self)
                 self.loaded.append(name)
@@ -165,6 +186,37 @@ class ExtensionRuntime:
                 del self.setup_entries[entries_before:]
                 del self.software_entries[software_before:]
                 del self.version_entries[versions_before:]
+                del self.view_classes[views_before:]
+
+    def drop_rows_missing_views(self, failed) -> list[SetupEntry]:
+        """Remove Setup/Software rows whose screen cannot be built.
+
+        The rollback in load() cannot cover this: it works at wire()
+        granularity, and a view's build() failure happens later, once the
+        registry preloads. Without this a fail-open registry leaves a row on
+        screen that opens a blank state — worse than the row being absent,
+        because the driver taps it and nothing happens.
+
+        Returns the dropped entries, so the caller can log what a broken
+        image cost the user.
+        """
+        failed = set(failed)
+        if not failed:
+            return []
+
+        dropped = []
+        for rows in (self.setup_entries, self.software_entries):
+            kept = [e for e in rows if e.view_class not in failed]
+            dropped.extend(e for e in rows if e.view_class in failed)
+            rows[:] = kept
+
+        for entry in dropped:
+            self.logger.error(
+                "Dropping the '%s' row: its view %s failed to build",
+                entry.label,
+                entry.view_class.__name__,
+            )
+        return dropped
 
     def update_signals(self) -> dict:
         """Poll every registered processor; one crashing must not stall

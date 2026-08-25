@@ -8,6 +8,7 @@ import pygame
 from .addons.feeds import feed_needs_reinstall
 from .config import Config, ConfigManager
 from .core.plugin_system.plugin_manager import PluginManager
+from .core.system import unhealthy
 from .core.system.wifi_manager import WifiManager
 from .core.vehicle.vehicle_bus import VehicleBus
 from .extensions import runtime as extensions
@@ -145,7 +146,13 @@ def run(conf: Config) -> None:
         # Measured at ~115 ms added on a Pi 4, under 1% of boot. If a future
         # view is heavy enough to change that, delete this line: acquire()
         # falls back to building on first use.
-        views.preload(core_views())
+        # Extension-declared views join the same pass: discovery is
+        # entry-point based, so this is the first moment the full view set is
+        # known. A view that fails takes its Setup row with it — fail-open
+        # must not leave a button that opens nothing.
+        unhealthy.clear()
+        views.preload(core_views() + tuple(extensions.view_classes))
+        extensions.drop_rows_missing_views(views.failed)
 
         # Wi-Fi never gates the dashboard. With credentials provisioned the
         # boot goes straight to the gauges and association completes in the

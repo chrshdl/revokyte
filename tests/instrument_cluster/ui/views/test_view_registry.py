@@ -130,3 +130,31 @@ def test_every_core_view_builds_and_resets():
 
     for cls in classes:
         registry.acquire(cls).reset(None)
+
+
+# --------------------------------------------------------------------------
+# The OTA health-check link (§6)
+# --------------------------------------------------------------------------
+def test_a_failed_view_is_published_for_the_health_check(registry, tmp_path, monkeypatch):
+    """Fail-open keeps the dashboard up, which on its own would let a broken
+    update be marked good and never roll back. The marker is what stops
+    that: the health check withholds mark-good while it is non-empty."""
+    from instrument_cluster.core.system import unhealthy
+
+    marker = str(tmp_path / "unhealthy")
+    monkeypatch.setattr(unhealthy, "MARKER", marker)
+
+    registry.acquire(_BrokenView)
+
+    assert unhealthy.reasons(marker) == ["view _BrokenView failed to build"]
+
+
+def test_a_healthy_build_publishes_nothing(registry, tmp_path, monkeypatch):
+    from instrument_cluster.core.system import unhealthy
+
+    marker = str(tmp_path / "unhealthy")
+    monkeypatch.setattr(unhealthy, "MARKER", marker)
+
+    registry.preload([_FakeView])
+
+    assert unhealthy.reasons(marker) == []
