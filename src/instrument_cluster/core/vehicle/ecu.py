@@ -331,6 +331,16 @@ class ShiftLightController:
             shift_rpm = min(optimal, float(self.engine.redline) - 40.0)
         else:
             shift_rpm = float(self.engine.redline) - 40.0
+
+        # rev_limiter_alert_active (the game's own red-zone flag) can fire
+        # independently of our threshold ramp above. Limit the top of the
+        # window to rpm_alert.min where that flag actually turns on so
+        # the last LED pair always has room to light before the alert
+        # preempts it (otherwise the ramp can jump straight from pair 3 to
+        # full blink, skipping pair 4 entirely).
+        if frame.rpm_alert is not None and frame.rpm_alert.min > 0:
+            shift_rpm = min(shift_rpm, float(frame.rpm_alert.min))
+
         self._target_rpm = shift_rpm
 
         if (

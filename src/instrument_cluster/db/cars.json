@@ -525,7 +525,7 @@
         "max_power_rpm": 6400,
         "max_torque_nm": 158,
         "max_torque_rpm": 5200,
-        "redline_rpm": 7400
+        "redline_rpm": 7800
     },
     "931": {
         "name": "Lancer Evolution III GSR '95",

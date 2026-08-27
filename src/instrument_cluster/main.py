@@ -20,8 +20,8 @@ from .states.state_manager import StateManager
 from .telemetry.mode import TelemetryMode
 from .ui.feed_update_window import FeedUpdateWindow
 from .ui.no_signal_window import NoSignalWindow
-from .ui.wifi_status_window import WifiStatusWindow
 from .ui.views.registry import core_views, views
+from .ui.wifi_status_window import WifiStatusWindow
 from .ui.window_layering import WindowManager
 
 logger = Logger("InstrumentClusterOS").get()

@@ -168,6 +168,7 @@ class ShiftLights:
             f"Controller loaded for car {frame.car_id}: "
             f"{car_data.get('name', 'Unknown')}"
         )
+        self.logger.info(f"Redline RPM: {car_data.get('redline_rpm', 'Unknown')}")
 
     def _force_render_next_frame(self):
         """Invalidates the cache to ensure the next update pushes to hardware."""
