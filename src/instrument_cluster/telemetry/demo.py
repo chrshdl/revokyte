@@ -10,6 +10,15 @@ SHIFT_INTERVAL = 5.0  # seconds between gear changes
 SHIFT_PRE = 0.2  # seconds before change to show in_gear = False
 
 
+# Demo used to send no car_id and no gear_ratios, so the shift lights fell all
+# the way back to the generic profile with no shift-point calculator at all —
+# the LED ladder was the one gauge the demo could not show. A car id is enough
+# to route through the local car table, which is the honest path for a local
+# reader (a wire `engine` object is a sender's job).
+_DEMO_CAR_ID = 2149  # Mercedes-AMG GT S '15, in cars.json
+_DEMO_GEAR_RATIOS = [3.4, 2.19, 1.63, 1.29, 1.03, 0.84]
+
+
 class DemoReader:
     def __init__(self):
         self._t0 = time.perf_counter()
@@ -22,7 +31,7 @@ class DemoReader:
         # of the boot's import phase) and this module is imported eagerly via
         # signal_pipeline — deferring keeps pydantic off the critical path
         # until the first frame is actually built, after the first paint.
-        from .models import Bounds, Flags, TelemetryFrame, Wheel, Wheels
+        from .models import Bounds, Engine, Flags, TelemetryFrame, Wheel, Wheels
 
         t = time.perf_counter() - self._t0
         speed = max(0.0, 36.0 + 36.0 * math.sin(2 * math.pi * (t / 20.0)))  # 38.62
@@ -66,6 +75,7 @@ class DemoReader:
 
         return TelemetryFrame(
             received_time=time.time_ns(),
+            car_id=_DEMO_CAR_ID,
             car_speed=speed,
             engine_rpm=rpm,
             current_gear=gear,
@@ -78,6 +88,7 @@ class DemoReader:
             flags=flags,
             rpm_alert=rpm_alert,
             wheels=wheels,
+            gear_ratios=_DEMO_GEAR_RATIOS,
         )
 
     def stop(self) -> None:
