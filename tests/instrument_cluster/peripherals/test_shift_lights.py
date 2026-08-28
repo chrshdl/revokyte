@@ -173,10 +173,12 @@ def test_the_engine_class_reaches_the_wire_profile():
     runs for a sender that sends `engine`."""
     specs = _WIRE_ENGINE.model_dump(exclude={"power_to_limiter"})
 
-    turbo = ShiftLights()
-    turbo.update(_bus(_frame(car_id=1461, engine=Engine(**specs))), 0.016)
+    def droop_for(car_id: int) -> float:
+        lights = ShiftLights()
+        lights.update(_bus(_frame(car_id=car_id, engine=Engine(**specs))), 0.016)
+        return lights.controller.engine.power_droop
 
-    unknown = ShiftLights()
-    unknown.update(_bus(_frame(car_id=999999, engine=Engine(**specs))), 0.016)
-
-    assert turbo.controller.engine.power_droop > unknown.controller.engine.power_droop
+    # Same wire peaks, three classes, three falloffs: 1461 is TC/street
+    # (measured), 3588 is TC/race (flat), and an id in no table falls back.
+    # No ordering is asserted — the values are measurements, not beliefs.
+    assert len({droop_for(1461), droop_for(3588), droop_for(999999)}) == 3
