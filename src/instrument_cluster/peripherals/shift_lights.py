@@ -4,8 +4,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..config import ConfigManager
-from ..core.vehicle.car_profiler import CarLibrary
-from ..core.vehicle.ecu import ShiftLightController
+from ..core.vehicle.car_profiler import CarClassLibrary, CarLibrary
+from ..core.vehicle.ecu import ShiftLightController, power_droop_for
 from ..core.vehicle.vehicle_bus import VehicleBus
 from ..logger import Logger
 
@@ -25,6 +25,12 @@ class ShiftLights:
         cars_path = DATA_DIR / "cars.json"
 
         self.car_library = CarLibrary(filepath=cars_path)
+        # Engine class is looked up for *every* car, including the ones whose
+        # peaks arrive on the wire: the sender supplies the curve's peaks, this
+        # supplies its shape.
+        self.car_class_library = CarClassLibrary(
+            filepath=DATA_DIR / "car_classes.json"
+        )
 
         # Identity of the specs the current controller was built from:
         # (car_id, engine-curve tuple or None, rev limiter). Wire-supplied
@@ -165,13 +171,27 @@ class ShiftLights:
             }
         else:
             car_data = self.car_library.get_specs(frame.car_id)
+
+        # The falloff past the power peak comes from the car's class, on both
+        # paths: the wire's four peaks cannot express it, and a sender that
+        # does know says so with power_to_limiter, which still wins.
+        car_class = self.car_class_library.get_class(frame.car_id) or {}
+        car_data["power_droop"] = power_droop_for(
+            car_class.get("aspiration"),
+            car_class.get("car_type"),
+            car_data["max_power_rpm"],
+        )
+
         self.controller = ShiftLightController(**car_data)
         self._profile_key = profile_key
         self._force_render_next_frame()
 
         self.logger.info(
             f"Controller loaded for car {frame.car_id}: "
-            f"{car_data.get('name', 'Unknown')}"
+            f"{car_data.get('name', 'Unknown')} "
+            f"[{car_class.get('aspiration') or '??'}/"
+            f"{car_class.get('car_type') or '??'}, "
+            f"droop {self.controller.engine.power_droop:.2f}]"
         )
         self.logger.info(f"Redline RPM: {car_data.get('redline_rpm', 'Unknown')}")
 

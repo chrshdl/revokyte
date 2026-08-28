@@ -15,12 +15,72 @@ _TORQUE_LOW_BLEND_BASE: float = 0.4  # fraction of max torque at rpm=0
 _TORQUE_LOW_BLEND_SLOPE: float = (
     0.6  # additional fraction gained linearly to peak-torque rpm
 )
-# Power lost per unit of over-rev past the power peak: 0.5 means an engine spun
-# 20% beyond its power peak still makes 90% of peak power. Deliberately relative
-# to max_power_rpm and never to the redline — cars.json's redline_rpm column is
-# fabricated (every row is exactly max_power_rpm + 1000), so a redline-anchored
-# falloff lets invented data reshape a real car's curve.
-_POWER_DROOP_PER_OVERREV: float = 0.5
+# How fast power falls away past the peak, the one thing the four peak numbers
+# on the wire cannot say. Stated as *power retained at a reference over-rev*
+# because that is what a dyno measures and what the class priors below were
+# calibrated as; the droop the curve uses is derived from it.
+#
+# The reference is a fixed constant, never the car's own limiter: the shape
+# must stay anchored on max_power_rpm, since cars.json's redline_rpm column is
+# fabricated (539 of 540 rows are exactly max_power_rpm + 1000) and a
+# redline-anchored falloff lets invented data reshape a real car's curve.
+_REFERENCE_OVER_REV: float = 0.20
+
+# Priors by engine class (see db/car_classes.json). A turbocharged road engine
+# is off its efficiency island well before the limiter and falls off a cliff; a
+# BOP'd race engine is built to be shifted at the limiter and barely droops at
+# all; a high-revving NA sits between them. Seed values: they are priors, and
+# tools/dyno/ is what replaces them with numbers measured off a real car.
+_RETENTION_RACE: float = 1.00  # flat — the shift-cost margin holds it in gear
+_RETENTION_NA_HIGH_REV: float = 0.90  # peak above _HIGH_REV_RPM: VTEC and kin
+_RETENTION_NA: float = 0.84
+_RETENTION_SUPERCHARGED: float = 0.82
+_RETENTION_TURBO: float = 0.74
+# Unknown car, unknown class (non-GT7 feeds, a car missing from the table):
+# the assumption this model made for every car before the classes existed.
+_RETENTION_DEFAULT: float = 0.90
+
+# An NA engine whose power peaks at or above this revs for a living, and holds
+# power past the peak the way a short-stroke race engine does.
+_HIGH_REV_RPM: float = 7000.0
+
+
+def _droop(retention: float) -> float:
+    """Power lost per unit of over-rev, from power retained at the reference."""
+    return max(0.0, (1.0 - retention) / _REFERENCE_OVER_REV)
+
+
+_DEFAULT_POWER_DROOP: float = _droop(_RETENTION_DEFAULT)
+
+
+def power_droop_for(
+    aspiration: str | None,
+    car_type: str | None,
+    max_power_rpm: float,
+) -> float:
+    """Falloff for one car's engine class (db/car_classes.json fields).
+
+    Either field may be None or empty — an unknown car, or a feed for a game
+    with no class table — in which case the historical default applies.
+    """
+    aspiration = (aspiration or "").upper()
+    car_type = (car_type or "").lower()
+
+    if aspiration == "EV":
+        # No over-rev region worth modelling, and single-speed anyway: there
+        # is no upshift to compute, so the curve never decides anything.
+        return 0.0
+    if car_type == "race":
+        return _droop(_RETENTION_RACE)
+    if aspiration in ("TC", "TC+SC"):
+        return _droop(_RETENTION_TURBO)
+    if aspiration == "SC":
+        return _droop(_RETENTION_SUPERCHARGED)
+    if aspiration == "NA":
+        if max_power_rpm >= _HIGH_REV_RPM:
+            return _droop(_RETENTION_NA_HIGH_REV)
+        return _droop(_RETENTION_NA)
+    return _DEFAULT_POWER_DROOP
 
 # An upshift costs ~0.15 s of zero thrust, so the true break-even genuinely
 # favours staying in gear — and under flat power the bare crossover is
@@ -128,12 +188,20 @@ class EngineModel:
         max_torque_rpm,
         redline_rpm,
         power_to_limiter: bool = False,
+        power_droop: float | None = None,
     ):
         self.redline = redline_rpm
         # A sender that knows the engine holds power to the limiter turns the
         # droop off entirely; the shift-cost margin then keeps every gear at
-        # the limiter, which is where race cars are actually shifted.
-        self.power_droop = 0.0 if power_to_limiter else _POWER_DROOP_PER_OVERREV
+        # the limiter, which is where race cars are actually shifted. It wins
+        # over the class prior: the sender knows this car, the table only
+        # knows its class.
+        if power_to_limiter:
+            self.power_droop = 0.0
+        elif power_droop is not None:
+            self.power_droop = float(power_droop)
+        else:
+            self.power_droop = _DEFAULT_POWER_DROOP
         self.max_power_rpm = max_power_rpm
         self.max_torque_rpm = max_torque_rpm
         self.max_torque_nm = max_torque_nm
@@ -250,6 +318,7 @@ class ShiftLightController:
         max_torque_rpm=6500,
         redline_rpm=9000,
         power_to_limiter: bool = False,
+        power_droop: float | None = None,
         shiftlight_fractions: list[float] | None = None,
         filter_window: int = 3,
     ):
@@ -260,6 +329,7 @@ class ShiftLightController:
             max_torque_rpm,
             redline_rpm,
             power_to_limiter,
+            power_droop,
         )
         self.calculator: ShiftPointCalculator | None = None
         self.last_gear_ratios = None

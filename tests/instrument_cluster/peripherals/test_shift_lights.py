@@ -163,3 +163,20 @@ def test_a_power_to_limiter_engine_reaches_the_controller():
     lights.update(_bus(_frame(engine=Engine(**specs, power_to_limiter=False))), 0.016)
     assert lights.controller is not built
     assert lights.controller.engine.power_droop > 0.0
+
+
+def test_the_engine_class_reaches_the_wire_profile():
+    """The wire supplies the curve's peaks; the class table supplies its
+    shape. Car 1461 (Silvia K's (S13) '90) is turbocharged, so it must droop
+    harder than the same peaks on an unclassified id — the wire path is
+    exactly where the regression lived, since a cars.json-only lookup never
+    runs for a sender that sends `engine`."""
+    specs = _WIRE_ENGINE.model_dump(exclude={"power_to_limiter"})
+
+    turbo = ShiftLights()
+    turbo.update(_bus(_frame(car_id=1461, engine=Engine(**specs))), 0.016)
+
+    unknown = ShiftLights()
+    unknown.update(_bus(_frame(car_id=999999, engine=Engine(**specs))), 0.016)
+
+    assert turbo.controller.engine.power_droop > unknown.controller.engine.power_droop
