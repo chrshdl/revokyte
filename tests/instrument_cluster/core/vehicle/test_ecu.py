@@ -469,20 +469,29 @@ def test_the_sender_still_overrides_the_class():
 
 
 def _pull_to(controller, top_rpm: float, then_rpm: float, throttle: float,
-             full_throttle: float = 1.0, gear: int = 2):
+             full_throttle: float = 1.0, gear: int = 2, tcs: bool = False):
     """Rev to `top_rpm` at full throttle, then present `then_rpm` with
     `throttle` on the pedal — the two cases the learner must tell apart."""
+    flags = Flags(car_on_track=True, in_gear=True, tcs_active=tcs)
+    # Lift first, the way a driver arrives at the start of a pull: without
+    # it the jump back down to 4000 is itself a full-throttle rpm collapse.
+    _settled(
+        controller,
+        _frame(engine_rpm=3500.0, current_gear=gear, throttle=0.0, flags=flags,
+               rpm_alert=Bounds(min=7000, max=8000)),
+        frames=3,
+    )
     for rpm in range(4000, int(top_rpm) + 1, 50):
         _settled(
             controller,
             _frame(engine_rpm=float(rpm), current_gear=gear, throttle=full_throttle,
-                   rpm_alert=Bounds(min=7000, max=8000)),
+                   flags=flags, rpm_alert=Bounds(min=7000, max=8000)),
             frames=1,
         )
     _settled(
         controller,
         _frame(engine_rpm=then_rpm, current_gear=gear, throttle=throttle,
-               rpm_alert=Bounds(min=7000, max=8000)),
+               flags=flags, rpm_alert=Bounds(min=7000, max=8000)),
         frames=3,
     )
 
@@ -493,9 +502,11 @@ def test_the_rev_limiter_is_learned_from_the_engine_itself():
     the declared number the target sits above anything the engine can reach,
     so the ladder never finishes and the blink never fires."""
     controller = _controller()
-    before = _settled(controller, _frame(engine_rpm=6000.0, current_gear=2)) and None
-    _pull_to(controller, top_rpm=7200, then_rpm=7000.0, throttle=1.0)
+    _pull_to(controller, top_rpm=7200, then_rpm=6800.0, throttle=1.0)
+    # One sighting is a candidate, not a limiter — see the next test.
+    assert controller._observed_limiter is None
 
+    _pull_to(controller, top_rpm=7200, then_rpm=6800.0, throttle=1.0)
     assert controller._observed_limiter is not None
     assert 7100 <= controller._observed_limiter <= 7200
     _settled(controller, _frame(engine_rpm=6000.0, current_gear=2))
@@ -506,7 +517,7 @@ def test_a_lift_is_not_a_rev_limiter():
     """Rpm falls every time the driver lifts. Only rpm falling *while the
     pedal is down* is the engine refusing to rev."""
     controller = _controller()
-    _pull_to(controller, top_rpm=7200, then_rpm=7000.0, throttle=0.2)
+    _pull_to(controller, top_rpm=7200, then_rpm=6800.0, throttle=0.2)
 
     assert controller._observed_limiter is None
 
@@ -525,18 +536,56 @@ def test_a_raw_byte_throttle_still_reads_as_the_pedal():
     table). Taken at face value every lift looks like full throttle, and
     every lift would then teach a false limiter."""
     controller = _controller()
-    _pull_to(controller, top_rpm=7200, then_rpm=7000.0, throttle=30.0,
+    _pull_to(controller, top_rpm=7200, then_rpm=6800.0, throttle=30.0,
              full_throttle=255.0)
 
     assert controller._observed_limiter is None
 
 
 def test_a_higher_cut_supersedes_a_lower_one():
-    """A first cut learned low — a cold engine, a soft limiter, a fluke —
+    """A first limiter learned low — a soft cut, a shift caught mid-drop —
     must not hold the shift point down forever."""
     controller = _controller()
-    _pull_to(controller, top_rpm=6800, then_rpm=6600.0, throttle=1.0)
+    for _ in range(2):
+        _pull_to(controller, top_rpm=7150, then_rpm=6750.0, throttle=1.0)
     first = controller._observed_limiter
-    _pull_to(controller, top_rpm=7600, then_rpm=7400.0, throttle=1.0)
+    for _ in range(2):
+        _pull_to(controller, top_rpm=7600, then_rpm=7200.0, throttle=1.0)
 
     assert first is not None and controller._observed_limiter > first
+
+
+def test_one_drop_at_full_throttle_is_not_yet_a_limiter():
+    """Regression, car 3588: the ladder collapsed to a blink at 6321 rpm on
+    an engine that pulls past 7800, because single drops at 0.77-0.82 of the
+    declared limiter were taken at face value. A limiter repeats — car 1461
+    hit the same one three times within 3 rpm — so a candidate has to be
+    seen twice, at the same rpm, before it moves the shift point."""
+    controller = _controller()
+    _pull_to(controller, top_rpm=7200, then_rpm=6800.0, throttle=1.0)
+    assert controller._observed_limiter is None
+
+    # A second drop somewhere else does not confirm the first.
+    _pull_to(controller, top_rpm=7600, then_rpm=7200.0, throttle=1.0)
+    assert controller._observed_limiter is None
+
+
+def test_traction_control_is_not_a_rev_limiter():
+    """Also car 3588: TC cuts power with the pedal still down and the gear
+    unchanged, which is the fuel cut's signature exactly. On a GT3 leaving a
+    corner it taught limiters ~1800 rpm below the real one."""
+    controller = _controller()
+    for _ in range(3):
+        _pull_to(controller, top_rpm=7200, then_rpm=6800.0, throttle=1.0, tcs=True)
+
+    assert controller._observed_limiter is None
+
+
+def test_a_drop_well_below_the_declared_limit_is_not_a_rev_limiter():
+    """The two real limiters measured sit at 0.90 and 0.97 of what the game
+    declares. Nothing at 0.8 of it is a limiter, however often it repeats."""
+    controller = _controller()
+    for _ in range(3):
+        _pull_to(controller, top_rpm=6400, then_rpm=6000.0, throttle=1.0)
+
+    assert controller._observed_limiter is None
