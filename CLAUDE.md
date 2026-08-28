@@ -188,6 +188,39 @@ The delta calculator is **vendored pure-Python source** in `core/delta_calculato
 
 For performance, the OS image build Cython-compiles the vendored modules with the image's own interpreter: `setup.py` builds them as extensions when `CYTHONIZE_DELTA_CALCULATOR=1` is set (the `python-instrument-cluster` Buildroot package sets it and provides `host-python-cython`). Python prefers the built `.so` over the `.py` next to it, so dev machines and tests (flag unset) transparently run the source.
 
+### Shift points & the car databases
+
+The LED ladder's shift point is computed, not tabulated: `ShiftPointCalculator`
+(`core/vehicle/ecu.py`) finds where the next gear puts more torque at the
+wheels than the current one. Gear ratios cancel out of that comparison, so
+only the *shape* of the power curve matters — which is what makes the curve
+measurable from telemetry alone, with no mass or drag constant.
+
+Two db files feed it, both keyed by GT7 car id: `db/cars.json` (peak power and
+torque with their rpm — no recorded provenance, and its `redline_rpm` column
+is fabricated on 539 of 540 rows, so no curve is ever anchored on it) and
+`db/car_classes.json` (aspiration, car type, category, engine layout, from
+zetetos/gt-telemetry, MIT; regenerate with `tools/fetch_car_classes.py`). The
+class picks how fast power falls away past the peak — the one thing the four
+peak numbers on the wire cannot say, and the thing the shift point mostly
+depends on. A sender's `power_to_limiter` still overrides it.
+
+Every falloff value is measured off a real car rather than assumed: the app
+captures full-throttle pulls behind the `accel_logging` config flag
+(`core/vehicle/accel_recorder.py`) and the runs are fitted offline. The
+constants in `ecu.py` carry the car, the pull count and the strength of the
+evidence in their comments.
+The measurements overturned the intuition the first priors encoded: in GT7
+both turbos measured hold power nearly flat and the naturally aspirated V8 is
+the one that droops.
+
+`rpm_alert.max` is a tachometer number, not the fuel cut — car 1461 declares
+8000 and cuts at 7215 — so the controller learns the real limiter from the
+engine (rpm falling while the pedal is down in an unchanged gear) and anchors
+the target on that, never above the declared value. Without it the shift
+target can sit above any rpm the engine can reach, which leaves the ladder
+permanently unfinished.
+
 ### Desktop (PC) builds
 
 `packaging/pyinstaller/Revokyte.spec` (+ `entry.py` beside it) builds the single-file desktop app; `.github/workflows/pc-release.yml` builds it for Windows and macOS on every `v*` tag and attaches the unsigned binaries to the tag's GitHub release. The spec must keep two things intact: package data (`assets/`, `db/`) collected into `instrument_cluster/` inside the bundle (fonts resolve via `importlib.resources`, `tracks.json` via `Path(__file__)`), and the packaged plugin `.py` files shipped **as data files** — `PluginManager` discovers them with `os.listdir`, then imports them as modules (covered by `collect_submodules` hidden imports). Local build: `pip install ".[pc]" pyinstaller && pyinstaller --noconfirm packaging/pyinstaller/Revokyte.spec`.

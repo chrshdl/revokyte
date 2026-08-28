@@ -28,38 +28,43 @@ _TORQUE_LOW_BLEND_SLOPE: float = (
 _REFERENCE_OVER_REV: float = 0.20
 
 # Values by engine class (see db/car_classes.json). A turbocharged road engine
-# is off its efficiency island well before the limiter and falls off a cliff; a
-# BOP'd race engine is built to be shifted at the limiter and barely droops at
-# all; a high-revving NA sits between them. tools/dyno/ is what turns each of
-# these from a prior into a measurement — the comments say which is which.
+# holds power almost to the limiter, a BOP'd race engine holds it flat, and a
+# naturally aspirated one droops — which is the reverse of the intuition the
+# first priors here encoded. Each value below was measured off a real car —
+# full-throttle pulls in two gears, fitted with aerodynamic drag in the model
+# — and the comment on each says which car and how strong the evidence is.
 #
-# MEASURED. Car 3588 (Ferrari 296 GT3 '23), 9 full-throttle pulls across 2nd
-# and 3rd, 3586 samples, 3000-7900 rpm: best fit droop 0.00 against this 1.00,
-# unchanged when any single run is dropped, and the same from the last five
-# runs alone. The measurement tracks the flat curve within ±0.03 the whole way
-# and sits *above* it at the limiter (0.767 vs 0.748), so if anything a race
-# engine holds power slightly better than constant power. Aerodynamic drag was
-# fitted alongside it (1.49 m/s² at 200 km/h) — without that the same data
-# reads as droop 1.48, which is what a single-gear fit still cannot rule out.
+# MEASURED. Car 3588 (Ferrari 296 GT3 '23), 10 full-throttle pulls across 2nd
+# and 3rd, 2535 samples, 3000-7870 rpm: best fit droop 0.03, and 0.10 fitting
+# from 4900 rpm up. The fit error climbs 6.9% by droop 2.5, so this is a real
+# minimum and not a flat likelihood. The measurement tracks the flat curve
+# within ±0.03 the whole way and sits *above* it at the limiter, so if
+# anything a race engine holds power slightly better than constant power.
+# Aerodynamic drag is fitted alongside it (1.5 m/s² at 200 km/h) — without
+# that the same data reads as droop 1.48.
 _RETENTION_RACE: float = 1.00  # flat — the shift-cost margin holds it in gear
-# MEASURED. Car 3487 (Mustang Boss 429 '69), 5 pulls across 3rd and 4th, 2449
-# samples, power peaking at 5000 and pulling to 5830 — 17% of over-rev, which
-# is what makes this the first NA measurement with anything to say. Best fit
-# droop 0.62 (0.5 fitting from the torque peak up), against a prior of 0.80.
-# The V8 does droop, unlike both turbos measured, so the aspiration split is
-# real — just not the "cliff" the turbo prior originally assumed.
+# MEASURED. Car 3487 (Mustang Boss 429 '69), 13 pulls across 2nd, 3rd and 4th,
+# 5188 samples, power peaking at 5000 and pulling to 6155 — 23% of over-rev,
+# which is what gives this one real leverage on an NA engine. Best fit droop
+# 0.80, and it is the only car measured whose data rules *out* flat: the fit
+# error rises on both sides of the minimum, by 1.8% at droop 0. So the V8
+# genuinely droops where both turbos do not, and the aspiration split is real
+# — it is the direction the original priors got wrong, not the existence of a
+# difference. (The first reading of this car said 0.62, from 5 runs before a
+# pull held at terminal velocity was excluded from the fit.)
 #
 # It covers every naturally aspirated road car, high-revving ones included.
 # There used to be a separate, gentler value for engines peaking above 7000
 # rpm, on the reasoning that a short-stroke screamer holds power better. It
 # was never measured and cannot be: such an engine peaks a few percent under
 # its limiter by design, so there is almost no over-rev region for a falloff
-# to act in. Car 204 (Civic Type R (EK) '98) was driven to settle it — 14
-# pulls, 7239 samples — and returned 0.00 or 1.03 depending only on the rpm
-# window, with 0.3% of RMS between droop 0 and droop 2.5. Extrapolating one
-# V8 measurement to a VTEC is a guess too, but it is a traceable one, and on
-# these engines the difference moves the shift point by a few rpm.
-_RETENTION_NA: float = 0.88
+# to act in. Car 204 (Civic Type R (EK) '98) was driven to settle it — 16
+# pulls, 7853 samples — and its fit error varies by 0.1% across the entire
+# droop range, which is what "no information" looks like in a tool that
+# prints two decimals regardless. Extrapolating one V8 to a VTEC is a guess
+# too, but a traceable one, and on these engines it moves the shift point by
+# a few rpm.
+_RETENTION_NA: float = 0.84
 
 # No supercharged car was available to drive, so this inherits the measured
 # forced-induction value rather than a number of its own. A blower makes

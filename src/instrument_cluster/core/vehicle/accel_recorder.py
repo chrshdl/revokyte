@@ -5,8 +5,8 @@ past the peak, and every number the model has for that shape is a prior:
 cars.json pins two points per car, and db/car_classes.json says what kind
 of engine it is. A full-throttle pull measures the real thing — in a fixed
 gear wheel force is proportional to acceleration, and only the shape
-matters, so no vehicle mass or drag constant is needed
-(see tools/dyno/analyze_accel.py, which fits the falloff from these runs).
+matters, so no vehicle mass or drag constant is needed — an offline fit
+over the runs this writes recovers the falloff.
 
 ``AccelRunRecorder`` captures runs automatically from a stream of frames:
 it arms whenever a live car is on telemetry, starts a run when the pedal
@@ -14,8 +14,8 @@ hits the floor in a forward gear, samples every fresh frame, and ends the
 run on a lift, an upshift, or the rev limiter. Quality gates decide
 whether the run is worth keeping; accepted runs are written as JSON by
 ``AccelRunStore``. It is UI-free and deterministic, so the same code
-consumes a live feed (``tools/dyno/record_runs.py --live``) and a recorded
-session replayed offline (``--replay``).
+consumes a live feed and a recorded session replayed offline — on a device
+it is fed from the main loop when ``accel_logging`` is set.
 """
 
 from __future__ import annotations
