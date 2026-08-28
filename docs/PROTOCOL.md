@@ -293,7 +293,7 @@ When `wheels` is present, all four corners (`front_left`, `front_right`,
 | `suspension_height` | number **0.0–1.0** | yes | Normalized suspension compression (0 = fully extended). **Strictly enforced**: an out-of-range value invalidates the whole frame — senders MUST clamp (suspension travel goes out of range over kerbs). |
 | `radius` | number | yes | Tyre radius, meters. |
 | `rps` | number | yes | Wheel rotation, **revolutions per second** (not rad/s). Signed; negative when rolling backwards. |
-| `ground_speed` | number | yes | Contact-patch speed (ω·r), m/s. Receivers compare it against `car_speed` for wheelspin/lockup. |
+| `ground_speed` | number | yes | Contact-patch speed (ω·r), m/s. Receivers compare it against `car_speed` for wheelspin/lockup — **by magnitude**: the sign is a sender's own convention (GT7's feed reports it negative going forward), unlike `rps`, whose sign is specified above. |
 | `temperature` | number | no (default 20.0) | Tyre temperature, °C. |
 
 #### 3.5.5 `engine` and `gear_ratios` — shift-point data
@@ -479,6 +479,7 @@ they are being corrected in feed releases:
 |---|---|---|---|
 | GT7 feed proxy | Emits `current_gear: null` when the gearbox is in neutral (raw nibble 15 passed through). | Violates §3.6; receivers discard those frames whole, so gauges freeze while in neutral. | To fix: map to `−1`. |
 | GT7 feed proxy | Emits `throttle`/`brake` as raw 0–255 integers. | Violates §3.6. Harmless today (no shipped receiver gauge consumes pedals) but non-conformant. | To fix: divide by 255. |
+| GT7 feed proxy | Emits `wheels[*].ground_speed` **negative** while the car drives forward (measured: `car_speed` 45.2, all four corners −45.2…−46.3). | §3.5.4 gives `ground_speed` no sign rule (only `rps` has one), so this is underspecified rather than illegal — but a receiver comparing it against `car_speed` signed sees ~200% slip on every sample. | Receivers MUST compare magnitudes; the sign rule belongs in §3.5.4. |
 | GT7 feed proxy | Dumps ~20 undefined keys (velocity, rotation, oil data, …) per frame, ≈ 2.3 kB. | Exceeds the §2.2 LAN recommendation. Tolerated because this sender is loopback-only. | Acceptable on loopback; MUST NOT be imitated by network senders. |
 | GT7 feed proxy | Drops frames while the game is paused instead of sending `paused: true`. | Receiver shows signal loss ~1 s into every pause (§2.4). | To fix: forward paused frames. |
 | GT7 feed proxy | No silence-bridging replay (§2.4). | Brief source gaps surface as signal loss. | Optional improvement. |
