@@ -26,12 +26,22 @@ _TORQUE_LOW_BLEND_SLOPE: float = (
 # redline-anchored falloff lets invented data reshape a real car's curve.
 _REFERENCE_OVER_REV: float = 0.20
 
-# Priors by engine class (see db/car_classes.json). A turbocharged road engine
+# Values by engine class (see db/car_classes.json). A turbocharged road engine
 # is off its efficiency island well before the limiter and falls off a cliff; a
 # BOP'd race engine is built to be shifted at the limiter and barely droops at
-# all; a high-revving NA sits between them. Seed values: they are priors, and
-# tools/dyno/ is what replaces them with numbers measured off a real car.
+# all; a high-revving NA sits between them. tools/dyno/ is what turns each of
+# these from a prior into a measurement — the comments say which is which.
+#
+# MEASURED. Car 3588 (Ferrari 296 GT3 '23), 9 full-throttle pulls across 2nd
+# and 3rd, 3586 samples, 3000-7900 rpm: best fit droop 0.00 against this 1.00,
+# unchanged when any single run is dropped, and the same from the last five
+# runs alone. The measurement tracks the flat curve within ±0.03 the whole way
+# and sits *above* it at the limiter (0.767 vs 0.748), so if anything a race
+# engine holds power slightly better than constant power. Aerodynamic drag was
+# fitted alongside it (1.49 m/s² at 200 km/h) — without that the same data
+# reads as droop 1.48, which is what a single-gear fit still cannot rule out.
 _RETENTION_RACE: float = 1.00  # flat — the shift-cost margin holds it in gear
+# Still priors — no car of these classes has been measured yet.
 _RETENTION_NA_HIGH_REV: float = 0.90  # peak above _HIGH_REV_RPM: VTEC and kin
 _RETENTION_NA: float = 0.84
 _RETENTION_SUPERCHARGED: float = 0.82
