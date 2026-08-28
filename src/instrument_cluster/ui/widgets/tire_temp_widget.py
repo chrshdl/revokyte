@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from ...core.vehicle.vehicle_bus import VehicleBus
 from typing import TYPE_CHECKING
+
+from ...core.vehicle.vehicle_bus import VehicleBus
 
 if TYPE_CHECKING:
     from ...telemetry.models import TelemetryFrame
 from ..colors import Color
-from ..utils import FontFamily
+from ..utils import FontFamily, arc_gradient
 from ..widgets import Widget
 
 
@@ -14,6 +15,12 @@ class TireTempWidget(Widget):
     """
     Panel with a header text and a centered dynamic value underneath.
     Redraws only when the dynamic value changes.
+
+    The background is a radial glow rather than the base class's vertical
+    ramp: the lit end pools in the lower centre, behind the digits, and
+    falls off towards every edge — darkest in the top corners, where the
+    top and side shadows meet. Reading it as a soft inner shadow rather
+    than a ramp is what frames the value the way the panel art does.
     """
 
     def __init__(
@@ -83,3 +90,12 @@ class TireTempWidget(Widget):
         wheel = getattr(wheels, self.wheel_attr, None)
         temp = getattr(wheel, "temperature", 0) if wheel is not None else 0
         self.set_value(int(temp) or 0)
+
+    def _create_background_gradient(
+        self,
+        top_color: tuple[int, int, int] | None,
+        bottom_color: tuple[int, int, int] | None,
+    ):
+        if top_color is None or bottom_color is None:
+            return None
+        return arc_gradient((self.w, self.h), top_color, bottom_color)
