@@ -34,14 +34,17 @@ _REFERENCE_OVER_REV: float = 0.20
 # full-throttle pulls in two gears, fitted with aerodynamic drag in the model
 # — and the comment on each says which car and how strong the evidence is.
 #
-# MEASURED. Car 3588 (Ferrari 296 GT3 '23), 10 full-throttle pulls across 2nd
-# and 3rd, 2535 samples, 3000-7870 rpm: best fit droop 0.03, and 0.10 fitting
-# from 4900 rpm up. The fit error climbs 6.9% by droop 2.5, so this is a real
-# minimum and not a flat likelihood. The measurement tracks the flat curve
-# within ±0.03 the whole way and sits *above* it at the limiter, so if
-# anything a race engine holds power slightly better than constant power.
-# Aerodynamic drag is fitted alongside it (1.5 m/s² at 200 km/h) — without
-# that the same data reads as droop 1.48.
+# MEASURED, and the best-determined of the three. Car 3588 (Ferrari 296 GT3
+# '23), 25 full-throttle pulls across 1st to 4th, 5143 samples, 3000-7970
+# rpm: best fit droop 0.00-0.10, the two indistinguishable (0.01% of fit
+# error apart), while the error climbs 10.7% by droop 2.5. Four gear ratios
+# also pin the drag it is fitted against — 2.05 m/s² at 238 km/h, which
+# agrees with the 1.5 at 200 km/h from an earlier, smaller set. Without drag
+# in the model the same data reads as droop 1.48.
+#
+# This car also never taught a limiter, correctly: it pulled to 8006 rpm
+# without cutting, so its fuel cut is at or above the 8000 the game declares,
+# and the learner below only ever anchors *below* a declared value.
 _RETENTION_RACE: float = 1.00  # flat — the shift-cost margin holds it in gear
 # MEASURED. Car 3487 (Mustang Boss 429 '69), 13 pulls across 2nd, 3rd and 4th,
 # 5188 samples, power peaking at 5000 and pulling to 6155 — 23% of over-rev,
