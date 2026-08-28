@@ -34,9 +34,8 @@ from .status_pill import build_pill
 from .window_layering import OverlayWindow, WindowLayer
 
 # The wording carries the diagnosis: "No Telemetry" names what is missing
-# (the feed), where "no signal" read like a display/input problem. The
-# trailing dots read as an ongoing wait, not a verdict.
-PILL_TEXT = "No Telemetry ..."
+# (the feed), where "no signal" read like a display/input problem.
+PILL_TEXT = "No Telemetry"
 
 
 def build_no_telemetry_pill() -> pygame.sprite.DirtySprite:

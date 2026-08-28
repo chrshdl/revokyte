@@ -282,9 +282,8 @@ def test_alert_is_the_shared_status_pill():
 
 def test_the_wording_names_the_missing_feed():
     """"No Telemetry" says what is gone; "no signal" read like a display or
-    input problem. The trailing dots read as an ongoing wait, not a
-    verdict."""
-    assert PILL_TEXT == "No Telemetry ..."
+    input problem."""
+    assert PILL_TEXT == "No Telemetry"
 
 
 def test_pill_sits_in_the_free_strip_between_the_gauges_and_the_footer():
