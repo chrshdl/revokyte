@@ -3,7 +3,9 @@
 from ..core.plugin_system.sdk import WidgetPlugin
 from ..ui.skins import active_skin
 from ..ui.utils import FontFamily
-from ..ui.widgets.rpm_widget import RpmWidget
+
+# from ..ui.widgets.rpm_widget import RpmWidget
+from ..ui.widgets.ferrari_rpm_widget import FerrariRpmWidget
 
 
 class RpmPlugin(WidgetPlugin):
@@ -14,7 +16,8 @@ class RpmPlugin(WidgetPlugin):
         skin = active_skin()
         d = skin.dashboard
         return [
-            RpmWidget(
+            # RpmWidget(
+            FerrariRpmWidget(
                 rect=d.rpm_rect,
                 rpm_style=skin.style.rpm,
                 label_font_size=d.fonts.rpm_label,

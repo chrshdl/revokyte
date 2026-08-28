@@ -32,35 +32,30 @@ SKIN_1280 = Skin(
     name="1280x720",
     size=(1280, 720),
     dashboard=DashboardSkin(
-        # Center dial column.
         gear_rect=(640, 388, 186, 232),
         speed_rect=(640, 92, 220, 140),
-        rpm_rect=(640, 186, 196, 74),
-        # Right column (pre-shift).
+        rpm_rect=(640, 194, 252, 98),
         delta_rect=(1094, 308, 336, 150),
+        fastest_lap_rect=(186, 68, 352, 94),
+        predicted_lap_rect=(186, 164, 352, 94),
+        fuel_per_lap_rect=(97, 260, 174, 94),
+        fuel_laps_rect=(275, 260, 174, 94),
+        track_rect=(186, 454, 352, 94),
         lap_time_rect=(1094, 454, 336, 100),
-        lap_counter_rect=(1172, 630, 90, 78),  # topleft
+        lap_counter_rect=(1172, 630, 90, 78),
         tire_grid=TireGrid(
             origin=(1014, 22),
             cell=(122, 92),
             col_step=126,
             row_step=96,
         ),
-        # Left column (pre-shift).
-        fastest_lap_rect=(186, 68, 352, 94),
-        predicted_lap_rect=(186, 163, 352, 94),
-        fuel_per_lap_rect=(97, 258, 175, 94),
-        fuel_laps_rect=(274, 258, 175, 94),
-        track_rect=(186, 454, 352, 94),
-        # Bezel status-LED strips.
         status_strip_w=100,
-        shift_l_on=90,  # strip_w - 10
-        shift_r_on=82,  # strip_w - 18
+        shift_l_on=90,
+        shift_r_on=82,
         status_light_rect=(0, 54, 100, 224),
         status_light_dot_spacing=90,
         status_light_dot_radius=13,
-        # Footer chrome.
-        footer_y=636,  # 720 - button_h - 2*6
+        footer_y=636,
         button_h=72,
         setup_button_w=110,
         setup_button_font=32,
@@ -70,13 +65,17 @@ SKIN_1280 = Skin(
         setup_button_border_width=2,
         setup_button_border_radius=4,
         slot_name_left_inset=120,
-        slot_dots=SlotDots(center=(640, 700), radius=5, pitch=26),
+        slot_dots=SlotDots(
+            center=(640, 700),
+            radius=5,
+            pitch=26,
+        ),
         fonts=DashboardFonts(
             gear=264,
             gear_family="D_DIN_EXP_BOLD",
             speed=108,
             speed_family="D_DIN_EXP_BOLD",
-            rpm_label=18,
+            rpm_label=22,
             rpm_label_family="D_DIN_EXP_BOLD",
             delta=74,
             delta_family="D_DIN_EXP",
@@ -115,7 +114,7 @@ SKIN_1280 = Skin(
         delta_loss_color="LIGHT_RED",
         tire_gradient_top="DARK_GREY",
         tire_gradient_bottom="RPM_RED",
-        rpm_scale_color="LIGHT_GREY",
+        rpm_scale_color="WHITE",
         rpm_redline_color="LIGHT_RED",
         status_light_tc_color="YELLOW",
         status_light_asm_color="BLUE",
@@ -128,7 +127,7 @@ SKIN_1280 = Skin(
         header_font_family="PIXEL_TYPE",
         bg_color="BLACK",
         text_color="WHITE",
-        border_color="LIGHT_GREY",
+        border_color="WHITE",
         header_margin=8,
         value_offset_y=4,
         border_width=2,
@@ -153,14 +152,21 @@ SKIN_1280 = Skin(
             label_gap=6,
         ),
         scrollbar=ScrollbarStyle(
-            track_width=8,
             thumb_color="BLUE",
+            track_width=8,
             track_margin_right=16,
             min_thumb_height=32,
             track_hit_pad=20,
             drag_threshold=12,
         ),
-        toggle=ToggleStyle(track_w=104, track_h=48, knob_margin=6, on_color="BLUE", off_color="DROPDOWN_LIGHT_GREY", knob_color="WHITE"),
+        toggle=ToggleStyle(
+            track_w=104,
+            track_h=48,
+            knob_margin=6,
+            on_color="BLUE",
+            off_color="DROPDOWN_LIGHT_GREY",
+            knob_color="WHITE",
+        ),
     ),
     header=HeaderSkin(
         title_topleft=(30, 10),
@@ -175,8 +181,6 @@ SKIN_1280 = Skin(
         back_button_icon=54,
     ),
     setup=SetupSkin(
-        # 5 uniform cells span the header line (y=100) to the screen
-        # bottom (720): pitch = 620 / 5.
         row_top=122,
         row_pitch=124,
         row_height=80,
@@ -201,7 +205,7 @@ SKIN_1280 = Skin(
         key_h=78,
         gap=10,
         top=300,
-        row_step=90,  # key_h + 12
+        row_step=90,
         special_w=156,
         space_w=600,
         pw_row_y=188,
@@ -249,9 +253,6 @@ SKIN_1280 = Skin(
         del_color="LIGHT_RED",
     ),
     overlays=OverlaySkin(
-        # The shared status pill sits between the track/lap row and the
-        # footer: gear ends at 504, footer ink starts at 630 (see
-        # status_pill.py / no_signal_window.py for the why).
         wifi_pill_height=56,
         wifi_pill_center_y=564,
         wifi_pill_pad_x=28,
