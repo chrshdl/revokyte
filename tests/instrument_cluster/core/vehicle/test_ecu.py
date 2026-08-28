@@ -367,18 +367,26 @@ def test_a_steady_limiter_does_not_rebuild_the_curve():
 # depends on. The class table (db/car_classes.json) is where that comes from.
 
 
-def test_each_engine_class_resolves_its_own_falloff():
-    """The classes must stay distinguishable — that is the whole point of
-    the table. Deliberately no ordering between them: the first turbo road
-    car measured (1461) came out nearly flat, so "a turbo falls off a cliff
-    and an NA holds on" is an intuition this codebase no longer asserts.
-    The NA values are still untested priors; see ecu.py."""
-    turbo = power_droop_for("TC", "street", max_power_rpm=6500)
-    high_rev_na = power_droop_for("NA", "street", max_power_rpm=8000)
-    ordinary_na = power_droop_for("NA", "street", max_power_rpm=6000)
+def test_the_aspiration_split_is_the_measured_one():
+    """Every value in the table is now a measurement, and they order the way
+    the measurements did: a race engine is flat, a turbo road car very nearly
+    so, and a naturally aspirated one droops. That is the opposite of the
+    intuition the first priors encoded — GT7 does not model a small turbo
+    falling off a cliff — so the ordering is worth pinning."""
+    race = power_droop_for("NA", "race")
+    turbo = power_droop_for("TC", "street")
+    na = power_droop_for("NA", "street")
 
-    assert len({turbo, high_rev_na, ordinary_na}) == 3
-    assert all(0.0 <= d <= 3.0 for d in (turbo, high_rev_na, ordinary_na))
+    assert race == 0.0
+    assert race < turbo < na
+    assert na < 1.0  # measured 0.62; nothing here is a cliff
+
+
+def test_a_supercharger_is_read_as_forced_induction():
+    """No supercharged car has been driven, so rather than invent a number
+    the class inherits the measured turbo one — a blower makes boost with
+    rpm, which puts it with the turbos and not the NA engines."""
+    assert power_droop_for("SC", "street") == power_droop_for("TC", "street")
 
 
 def test_the_measured_classes_keep_what_was_measured():
@@ -386,32 +394,34 @@ def test_the_measured_classes_keep_what_was_measured():
     a change someone made on purpose against new data:
 
     * race — car 3588, 9 pulls, best fit droop 0.00
-    * turbo street — car 1461, 11 pulls, best fit droop 0.08-0.10
+    * turbo street — car 1461, 11 pulls, best fit droop 0.08-0.25
+    * NA street — car 3487, 5 pulls, best fit droop 0.62
     """
-    assert power_droop_for("TC", "race", max_power_rpm=6800) == 0.0
-    assert power_droop_for("TC", "street", max_power_rpm=6500) < 0.2
+    assert power_droop_for("TC", "race") == 0.0
+    assert power_droop_for("TC", "street") < 0.2
+    assert 0.4 < power_droop_for("NA", "street") < 0.8
 
 
 def test_a_race_car_holds_power_to_the_limiter():
     """Every purpose-built racer is BOP'd flat, whatever it breathes
     through — car 3588 is a turbocharged Gr.3 and must not be read as a
     peaky road turbo."""
-    assert power_droop_for("TC", "race", max_power_rpm=6800) == 0.0
-    assert power_droop_for("NA", "race", max_power_rpm=8500) == 0.0
+    assert power_droop_for("TC", "race") == 0.0
+    assert power_droop_for("NA", "race") == 0.0
 
 
 def test_an_unknown_class_keeps_the_historical_curve():
     """Other games' feeds have no entry in a GT7-keyed table, and that is
     not an error: they must land on exactly the falloff every car used
     before the classes existed."""
-    assert power_droop_for(None, None, max_power_rpm=7000) == pytest.approx(0.5)
-    assert power_droop_for("", "", max_power_rpm=7000) == pytest.approx(0.5)
+    assert power_droop_for(None, None) == pytest.approx(0.5)
+    assert power_droop_for("", "") == pytest.approx(0.5)
 
 
 def test_an_ev_never_droops():
     """Single-speed: there is no upshift to compute, so the curve decides
     nothing — and an electric motor has no over-rev region to model."""
-    assert power_droop_for("EV", "street", max_power_rpm=8000) == 0.0
+    assert power_droop_for("EV", "street") == 0.0
 
 
 def test_the_falloff_moves_the_shift_point():

@@ -177,9 +177,7 @@ class ShiftLights:
         # does know says so with power_to_limiter, which still wins.
         car_class = self.car_class_library.get_class(frame.car_id) or {}
         car_data["power_droop"] = power_droop_for(
-            car_class.get("aspiration"),
-            car_class.get("car_type"),
-            car_data["max_power_rpm"],
+            car_class.get("aspiration"), car_class.get("car_type")
         )
 
         self.controller = ShiftLightController(**car_data)
