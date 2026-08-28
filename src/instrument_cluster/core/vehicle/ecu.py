@@ -42,9 +42,18 @@ _REFERENCE_OVER_REV: float = 0.20
 # fitted alongside it (1.49 m/s² at 200 km/h) — without that the same data
 # reads as droop 1.48, which is what a single-gear fit still cannot rule out.
 _RETENTION_RACE: float = 1.00  # flat — the shift-cost margin holds it in gear
-# Still priors — no naturally aspirated or supercharged car has been measured,
-# and both measurements below came out flatter than any of these, so treat
-# them as the next things to check rather than as settled.
+# Still priors — no naturally aspirated or supercharged car has been measured
+# to a conclusion, and the two measurements below came out flatter than any of
+# these, so treat them as the next things to check rather than as settled.
+#
+# Car 204 (Civic Type R (EK) '98) was driven for this — 14 pulls across three
+# gears, 7239 samples — and could not decide it. Its power peaks at 8300 and
+# it cuts at ~8620, so only 4.9% of the samples sit past the peak at all, and
+# over that span droop 0.00 and 0.50 differ by 1.2% of torque: both fit at an
+# identical RMS of 0.330 m/s². The falloff is only measurable on an engine
+# that revs well past its power peak — a low-peak V8 rather than a VTEC — and
+# for the same reason it barely moves the shift point on engines like this
+# one, where the limiter is what decides it.
 _RETENTION_NA_HIGH_REV: float = 0.90  # peak above _HIGH_REV_RPM: VTEC and kin
 _RETENTION_NA: float = 0.84
 _RETENTION_SUPERCHARGED: float = 0.82
