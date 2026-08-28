@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import math
+from typing import TYPE_CHECKING
 
 import pygame
 
 from ...core.vehicle.vehicle_bus import VehicleBus
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ...telemetry.models import TelemetryFrame
@@ -88,9 +88,7 @@ class RpmWidget(Widget):
         self._label_font = load_font_px(
             label_font_size, label_font_family
         )  # FIXME: was 22
-        self._label_major_font = load_font_px(
-            label_font_size, label_font_family
-        )
+        self._label_major_font = load_font_px(label_font_size, label_font_family)
 
         # Cached ticks+labels layer and last-drawn segment rects: the scale
         # only changes with the RPM configuration, so per value change only
@@ -317,9 +315,7 @@ class RpmWidget(Widget):
             y2 = y1 + (
                 self._style.tick_major_len if is_major else self._style.tick_minor_len
             )
-            width = (
-                self._style.tick_major_w if is_major else self._style.tick_minor_w
-            )
+            width = self._style.tick_major_w if is_major else self._style.tick_minor_w
             tick_color = (
                 self._redline_color
                 if tick_rpm >= self._redline_rpm
@@ -338,9 +334,7 @@ class RpmWidget(Widget):
         label_y = ticks_y1 + self._style.label_gap
 
         # 1) Left-most label: 0
-        zero_surf = self._label_font.render(
-            "0", self.antialias, self._scale_color
-        )
+        zero_surf = self._label_font.render("0", self.antialias, self._scale_color)
         zero_rect = zero_surf.get_rect()
         # left-aligned to bar start to avoid clipping
         zero_rect.midtop = (bar_left, label_y)
