@@ -64,6 +64,13 @@ class Config:
     # provider plugin (0 = the built-in default). An invalid or
     # no-longer-available value silently falls back to the default.
     dashboard_slot: int = field(default=0)
+    # Log full-throttle pulls to <config dir>/accel_runs for the dyno
+    # (tools/dyno/analyze_accel.py), which is how the shift-point curve's
+    # falloff gets measured instead of assumed. Off by default and
+    # config-file only — no settings UI row. On the appliance this is the
+    # only way to capture: the feed emits to the device's own loopback and
+    # the cluster already owns that port, so nothing else can listen.
+    accel_logging: bool = field(default=False)
     # Optional Wi-Fi regulatory domain override (ISO 3166-1 alpha-2, e.g.
     # "GB"). Empty (the default) writes no country= line: the radio starts
     # in the world domain and adopts the country the router itself
@@ -107,6 +114,7 @@ class Config:
         self.udp_port = max(1, min(65535, self.udp_port))
         self.status_lights = bool(self.status_lights)
         self.shift_lights = bool(self.shift_lights)
+        self.accel_logging = bool(self.accel_logging)
 
         valid_telemetry_modes = {m.value for m in TelemetryMode}
         if self.telemetry_mode not in valid_telemetry_modes:

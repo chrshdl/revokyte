@@ -138,6 +138,16 @@ class AccelRunRecorder:
     MIN_RPM_SPAN = _MIN_RPM_SPAN
     MIN_DURATION_S = _MIN_DURATION_S
 
+    def take_result(self) -> RunResult | None:
+        """The verdict on the last finished run, once.
+
+        Both consumers — the capture tool and the app's opt-in logger — want
+        to report each run as it lands and nothing in between, so the read
+        clears it rather than every caller keeping its own seen-marker.
+        """
+        result, self.last_result = self.last_result, None
+        return result
+
     def runs_on_disk(self) -> int:
         if self._car_id is None or self._car_id < 0:
             return 0
@@ -242,8 +252,11 @@ class AccelRunRecorder:
             reject = f"rpm span only {int(rpm_hi - rpm_lo)}"
 
         if reject is not None:
+            # Carry the end trigger too: "too few samples" says the pull was
+            # not usable, and what cut it short is the part that says whether
+            # the driver lifted, the stream broke, or the car changed under us.
             self.last_result = RunResult(
-                False, reject, gear=self._gear,
+                False, f"{reject}, ended on {end_reason}", gear=self._gear,
                 rpm_lo=rpm_lo, rpm_hi=rpm_hi, sample_count=len(samples),
             )
             return
