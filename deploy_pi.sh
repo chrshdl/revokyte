@@ -6,6 +6,9 @@
 #
 # Each [file] is a path relative to src/instrument_cluster, e.g.:
 #   ./deploy_pi.sh ui/widgets/current_lap_time_widget.py ui/views/dashboard_view.py
+#
+# Non-.py files (the bundled db/*.json) are copied verbatim — the package is
+# bytecode-only, but its data files are still data files.
 
 set -euo pipefail
 
@@ -56,6 +59,16 @@ for rel_path in "${FILES[@]}"; do
   fi
 
   rel_dir="$(dirname "$rel_path")"
+  remote_dir="$PI_INSTALL_ROOT/$rel_dir"
+  ssh "$PI_HOST" "mkdir -p '$remote_dir'"
+
+  if [[ "$rel_path" != *.py ]]; then
+    # Data file (db/*.json): nothing to compile, ship it as it is.
+    echo "Copying $rel_path -> $PI_HOST:$remote_dir/"
+    scp "$src_file" "$PI_HOST:$remote_dir/"
+    continue
+  fi
+
   base_name="$(basename "$rel_path" .py)"
   out_dir="$TMPDIR/$rel_dir"
   mkdir -p "$out_dir"
@@ -64,9 +77,7 @@ for rel_path in "${FILES[@]}"; do
   echo "Compiling $rel_path"
   "$PYTHON" -c "import py_compile; py_compile.compile('$src_file', cfile='$out_file', doraise=True)"
 
-  remote_dir="$PI_INSTALL_ROOT/$rel_dir"
   echo "Copying ${base_name}.pyc -> $PI_HOST:$remote_dir/"
-  ssh "$PI_HOST" "mkdir -p '$remote_dir'"
   scp "$out_file" "$PI_HOST:$remote_dir/${base_name}.pyc"
 done
 

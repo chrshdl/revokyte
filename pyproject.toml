@@ -42,7 +42,13 @@ where = ["src"]
 [tool.setuptools_scm]
 
 [tool.setuptools.package-data]
-instrument_cluster = ["assets/**/*", "db/cars.json", "db/tracks.json", "db/NOTICE.md"]
+instrument_cluster = [
+    "assets/**/*",
+    "db/cars.json",
+    "db/car_classes.json",
+    "db/tracks.json",
+    "db/NOTICE.md",
+]
 
 [dependency-groups]
 dev = [

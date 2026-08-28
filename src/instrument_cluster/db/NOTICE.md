@@ -20,5 +20,25 @@ whole repository now shares one license family. If you redistribute
 `tracks.json` (alone or modified), keep this notice and the GPL-3.0
 license with it.
 
+## `car_classes.json` — MIT
+
+`car_classes.json` carries each GT7 car's aspiration, car type, category and
+engine layout, extracted from the per-vehicle inventory in
+[zetetos/gt-telemetry](https://github.com/zetetos/gt-telemetry), which is
+licensed under the **MIT license**. The shift-point curve reads it to pick
+how fast an engine loses power past its peak — see
+`../core/vehicle/ecu.py`.
+
+Regenerate it with `tools/fetch_car_classes.py` (`--check` reports drift
+without writing). If you redistribute the file, keep upstream's MIT notice
+with it.
+
+## `cars.json` — provenance unrecorded
+
+`cars.json` (the five per-car engine scalars) predates this notice and
+arrived with the initial import; its upstream source was never recorded and
+there is no script that regenerates it. Treat its numbers as unverified —
+the code comments that read from it say so too.
+
 Thanks to Bornhall, ddm999, and the GTPlanet telemetry community for
 collecting and maintaining this data.
