@@ -367,15 +367,29 @@ def test_a_steady_limiter_does_not_rebuild_the_curve():
 # depends on. The class table (db/car_classes.json) is where that comes from.
 
 
-def test_a_turbo_road_car_droops_harder_than_a_high_revving_na():
-    """The distinction PROTOCOL.md §3.5.5 describes but the boolean cannot
-    express: a small turbo road car falls off a cliff, a high-revving NA
-    holds on. Before the class table both got the same middle assumption."""
+def test_each_engine_class_resolves_its_own_falloff():
+    """The classes must stay distinguishable — that is the whole point of
+    the table. Deliberately no ordering between them: the first turbo road
+    car measured (1461) came out nearly flat, so "a turbo falls off a cliff
+    and an NA holds on" is an intuition this codebase no longer asserts.
+    The NA values are still untested priors; see ecu.py."""
     turbo = power_droop_for("TC", "street", max_power_rpm=6500)
     high_rev_na = power_droop_for("NA", "street", max_power_rpm=8000)
     ordinary_na = power_droop_for("NA", "street", max_power_rpm=6000)
 
-    assert turbo > ordinary_na > high_rev_na > 0.0
+    assert len({turbo, high_rev_na, ordinary_na}) == 3
+    assert all(0.0 <= d <= 3.0 for d in (turbo, high_rev_na, ordinary_na))
+
+
+def test_the_measured_classes_keep_what_was_measured():
+    """Two classes are no longer guesses, and a change to either should be
+    a change someone made on purpose against new data:
+
+    * race — car 3588, 9 pulls, best fit droop 0.00
+    * turbo street — car 1461, 11 pulls, best fit droop 0.08-0.10
+    """
+    assert power_droop_for("TC", "race", max_power_rpm=6800) == 0.0
+    assert power_droop_for("TC", "street", max_power_rpm=6500) < 0.2
 
 
 def test_a_race_car_holds_power_to_the_limiter():
@@ -400,11 +414,12 @@ def test_an_ev_never_droops():
     assert power_droop_for("EV", "street", max_power_rpm=8000) == 0.0
 
 
-def test_the_class_falloff_moves_the_shift_point():
-    """The resolver is only worth having if it reaches the shift point: the
-    same peaks and gearbox, classed turbo instead of unknown, must shift
-    earlier. Numbers are car 1461's (Silvia K's, TC/street), whose ladder
-    finished ~800 rpm after GT7's own shift flash under the flat default."""
+def test_the_falloff_moves_the_shift_point():
+    """The knob is only worth having if it reaches the shift point: the same
+    peaks and gearbox, given an engine that falls off a cliff, must shift
+    earlier than one on the default curve. Stated as an explicit droop
+    rather than a class, so re-measuring a class cannot silently turn this
+    into a test of nothing."""
     specs = dict(
         name="S13",
         max_power_kw=128,
@@ -424,12 +439,10 @@ def test_the_class_falloff_moves_the_shift_point():
     default = ShiftLightController(**specs)
     _settled(default, frame)
 
-    turbo = ShiftLightController(
-        **specs, power_droop=power_droop_for("TC", "street", 6500)
-    )
-    _settled(turbo, frame)
+    peaky = ShiftLightController(**specs, power_droop=1.3)
+    _settled(peaky, frame)
 
-    assert turbo.target_rpm < default.target_rpm - 400
+    assert peaky.target_rpm < default.target_rpm - 400
 
 
 def test_the_sender_still_overrides_the_class():
@@ -437,12 +450,83 @@ def test_the_sender_still_overrides_the_class():
     only knows the class, so the flag wins — a tuned road car with a race
     engine must not be dragged back down by its street classification."""
     engine = EngineModel(
-        128,
-        6500,
-        225,
-        4000,
-        8000,
-        power_to_limiter=True,
-        power_droop=power_droop_for("TC", "street", 6500),
+        128, 6500, 225, 4000, 8000, power_to_limiter=True, power_droop=0.8
     )
     assert engine.power_droop == 0.0
+
+
+# --- learning the real rev limiter ---------------------------------------
+
+
+def _pull_to(controller, top_rpm: float, then_rpm: float, throttle: float,
+             full_throttle: float = 1.0, gear: int = 2):
+    """Rev to `top_rpm` at full throttle, then present `then_rpm` with
+    `throttle` on the pedal — the two cases the learner must tell apart."""
+    for rpm in range(4000, int(top_rpm) + 1, 50):
+        _settled(
+            controller,
+            _frame(engine_rpm=float(rpm), current_gear=gear, throttle=full_throttle,
+                   rpm_alert=Bounds(min=7000, max=8000)),
+            frames=1,
+        )
+    _settled(
+        controller,
+        _frame(engine_rpm=then_rpm, current_gear=gear, throttle=throttle,
+               rpm_alert=Bounds(min=7000, max=8000)),
+        frames=3,
+    )
+
+
+def test_the_rev_limiter_is_learned_from_the_engine_itself():
+    """GT7's rpm_alert.max is a tachometer value, not the fuel cut: car 1461
+    declares 8000 and cuts at ~7215, measured over three pulls. Anchored on
+    the declared number the target sits above anything the engine can reach,
+    so the ladder never finishes and the blink never fires."""
+    controller = _controller()
+    before = _settled(controller, _frame(engine_rpm=6000.0, current_gear=2)) and None
+    _pull_to(controller, top_rpm=7200, then_rpm=7000.0, throttle=1.0)
+
+    assert controller._observed_limiter is not None
+    assert 7100 <= controller._observed_limiter <= 7200
+    _settled(controller, _frame(engine_rpm=6000.0, current_gear=2))
+    assert controller.target_rpm <= 7200
+
+
+def test_a_lift_is_not_a_rev_limiter():
+    """Rpm falls every time the driver lifts. Only rpm falling *while the
+    pedal is down* is the engine refusing to rev."""
+    controller = _controller()
+    _pull_to(controller, top_rpm=7200, then_rpm=7000.0, throttle=0.2)
+
+    assert controller._observed_limiter is None
+
+
+def test_a_stumble_far_below_the_limit_is_not_a_rev_limiter():
+    """Wheelspin hooking up, a missed gear or a bad frame all drop rpm at
+    full throttle. Believing one would peg the shift point far too low."""
+    controller = _controller()
+    _pull_to(controller, top_rpm=5500, then_rpm=5000.0, throttle=1.0)
+
+    assert controller._observed_limiter is None
+
+
+def test_a_raw_byte_throttle_still_reads_as_the_pedal():
+    """The GT7 feed emits throttle as raw 0-255 (PROTOCOL.md's deviation
+    table). Taken at face value every lift looks like full throttle, and
+    every lift would then teach a false limiter."""
+    controller = _controller()
+    _pull_to(controller, top_rpm=7200, then_rpm=7000.0, throttle=30.0,
+             full_throttle=255.0)
+
+    assert controller._observed_limiter is None
+
+
+def test_a_higher_cut_supersedes_a_lower_one():
+    """A first cut learned low — a cold engine, a soft limiter, a fluke —
+    must not hold the shift point down forever."""
+    controller = _controller()
+    _pull_to(controller, top_rpm=6800, then_rpm=6600.0, throttle=1.0)
+    first = controller._observed_limiter
+    _pull_to(controller, top_rpm=7600, then_rpm=7400.0, throttle=1.0)
+
+    assert first is not None and controller._observed_limiter > first

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ...logger import Logger
+from ...telemetry.units import ThrottleNormalizer
 
 if TYPE_CHECKING:
     from ...telemetry.models import TelemetryFrame
@@ -41,11 +42,24 @@ _REFERENCE_OVER_REV: float = 0.20
 # fitted alongside it (1.49 m/s² at 200 km/h) — without that the same data
 # reads as droop 1.48, which is what a single-gear fit still cannot rule out.
 _RETENTION_RACE: float = 1.00  # flat — the shift-cost margin holds it in gear
-# Still priors — no car of these classes has been measured yet.
+# Still priors — no naturally aspirated or supercharged car has been measured,
+# and both measurements below came out flatter than any of these, so treat
+# them as the next things to check rather than as settled.
 _RETENTION_NA_HIGH_REV: float = 0.90  # peak above _HIGH_REV_RPM: VTEC and kin
 _RETENTION_NA: float = 0.84
 _RETENTION_SUPERCHARGED: float = 0.82
-_RETENTION_TURBO: float = 0.74
+# MEASURED, and the prior it replaces (0.74) was badly wrong. Car 1461
+# (Silvia K's (S13) '90, SR20DET), 11 pulls across 2nd and 3rd, 4986 samples:
+# best fit droop 0.08 over the full range and 0.10 above 4500 rpm. At 7000
+# rpm the old prior predicted 0.698 of peak where 0.788 was measured. The
+# cliff a small turbo road car is supposed to fall off is not in GT7's model
+# of this one.
+#
+# What the measurement does not cover: this car's real limiter is ~7215 rpm,
+# only 11% past its power peak, so nothing here observes a turbo road car at
+# 20% over-rev — the reference this fraction is quoted against. The value is
+# the measured shape, not an extrapolation past where the data stops.
+_RETENTION_TURBO: float = 0.98
 # Unknown car, unknown class (non-GT7 feeds, a car missing from the table):
 # the assumption this model made for every car before the classes existed.
 _RETENTION_DEFAULT: float = 0.90
@@ -161,6 +175,26 @@ _CUE_LEAD_FRAC: float = 0.15
 # ambiguous — go now, or is there more? The blink is the cue; a full bar means
 # the next thing to happen is the blink.
 _DEFAULT_SHIFT_FRACTIONS: list[float] = [0.00, 0.38, 0.66, 0.87]
+
+# Learning the real rev limiter.
+#
+# `rpm_alert.max` is what the game *declares*, and on GT7 it is a tachometer
+# value, not the fuel cut: car 1461 declares 8000 and cuts at 7215, measured
+# across three full-throttle pulls that all stopped within 3 rpm of each
+# other. A target anchored on the declared value then sits 625 rpm above
+# anything the engine can reach, so the ladder never completes and the blink
+# never fires — the bar reads two greens while the game is already flashing.
+#
+# The cut has a signature nothing else has: rpm falling while the pedal is on
+# the floor and the gear has not changed. Learn from that, and only ever
+# downward — a declared limiter is an upper bound worth trusting until the
+# engine itself contradicts it.
+_LIMITER_CUT_DROP_RPM: float = 150.0
+# Ignore a "cut" far below the declared limit; that is wheelspin, a missed
+# gear or a bad frame, not a rev limiter.
+_LIMITER_MIN_FRAC: float = 0.75
+# Pedal position that counts as full throttle for the purpose above.
+_LIMITER_WOT_THROTTLE: float = 0.9
 
 # Schmitt-trigger hysteresis to prevent RPM flicker around thresholds
 _HYSTERESIS_RPM: float = 60.0
@@ -366,6 +400,12 @@ class ShiftLightController:
         self._blink_t = 0.0
         self._blink_on = True
 
+        # Rev-limiter learning (see _LIMITER_CUT_DROP_RPM).
+        self._throttle = ThrottleNormalizer()
+        self._wot_max_rpm = 0.0
+        self._observed_limiter: float | None = None
+        self._limiter = float(redline_rpm)
+
         # state
         self._pair_count = 0
         self._in_alert = False
@@ -401,14 +441,14 @@ class ShiftLightController:
 
     def _compute_window_rpm(self, gear: int, shift_rpm: float) -> float:
         """How much RPM the ladder spans below the shift point."""
-        base = _CORRIDOR_FRAC_OF_LIMITER * float(self.engine.redline)
+        base = _CORRIDOR_FRAC_OF_LIMITER * float(self._limiter)
         return self._clamp(base, self.window_rpm_min, self.window_rpm_max)
 
     def _compute_alert_rpm(self, gear: int, shift_rpm: float) -> float:
         """RPM the bar starts blinking — the shift point, led by reaction time."""
         drop = self._upshift_drop_rpm(gear, shift_rpm)
         if drop is None:
-            lead = _NO_RATIO_CUE_LEAD_FRAC * float(self.engine.redline)
+            lead = _NO_RATIO_CUE_LEAD_FRAC * float(self._limiter)
         else:
             lead = _CUE_LEAD_FRAC_OF_DROP * drop
         return shift_rpm - self._clamp(lead, _CUE_LEAD_RPM_MIN, _CUE_LEAD_RPM_MAX)
@@ -422,7 +462,45 @@ class ShiftLightController:
         span = max(200.0, self._compute_alert_rpm(gear, shift_rpm) - start_rpm)
         return [start_rpm + f * span for f in self.fractions]
 
+    def _learn_limiter(self, frame: TelemetryFrame, rpm: float, gear: int) -> None:
+        """Watch for the engine refusing to rev any further.
+
+        A fuel cut is rpm falling while the pedal is down in an unchanged
+        gear. A lift is not (the pedal comes up), an upshift is not (the gear
+        changes, and the caller has already reset this), and wheelspin
+        recovering is not — that happens far below the declared limit, which
+        is what _LIMITER_MIN_FRAC excludes.
+        """
+        throttle = self._throttle(frame.throttle)
+        if throttle < _LIMITER_WOT_THROTTLE or gear < 1:
+            self._wot_max_rpm = 0.0
+            return
+
+        if rpm > self._wot_max_rpm:
+            self._wot_max_rpm = rpm
+            return
+
+        if rpm > self._wot_max_rpm - _LIMITER_CUT_DROP_RPM:
+            return  # noise, not a cut
+
+        declared = float(self.engine.redline)
+        cut = self._wot_max_rpm
+        self._wot_max_rpm = 0.0
+        if cut < _LIMITER_MIN_FRAC * declared:
+            return
+        if self._observed_limiter is not None and cut <= self._observed_limiter:
+            return
+
+        self._observed_limiter = cut
+        self._shift_rpm_by_gear.clear()
+        self._thresholds_by_gear.clear()
+        self._alert_rpm_by_gear.clear()
+        self._logger.info(
+            "rev limiter learned: %.0f rpm (the game declares %.0f)", cut, declared
+        )
+
     def _reset_states_on_gear_change(self, gear: int):
+        self._wot_max_rpm = 0.0
         self._pair_count = 0
         self._in_alert = False
         self._blink_t = 0.0
@@ -486,6 +564,8 @@ class ShiftLightController:
         if gear != self._last_gear:
             self._reset_states_on_gear_change(gear)
 
+        self._learn_limiter(frame, rpm, gear)
+
         # update redline from telemetry; keep the DB redline if the frame
         # carries no rev-limit (rpm_alert absent — a legal omission the ACC
         # broadcast feed always makes — or max == 0)
@@ -529,7 +609,12 @@ class ShiftLightController:
         # have at all without gear ratios on the wire (demo mode and the ACC
         # broadcast feed never send them). The power curve may only move the
         # target *down* from there.
+        # The declared limiter is an upper bound; the engine's own cut wins
+        # over it once observed.
         limiter = float(self.engine.redline)
+        if self._observed_limiter is not None:
+            limiter = min(limiter, self._observed_limiter)
+        self._limiter = limiter
         lead = self._clamp(
             _TARGET_LEAD_FRAC * limiter, _TARGET_LEAD_RPM_MIN, _TARGET_LEAD_RPM_MAX
         )
@@ -559,10 +644,13 @@ class ShiftLightController:
             # audit shift points against *real* limiters and *real* ratios.
             # An offline sweep can only use the fabricated redline column.
             self._logger.info(
-                "shift point: gear %d  limiter %.0f  target %.0f (%.0f%%)  "
+                "shift point: gear %d  limiter %.0f%s  target %.0f (%.0f%%)  "
                 "blink %.0f  pairs %s  game warns at %s",
                 gear,
                 limiter,
+                ""
+                if self._observed_limiter is None
+                else f" (declared {self.engine.redline:.0f})",
                 shift_rpm,
                 100.0 * shift_rpm / limiter if limiter else 0.0,
                 self._alert_rpm_by_gear[gear],
