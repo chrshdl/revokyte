@@ -49,17 +49,27 @@ _RETENTION_RACE: float = 1.00  # flat — the shift-cost margin holds it in gear
 # Car 204 (Civic Type R (EK) '98) was driven for this — 14 pulls across three
 # gears, 7239 samples — and could not decide it. Its power peaks at 8300 and
 # it cuts at ~8620, so only 4.9% of the samples sit past the peak at all, and
-# over that span droop 0.00 and 0.50 differ by 1.2% of torque: both fit at an
-# identical RMS of 0.330 m/s². The falloff is only measurable on an engine
-# that revs well past its power peak — a low-peak V8 rather than a VTEC — and
-# for the same reason it barely moves the shift point on engines like this
-# one, where the limiter is what decides it.
+# over that span droop 0.00 and 0.50 differ by 1.2% of torque. The fit is
+# correspondingly indifferent: 0.3% of RMS separates droop 0 from droop 2.5,
+# and the answer swings from 0.00 to 1.03 with the rpm window alone. The
+# falloff is only measurable on an engine that revs well past its power peak
+# — and for the same reason it barely moves the shift point on engines like
+# this one, where the limiter is what decides it.
 _RETENTION_NA_HIGH_REV: float = 0.90  # peak above _HIGH_REV_RPM: VTEC and kin
-_RETENTION_NA: float = 0.84
-_RETENTION_SUPERCHARGED: float = 0.82
+
+# MEASURED. Car 3487 (Mustang Boss 429 '69), 5 pulls across 3rd and 4th, 2449
+# samples, power peaking at 5000 and pulling to 5830 — 17% of over-rev, which
+# is what makes this the first NA measurement with anything to say. Best fit
+# droop 0.62 (0.5 fitting from the torque peak up), against a prior of 0.80.
+# The V8 does droop, unlike both turbos measured, so the aspiration split is
+# real — just not the "cliff" the turbo prior originally assumed.
+_RETENTION_NA: float = 0.88
+_RETENTION_SUPERCHARGED: float = 0.82  # untested
 # MEASURED, and the prior it replaces (0.74) was badly wrong. Car 1461
 # (Silvia K's (S13) '90, SR20DET), 11 pulls across 2nd and 3rd, 4986 samples:
-# best fit droop 0.08 over the full range and 0.10 above 4500 rpm. At 7000
+# best fit droop 0.08 over the full range and 0.25 fitting from 4500 rpm up
+# (the spread is 4.6% of RMS across droop 0-2.5, so read it as 0.1-0.25 and
+# not as three digits). At 7000
 # rpm the old prior predicted 0.698 of peak where 0.788 was measured. The
 # cliff a small turbo road car is supposed to fall off is not in GT7's model
 # of this one.
