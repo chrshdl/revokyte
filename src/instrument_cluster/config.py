@@ -64,9 +64,9 @@ class Config:
     # provider plugin (0 = the built-in default). An invalid or
     # no-longer-available value silently falls back to the default.
     dashboard_slot: int = field(default=0)
-    # Log full-throttle pulls to <config dir>/accel_runs for the dyno
-    # (tools/dyno/analyze_accel.py), which is how the shift-point curve's
-    # falloff gets measured instead of assumed. Off by default and
+    # Log full-throttle pulls to <config dir>/accel_runs, which is how the
+    # shift-point curve's falloff gets measured instead of assumed: the runs
+    # are read back and fitted offline. Off by default and
     # config-file only — no settings UI row. On the appliance this is the
     # only way to capture: the feed emits to the device's own loopback and
     # the cluster already owns that port, so nothing else can listen.

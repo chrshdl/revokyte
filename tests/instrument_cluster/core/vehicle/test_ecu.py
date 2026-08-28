@@ -379,7 +379,7 @@ def test_the_aspiration_split_is_the_measured_one():
 
     assert race == 0.0
     assert race < turbo < na
-    assert na < 1.0  # measured 0.62; nothing here is a cliff
+    assert na < 1.0  # measured 0.80; steep, but not a cliff
 
 
 def test_a_supercharger_is_read_as_forced_induction():
@@ -393,13 +393,13 @@ def test_the_measured_classes_keep_what_was_measured():
     """Two classes are no longer guesses, and a change to either should be
     a change someone made on purpose against new data:
 
-    * race — car 3588, 9 pulls, best fit droop 0.00
-    * turbo street — car 1461, 11 pulls, best fit droop 0.08-0.25
-    * NA street — car 3487, 5 pulls, best fit droop 0.62
+    * race — car 3588, 10 pulls, best fit droop 0.03
+    * turbo street — car 1461, 12 pulls, best fit droop 0.12-0.30
+    * NA street — car 3487, 13 pulls, best fit droop 0.80
     """
     assert power_droop_for("TC", "race") == 0.0
     assert power_droop_for("TC", "street") < 0.2
-    assert 0.4 < power_droop_for("NA", "street") < 0.8
+    assert power_droop_for("NA", "street") == pytest.approx(0.8)
 
 
 def test_a_race_car_holds_power_to_the_limiter():
