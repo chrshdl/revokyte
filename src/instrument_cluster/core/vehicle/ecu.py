@@ -193,11 +193,21 @@ _DEFAULT_SHIFT_FRACTIONS: list[float] = [0.00, 0.38, 0.66, 0.87]
 # downward — a declared limiter is an upper bound worth trusting until the
 # engine itself contradicts it.
 _LIMITER_CUT_DROP_RPM: float = 150.0
-# Ignore a "cut" far below the declared limit; that is wheelspin, a missed
-# gear or a bad frame, not a rev limiter.
-_LIMITER_MIN_FRAC: float = 0.75
+# Ignore a "cut" far below the declared limit. The two real ones measured sit
+# at 0.90 (car 1461) and 0.97 (car 204) of what the game declares, while a
+# traction-control intervention on a GT3 produced false ones at 0.77-0.82 —
+# the pedal is down, the gear has not changed, and rpm falls anyway.
+_LIMITER_MIN_FRAC: float = 0.88
 # Pedal position that counts as full throttle for the purpose above.
 _LIMITER_WOT_THROTTLE: float = 0.9
+# A real limiter is repeatable: car 1461 hit the same one three times within
+# 3 rpm. A one-off drop is something else, so a candidate has to be seen
+# twice within this band before it is believed.
+_LIMITER_CONFIRM_FRAC: float = 0.015
+# ...and it bounces rather than collapses. Car 1461 fell 293 rpm off its cut
+# while the pedal stayed down. A fall of thousands is a downshift, a spin, or
+# telemetry resuming somewhere else entirely — never a fuel cut.
+_LIMITER_MAX_DROP_FRAC: float = 0.15
 
 # Schmitt-trigger hysteresis to prevent RPM flicker around thresholds
 _HYSTERESIS_RPM: float = 60.0
@@ -406,6 +416,7 @@ class ShiftLightController:
         # Rev-limiter learning (see _LIMITER_CUT_DROP_RPM).
         self._throttle = ThrottleNormalizer()
         self._wot_max_rpm = 0.0
+        self._limiter_candidate: float | None = None
         self._observed_limiter: float | None = None
         self._limiter = float(redline_rpm)
 
@@ -479,12 +490,25 @@ class ShiftLightController:
             self._wot_max_rpm = 0.0
             return
 
+        if frame.flags.tcs_active:
+            # Traction control cuts power with the pedal still down, which is
+            # the fuel cut's signature exactly. On a GT3 leaving a corner it
+            # produced "limiters" 1800 rpm below the real one and dragged the
+            # whole ladder down with them.
+            self._wot_max_rpm = 0.0
+            return
+
         if rpm > self._wot_max_rpm:
             self._wot_max_rpm = rpm
             return
 
-        if rpm > self._wot_max_rpm - _LIMITER_CUT_DROP_RPM:
+        drop = self._wot_max_rpm - rpm
+        if drop < _LIMITER_CUT_DROP_RPM:
             return  # noise, not a cut
+        if drop > _LIMITER_MAX_DROP_FRAC * self._wot_max_rpm:
+            # Not a bounce off anything — start again from here.
+            self._wot_max_rpm = 0.0
+            return
 
         declared = float(self.engine.redline)
         cut = self._wot_max_rpm
@@ -494,12 +518,22 @@ class ShiftLightController:
         if self._observed_limiter is not None and cut <= self._observed_limiter:
             return
 
-        self._observed_limiter = cut
+        # Believe it only once the same rpm turns up twice. Anything that
+        # stops an engine once — a tap of traction control, a dropped frame,
+        # a kerb — does not come back to the same rpm; a limiter does.
+        candidate = self._limiter_candidate
+        if candidate is None or abs(cut - candidate) > _LIMITER_CONFIRM_FRAC * cut:
+            self._limiter_candidate = cut
+            return
+
+        self._observed_limiter = max(cut, candidate)
         self._shift_rpm_by_gear.clear()
         self._thresholds_by_gear.clear()
         self._alert_rpm_by_gear.clear()
         self._logger.info(
-            "rev limiter learned: %.0f rpm (the game declares %.0f)", cut, declared
+            "rev limiter learned: %.0f rpm, seen twice (the game declares %.0f)",
+            self._observed_limiter,
+            declared,
         )
 
     def _reset_states_on_gear_change(self, gear: int):
