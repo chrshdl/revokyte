@@ -1,7 +1,7 @@
 """Shift-light ECU tests: the omit-never-null wire convention must not
 crash the controller, and wire-supplied shift-point data must drive it."""
 
-from instrument_cluster.core.vehicle.ecu import ShiftLightController
+from instrument_cluster.core.vehicle.ecu import EngineModel, ShiftLightController
 from instrument_cluster.telemetry.models import Bounds, Flags, TelemetryFrame
 
 
@@ -98,3 +98,257 @@ def test_overall_ratios_give_the_same_shift_points_as_gearbox_ratios():
     b.calculate_lights(_frame(gear_ratios=overall), 0.016)
     for gear in range(1, 6):
         assert a.calculator.get_optimal_rpm(gear) == b.calculator.get_optimal_rpm(gear)
+
+
+# A Ferrari 296 GT3 '23 (car id 3588) as cars.json describes it — peak figures
+# confirmed against the game — plus a plausible GT3 sequential gearbox.
+_GT3_SPECS = dict(
+    name="296 GT3 '23",
+    max_power_kw=447,
+    max_power_rpm=6800,
+    max_torque_nm=713,
+    max_torque_rpm=5500,
+    redline_rpm=7800,
+)
+_GT3_RATIOS = [2.91, 2.10, 1.68, 1.39, 1.18, 1.00]
+_GT3_LIMITER = 8200
+
+
+def _settled(controller, frame, frames: int = 4):
+    """Run enough frames to fill the 3-deep median filter."""
+    result = None
+    for _ in range(frames):
+        result = controller.calculate_lights(frame, 0.016)
+    return result
+
+
+def test_a_flat_power_engine_shifts_at_the_limiter():
+    """Regression: car 3588 (Ferrari 296 GT3 '23) blinked full red at 7067 rpm
+    on a car that pulls to ~8200 — 1133 rpm early, with the first green LED
+    lighting at 5467. The cause was ``get_torque``'s unclamped ``dist**2``
+    compounding past the power peak, which had the model believing the engine
+    made half its peak power at the limiter."""
+    controller = ShiftLightController(**_GT3_SPECS)
+    _settled(
+        controller,
+        _frame(
+            engine_rpm=6000.0,
+            current_gear=3,
+            gear_ratios=_GT3_RATIOS,
+            rpm_alert=Bounds(min=7700, max=_GT3_LIMITER),
+        ),
+    )
+    assert controller.target_rpm >= 0.93 * _GT3_LIMITER
+
+
+def test_a_peaky_engine_still_shifts_early():
+    """The other side of the same knob. An engine that genuinely falls off a
+    cliff past its power peak must keep shifting well before the limiter —
+    otherwise the shift-cost margin has simply flattened every car and the
+    power curve has stopped saying anything."""
+    controller = ShiftLightController(
+        name="peaky",
+        max_power_kw=220,
+        max_power_rpm=6000,
+        max_torque_nm=500,
+        max_torque_rpm=4000,
+        redline_rpm=6800,
+    )
+    _settled(
+        controller,
+        _frame(
+            engine_rpm=5000.0,
+            current_gear=3,
+            gear_ratios=[3.5, 2.2, 1.6, 1.25, 1.0, 0.85],
+            rpm_alert=Bounds(min=6300, max=6800),
+        ),
+    )
+    assert controller.target_rpm <= 0.94 * 6800
+
+
+def test_the_shift_target_is_anchored_on_the_limiter_not_the_rev_warning():
+    """``rpm_alert.min`` is where the *game* starts warning, ~500 rpm under the
+    limiter. The target used to be clamped to it, which on the no-ratios path
+    (demo mode, the ACC broadcast feed) meant blinking full red at 81% of the
+    limiter."""
+    controller = _controller()
+    _settled(
+        controller,
+        _frame(gear_ratios=None, engine_rpm=6000.0, rpm_alert=Bounds(min=6500, max=8000)),
+    )
+    assert controller.target_rpm > 6500
+    assert controller.target_rpm >= 0.97 * 8000
+
+
+def test_the_game_rev_warning_alone_does_not_blink():
+    """``rev_limiter_alert_active`` turns on at ``rpm_alert.min`` — a warning
+    band, which our own per-gear ladder already draws. Letting it force the
+    alert is what skipped the 4th LED pair and forced the target down to
+    compensate."""
+    controller = _controller()
+    leds, alert, _, _ = _settled(
+        controller,
+        _frame(
+            engine_rpm=5000.0,
+            flags=Flags(car_on_track=True, in_gear=True, rev_limiter_alert_active=True),
+        ),
+    )
+    assert alert is False
+    assert not any(leds)
+
+
+def test_all_four_pairs_light_before_the_alert():
+    """Guards what the rpm_alert.min clamp was protecting, now that the clamp
+    is gone: sweeping up to the target must walk the ladder 0..4 and only then
+    go to full blink, in every gear."""
+    for gear in range(1, 6):
+        controller = ShiftLightController(**_GT3_SPECS)
+        seen, alerted_at = set(), None
+        for rpm in range(4000, _GT3_LIMITER + 1, 25):
+            leds, alert, _, _ = controller.calculate_lights(
+                _frame(
+                    engine_rpm=float(rpm),
+                    current_gear=gear,
+                    gear_ratios=_GT3_RATIOS,
+                    rpm_alert=Bounds(min=7700, max=_GT3_LIMITER),
+                ),
+                0.016,
+            )
+            if alert:
+                alerted_at = rpm
+                break
+            seen.add(sum(leds) // 2)
+        assert alerted_at is not None, f"gear {gear} never reached the alert"
+        assert seen == {0, 1, 2, 3, 4}, f"gear {gear} skipped a pair: {sorted(seen)}"
+
+
+def test_the_curve_shape_does_not_depend_on_the_redline():
+    """cars.json's ``redline_rpm`` is fabricated — every row is exactly
+    ``max_power_rpm + 1000`` — and on the no-rpm_alert path it is all the
+    controller has. The falloff past the power peak used to be spread over
+    ``redline - max_power_rpm``, so that invented number reshaped a real car's
+    curve; it is now anchored on ``max_power_rpm`` alone."""
+    low = EngineModel(447, 6800, 713, 5500, 7800)
+    high = EngineModel(447, 6800, 713, 5500, 9800)
+    # Sampled below both redlines, so only the falloff *shape* is compared.
+    for rpm in (5000, 6800, 7000, 7400, 7700):
+        assert low.get_torque(rpm) == high.get_torque(rpm), f"diverged at {rpm} rpm"
+
+
+def test_the_alert_survives_limiter_bounce():
+    """Guards the raised exit hysteresis and the blink-phase remainder, which
+    together became load-bearing once ``rev_limiter_alert_active`` stopped
+    latching the alert on: bouncing off the limiter must read as a steady
+    blink, not a solid bar."""
+    controller = _controller()
+    states = []
+    for i in range(40):
+        rpm = 8000.0 if i % 2 else 7850.0
+        leds, alert, _, _ = controller.calculate_lights(
+            _frame(engine_rpm=rpm, rpm_alert=Bounds(min=7600, max=8000)), 0.016
+        )
+        states.append((alert, any(leds)))
+    settled = states[4:]
+    assert all(alert for alert, _ in settled), "alert dropped out mid-bounce"
+    assert len({lit for _, lit in settled}) == 2, "bar never blinked"
+
+
+def test_the_ladder_reads_the_same_in_every_gear():
+    """Regression, found on track: at 7000 rpm on a car limited to 8000 the bar
+    showed two pairs in 1st, one in 3rd and nothing in 5th. The ladder was
+    sized from the gear ratio, but the driver reads it against a tach that does
+    not change with gear — and with ``power_to_limiter`` the shift point is the
+    same rpm in every gear, so the ladder must be too."""
+    controller = ShiftLightController(**{**_GT3_SPECS, "power_to_limiter": True})
+    lit = {}
+    for gear in range(1, 6):
+        _settled(
+            controller,
+            _frame(
+                engine_rpm=7000.0,
+                current_gear=gear,
+                gear_ratios=_GT3_RATIOS,
+                rpm_alert=Bounds(min=7700, max=_GT3_LIMITER),
+            ),
+        )
+        thresholds = controller._thresholds_by_gear[gear]
+        lit[gear] = sum(1 for t in thresholds if t <= 7000)
+
+    assert len(set(lit.values())) == 1, f"same rpm, different bar per gear: {lit}"
+    assert lit[1] >= 2, "ladder is still bunched against the limiter"
+
+
+def test_the_blink_lead_still_follows_the_gearbox():
+    """The one thing that must stay gear-dependent: the blink is a cue to act,
+    and rpm climbs ~4x faster in 1st than in 4th, so the lead has to be bigger
+    down low or reacting to it overshoots into the limiter."""
+    controller = ShiftLightController(**{**_GT3_SPECS, "power_to_limiter": True})
+    for gear in range(1, 5):
+        _settled(
+            controller,
+            _frame(
+                engine_rpm=7000.0,
+                current_gear=gear,
+                gear_ratios=_GT3_RATIOS,
+                rpm_alert=Bounds(min=7700, max=_GT3_LIMITER),
+            ),
+        )
+    leads = {g: controller._shift_rpm_by_gear[g] - controller._alert_rpm_by_gear[g]
+             for g in range(1, 5)}
+    assert leads[1] > leads[2] > leads[3] > leads[4], leads
+
+    # ...and the last pair must still land under the blink, not above it.
+    for gear in range(1, 5):
+        assert controller._thresholds_by_gear[gear][-1] < controller._alert_rpm_by_gear[gear]
+
+
+def test_a_bogus_ratio_pair_falls_back_instead_of_inverting_the_ladder():
+    """GT7 reads eight ratio slots and stops at the first zero, but some
+    seven-speed layouts hold an unrelated float in the eighth. A pair that does
+    not shorten the drivetrain would yield a zero or negative corridor."""
+    controller = ShiftLightController(**_GT3_SPECS)
+    _settled(
+        controller,
+        _frame(
+            engine_rpm=6000.0,
+            current_gear=1,
+            gear_ratios=[1.0, 1.2],  # "next" gear is taller — not a real pair
+            rpm_alert=Bounds(min=7700, max=_GT3_LIMITER),
+        ),
+    )
+    pairs = controller._thresholds_by_gear[1]
+    assert pairs == sorted(pairs)
+    assert pairs[-1] - pairs[0] >= 400
+
+
+def test_a_changed_limiter_rebuilds_the_curve():
+    """The curve is scanned relative to the redline, but the rebuild used to
+    trigger on gear ratios alone — so a limiter arriving after the ratios, or a
+    retuned car keeping its stock gearbox, left a stale curve in place."""
+    controller = ShiftLightController(**_GT3_SPECS)
+    _settled(
+        controller,
+        _frame(engine_rpm=6000.0, gear_ratios=_GT3_RATIOS, rpm_alert=Bounds(min=7700, max=8200)),
+    )
+    first = controller.calculator
+
+    # Dropped well below the curve's own optimum, so the limiter is what binds.
+    _settled(
+        controller,
+        _frame(engine_rpm=5000.0, gear_ratios=_GT3_RATIOS, rpm_alert=Bounds(min=6300, max=6800)),
+    )
+    assert controller.calculator is not first
+    assert controller._built_redline == 6800
+    assert controller.target_rpm <= 6800
+
+
+def test_a_steady_limiter_does_not_rebuild_the_curve():
+    """The rebuild scans 250 rpm points per gear; a jittery wire value must not
+    make that a per-frame cost on the Pi."""
+    controller = ShiftLightController(**_GT3_SPECS)
+    frame = _frame(engine_rpm=6000.0, gear_ratios=_GT3_RATIOS, rpm_alert=Bounds(min=7700, max=8200))
+    _settled(controller, frame)
+    built = controller.calculator
+    for _ in range(30):
+        controller.calculate_lights(frame, 0.016)
+    assert controller.calculator is built
