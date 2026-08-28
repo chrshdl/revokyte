@@ -5,37 +5,115 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ...logger import Logger
+
 if TYPE_CHECKING:
     from ...telemetry.models import TelemetryFrame
 
 # EngineModel torque curve shape
-_TORQUE_LOW_BLEND_BASE: float = 0.8  # fraction of max torque at rpm=0
+_TORQUE_LOW_BLEND_BASE: float = 0.4  # fraction of max torque at rpm=0
 _TORQUE_LOW_BLEND_SLOPE: float = (
-    0.2  # additional fraction gained linearly to peak-torque rpm
+    0.6  # additional fraction gained linearly to peak-torque rpm
 )
-_OVER_REV_TORQUE_DROP: float = 0.25  # fraction of peak-power torque lost by redline
+# Power lost per unit of over-rev past the power peak: 0.5 means an engine spun
+# 20% beyond its power peak still makes 90% of peak power. Deliberately relative
+# to max_power_rpm and never to the redline — cars.json's redline_rpm column is
+# fabricated (every row is exactly max_power_rpm + 1000), so a redline-anchored
+# falloff lets invented data reshape a real car's curve.
+_POWER_DROOP_PER_OVERREV: float = 0.5
 
-# ShiftLightController gear-scale factors (window width multipliers per gear)
-_GEAR_SCALE_1: float = 1.15  # gear 1 gets more lead time
-_GEAR_SCALE_2: float = 1.05  # gear 2 gets slightly more lead time
-_GEAR_SCALE_HIGH: float = 0.90  # gears >= 5 get a tighter window
+# An upshift costs ~0.15 s of zero thrust, so the true break-even genuinely
+# favours staying in gear — and under flat power the bare crossover is
+# degenerate (torque proportional to 1/rpm makes wheel torque identical in both
+# gears, leaving the comparison to floating-point noise). Race engines live in
+# exactly that region, so the next gear must beat the current one by this
+# margin, not merely tie it.
+_SHIFT_COST_MARGIN: float = 0.08
 
-# Default progressive shift-light activation fractions (fraction of RPM window)
-_DEFAULT_SHIFT_FRACTIONS: list[float] = [0.00, 0.35, 0.60, 0.75]
+# Reaction time, expressed in rpm below the limiter. Real shift bars go red at
+# ~97-98% of the limiter; car-relative so a 15000 rpm kart and a 5700 rpm hatch
+# both get a usable amount of warning.
+_TARGET_LEAD_FRAC: float = 0.02
+_TARGET_LEAD_RPM_MIN: float = 60.0
+_TARGET_LEAD_RPM_MAX: float = 250.0
+
+# Bounds on the blink lead, so an odd ratio pair cannot put the cue absurdly
+# early or leave it too late to react to.
+_CUE_LEAD_RPM_MIN: float = 80.0
+_CUE_LEAD_RPM_MAX: float = 400.0
+
+# Ladder width, as a fraction of the RPM the engine actually drops on the
+# upshift out of this gear. That drop is the natural car-and-gear-relative
+# scale — it narrows with every gear exactly as the old hand-fitted per-gear
+# multipliers tried to, but derived per car instead of guessed once for all of
+# them, so a 5700 rpm hatch and a 15000 rpm kart no longer share a corridor.
+# How far below the shift point the ladder starts, as a fraction of the rev
+# limiter. Deliberately **not** derived from the gear ratio: the driver reads
+# this bar against a tach that does not change with gear, and when a sender
+# sets power_to_limiter the shift point is the same rpm in every gear. Sizing
+# the ladder per gear made 7000 rpm show two pairs in 1st, one in 3rd and
+# nothing in 5th on the same car — the bar meant something different in every
+# gear. The gear-dependence that *is* real lives in the blink lead below.
+_CORRIDOR_FRAC_OF_LIMITER: float = 0.20
+
+# How far the blink leads the shift point, as a fraction of the RPM the engine
+# drops on the upshift. This is the part that must scale with gear: it is
+# reaction time expressed in rpm, and rpm climbs ~4x faster in 1st than in 4th
+# (measured on car 3588: 1497 vs 387 rpm/s). The upshift drop is the proxy —
+# it is derived from the same gear ratio that sets the climb rate.
+_CUE_LEAD_FRAC_OF_DROP: float = 0.1125
+
+# Blink lead when the ratios are unknown (demo mode, the ACC broadcast feed) —
+# a flat fraction of the limiter, since there is nothing to scale by.
+_NO_RATIO_CUE_LEAD_FRAC: float = 0.02
+
+# How far below the shift point the bar starts blinking, as a fraction of the
+# corridor. The blink is a cue to *act*, so it has to fire early enough that a
+# human reacting to it lands on the shift point — a driver needs ~185 ms, and
+# in that time rpm climbs by rate x 0.185, which is four times further in 1st
+# than in 4th. Measured on a 296 GT3 (car 3588): 1497/939/556/387 rpm/s in
+# gears 1-4, so reacting to a blink at the shift point itself overshot into
+# the limiter in 1st and 2nd. Scaling the lead by the corridor gets the
+# gear-dependence for free: the corridor is derived from the upshift rpm drop,
+# which scales with the same gear ratio the climb rate does. At 0.15 the blink
+# lands within ~70 rpm of the ideal cue in every gear.
+_CUE_LEAD_FRAC: float = 0.15
+
+# Where each LED pair lights, as a fraction of the window below the shift
+# point. The gaps between them — and between the last pair and the blink —
+# must shrink monotonically, so the ramp reads as accelerating all the way
+# into the shift. These give 0.38 / 0.28 / 0.21 / 0.13 of the window.
+#
+# The previous [0.00, 0.35, 0.60, 0.75] spaced them 0.35 / 0.25 / 0.15 / 0.25:
+# the ramp tightened, then the final step *widened* again, so the bar snapped
+# to fully-lit and then held there longer than the step before it. That reads
+# as a stall at the one moment that matters, and makes the full pattern
+# ambiguous — go now, or is there more? The blink is the cue; a full bar means
+# the next thing to happen is the blink.
+_DEFAULT_SHIFT_FRACTIONS: list[float] = [0.00, 0.38, 0.66, 0.87]
 
 # Schmitt-trigger hysteresis to prevent RPM flicker around thresholds
 _HYSTERESIS_RPM: float = 60.0
-_ALERT_EXIT_HYSTERESIS_RPM: float = 120.0
+_ALERT_EXIT_HYSTERESIS_RPM: float = 200.0
 
 # Shift-alert blink period in seconds
 _BLINK_PERIOD_S: float = 0.10
 
 # RPM window size limits
-_WINDOW_RPM_MIN: float = 800.0
-_WINDOW_RPM_MAX: float = 2000.0
+# Absolute bounds on the ladder width. These are a backstop against absurd
+# limiters, not a tuning knob: the corridor is already a fraction of the
+# limiter, so it scales on its own. They were much tighter when the corridor
+# came from the gear ratios, and that 1800 ceiling silently capped 115 of the
+# 540 cars in the table — every engine revving past ~9000 got the same ladder
+# as a 9000 rpm one, which is exactly the scaling this is supposed to provide.
+_WINDOW_RPM_MIN: float = 600.0
+_WINDOW_RPM_MAX: float = 3500.0
 
 # Gear-ratio change tolerance — avoids recreating ShiftPointCalculator on floating-point noise
 _RATIO_CHANGE_TOLERANCE: float = 1e-3
+
+# Redline change tolerance — same purpose, for a jittery wire rpm_alert.max
+_REDLINE_CHANGE_TOLERANCE: float = 10.0
 
 # Default dt when none is provided or value is non-positive
 _DEFAULT_DT_S: float = 0.016
@@ -49,8 +127,13 @@ class EngineModel:
         max_torque_nm,
         max_torque_rpm,
         redline_rpm,
+        power_to_limiter: bool = False,
     ):
         self.redline = redline_rpm
+        # A sender that knows the engine holds power to the limiter turns the
+        # droop off entirely; the shift-cost margin then keeps every gear at
+        # the limiter, which is where race cars are actually shifted.
+        self.power_droop = 0.0 if power_to_limiter else _POWER_DROOP_PER_OVERREV
         self.max_power_rpm = max_power_rpm
         self.max_torque_rpm = max_torque_rpm
         self.max_torque_nm = max_torque_nm
@@ -59,8 +142,9 @@ class EngineModel:
 
     def get_torque(self, rpm: float) -> float:
         """Returns estimated torque in Nm."""
-        if rpm > self.redline:
-            return 0.0
+        # Hold the redline value rather than falling off a cliff to zero: a
+        # step discontinuity inside the scanned range invents crossovers.
+        rpm = min(rpm, self.redline)
 
         # if below peak torque do linear ramp up
         if rpm < self.max_torque_rpm:
@@ -74,18 +158,23 @@ class EngineModel:
         if drop_range <= 0:
             drop_range = 1.0
 
-        dist = (rpm - self.max_torque_rpm) / drop_range
+        # Clamped at 1.0: this interpolates *between* the torque and power
+        # peaks and has no meaning past the latter. Left unclamped it kept
+        # squaring — at 8200 rpm on a 6800 rpm power peak it reached 4.31 and
+        # cut a Ferrari 296 GT3 from 628 Nm to 345 Nm, which is what made the
+        # shift lights blink over 1000 rpm early.
+        dist = min(1.0, (rpm - self.max_torque_rpm) / drop_range)
         drop_amount = max(0, self.max_torque_nm - self.torque_at_power_peak)
 
         torque = self.max_torque_nm - (drop_amount * (dist**2))
 
         if rpm > self.max_power_rpm:
-            # force a drop of _OVER_REV_TORQUE_DROP from peak power torque
-            # by the time we hit redline
-            over_rev_range = self.redline - self.max_power_rpm
-            if over_rev_range > 0:
-                pct_past = (rpm - self.max_power_rpm) / over_rev_range
-                torque *= 1.0 - _OVER_REV_TORQUE_DROP * (pct_past**2)
+            # Past the power peak, model *power* and let torque follow: a real
+            # engine holds power far better than the old curve assumed, and
+            # constant power alone is torque proportional to 1/rpm.
+            over_rev = (rpm / self.max_power_rpm) - 1.0
+            power_frac = max(0.0, 1.0 - self.power_droop * over_rev)
+            torque = self.torque_at_power_peak * (self.max_power_rpm / rpm) * power_frac
 
         return max(0.0, float(torque))
 
@@ -114,7 +203,7 @@ class ShiftPointCalculator:
             t_curr = self.engine.get_torque(rpm) * current_ratio
             t_next = self.engine.get_torque(rpm_next) * next_ratio
 
-            status = "SHIFT!" if t_next > t_curr else "STAY"
+            status = "SHIFT!" if t_next > t_curr * (1.0 + _SHIFT_COST_MARGIN) else "STAY"
 
             print(f"{int(rpm):4d} | {int(t_curr):16d} | {int(t_next):17d} | {status}")
 
@@ -138,8 +227,9 @@ class ShiftPointCalculator:
                 torque_now = self.engine.get_torque(rpm) * current_ratio
                 torque_next = self.engine.get_torque(next_rpm) * next_ratio
 
-                # The moment Next Gear gives more torque than Current Gear -> SHIFT!
-                if torque_next > torque_now:
+                # Shift only once the next gear beats the current one by the
+                # cost of the upshift itself (see _SHIFT_COST_MARGIN).
+                if torque_next > torque_now * (1.0 + _SHIFT_COST_MARGIN):
                     best_rpm = rpm
                     break
 
@@ -159,20 +249,26 @@ class ShiftLightController:
         max_torque_nm=600,
         max_torque_rpm=6500,
         redline_rpm=9000,
+        power_to_limiter: bool = False,
         shiftlight_fractions: list[float] | None = None,
         filter_window: int = 3,
-        target_corridor: float = 1600.0,
     ):
         self.engine = EngineModel(
-            max_power_kw, max_power_rpm, max_torque_nm, max_torque_rpm, redline_rpm
+            max_power_kw,
+            max_power_rpm,
+            max_torque_nm,
+            max_torque_rpm,
+            redline_rpm,
+            power_to_limiter,
         )
         self.calculator: ShiftPointCalculator | None = None
         self.last_gear_ratios = None
+        # Redline the current calculator was scanned against.
+        self._built_redline: float | None = None
 
         self._rpm_buffer = deque([0.0] * filter_window, maxlen=filter_window)
 
         # Dynamic Window Config
-        self.target_corridor = target_corridor
         self.window_rpm_min = _WINDOW_RPM_MIN
         self.window_rpm_max = _WINDOW_RPM_MAX
 
@@ -196,36 +292,55 @@ class ShiftLightController:
         self._target_rpm = 0.0
         self._last_gear = 0
 
+        self._logger = Logger(type(self).__name__).get()
+
         # cache
         self._thresholds_by_gear: dict[int, list[float]] = {}
         self._shift_rpm_by_gear: dict[int, float] = {}
+        self._alert_rpm_by_gear: dict[int, float] = {}
 
     def _clamp(self, x: float, lo: float, hi: float) -> float:
         return lo if x < lo else min(x, hi)
 
-    def _gear_scale(self, gear: int) -> float:
-        if gear == 1:
-            return _GEAR_SCALE_1
-        if gear == 2:
-            return _GEAR_SCALE_2
-        if gear >= 5:
-            return _GEAR_SCALE_HIGH
-        return 1.00
+    def _upshift_drop_rpm(self, gear: int, target: float) -> float | None:
+        """RPM the engine drops on the upshift out of ``gear``, or None when
+        the ratios cannot say.
 
-    def _compute_window_rpm(self, gear: int) -> float:
+        GT7 reads eight ratio slots and stops at the first zero, but some
+        seven-speed layouts hold an unrelated float in the eighth — so a pair
+        that does not actually shorten the drivetrain is not a gear pair, and
+        trusting it would yield a zero or negative corridor.
         """
-        Window is 'target_corridor' wide, widened for low gears
-        (more lead time) and tightened for high gears.
-        """
-        base = self.target_corridor * self._gear_scale(gear)
+        ratios = self.last_gear_ratios
+        if not ratios or gear < 1 or gear >= len(ratios):
+            return None
+        current, following = ratios[gear - 1], ratios[gear]
+        if not 0.0 < following < current:
+            return None
+        return target * (1.0 - following / current)
+
+    def _compute_window_rpm(self, gear: int, shift_rpm: float) -> float:
+        """How much RPM the ladder spans below the shift point."""
+        base = _CORRIDOR_FRAC_OF_LIMITER * float(self.engine.redline)
         return self._clamp(base, self.window_rpm_min, self.window_rpm_max)
 
+    def _compute_alert_rpm(self, gear: int, shift_rpm: float) -> float:
+        """RPM the bar starts blinking — the shift point, led by reaction time."""
+        drop = self._upshift_drop_rpm(gear, shift_rpm)
+        if drop is None:
+            lead = _NO_RATIO_CUE_LEAD_FRAC * float(self.engine.redline)
+        else:
+            lead = _CUE_LEAD_FRAC_OF_DROP * drop
+        return shift_rpm - self._clamp(lead, _CUE_LEAD_RPM_MIN, _CUE_LEAD_RPM_MAX)
+
     def _compute_thresholds(self, gear: int, shift_rpm: float) -> list[float]:
-        window = self._compute_window_rpm(gear)
-        start_rpm = shift_rpm - window
-        # thresholds are increasing RPM points
-        # where each additional pair turns on
-        return [start_rpm + f * window for f in self.fractions]
+        start_rpm = shift_rpm - self._compute_window_rpm(gear, shift_rpm)
+        # The pairs run from that fixed low end up to the blink — so the bottom
+        # of the ladder is the same rpm in every gear, while the top follows
+        # the gear-dependent cue lead and the last pair always lands just under
+        # the blink instead of leaving a gap.
+        span = max(200.0, self._compute_alert_rpm(gear, shift_rpm) - start_rpm)
+        return [start_rpm + f * span for f in self.fractions]
 
     def _reset_states_on_gear_change(self, gear: int):
         self._pair_count = 0
@@ -238,7 +353,7 @@ class ShiftLightController:
         # toggles every blink_period; starts as "ON" on entry
         self._blink_t += dt
         while self._blink_t >= self.blink_period:
-            self._blink_t = 0.0
+            self._blink_t -= self.blink_period
             self._blink_on = not self._blink_on
         return self._blink_on
 
@@ -278,7 +393,6 @@ class ShiftLightController:
         mid = len(buf) // 2
         rpm = buf[mid] if len(buf) % 2 else 0.5 * (buf[mid - 1] + buf[mid])
 
-        rev_alert = frame.flags.rev_limiter_alert_active
         tcs_active = frame.flags.tcs_active
         asm_active = frame.flags.asm_active
 
@@ -298,10 +412,11 @@ class ShiftLightController:
         if frame.rpm_alert is not None and frame.rpm_alert.max > 0:
             self.engine.redline = frame.rpm_alert.max
 
-        # build calculator if ratios changed
-        # and add a tolerance check for gear ratios
-        # floating-point "noise" to prevent recreating
-        # ShiftPointCalculator every single frame.
+        # Rebuild the calculator when the ratios change — with a tolerance, so
+        # floating-point noise on the wire does not recreate it every frame —
+        # or when the redline moves. The redline trigger matters because the
+        # curve is scanned relative to it: without it, a limiter arriving after
+        # the ratios (or a retuned car) left a stale curve in place forever.
         if frame.gear_ratios:
             ratios_changed = False
             if self.last_gear_ratios is None or len(frame.gear_ratios) != len(
@@ -315,31 +430,41 @@ class ShiftLightController:
                         ratios_changed = True
                         break
 
-            if ratios_changed:
+            redline_changed = (
+                self._built_redline is None
+                or abs(self.engine.redline - self._built_redline)
+                > _REDLINE_CHANGE_TOLERANCE
+            )
+
+            if ratios_changed or redline_changed:
                 self.last_gear_ratios = frame.gear_ratios
+                self._built_redline = self.engine.redline
                 self.calculator = ShiftPointCalculator(self.engine, frame.gear_ratios)
                 self._thresholds_by_gear.clear()
                 self._shift_rpm_by_gear.clear()
+                self._alert_rpm_by_gear.clear()
 
-        # shift RPM target for this gear. Without gear ratios on the wire
-        # (demo mode and the ACC broadcast feed never send them) no
-        # power-curve shift point can be computed — anchor on the redline
-        # instead: later than optimal, but correct for every car, where the
-        # previous all-off return meant no shift lights at all.
+        # Shift RPM target for this gear, anchored on the rev limiter — the
+        # one per-car number the game itself tells us, and the only thing we
+        # have at all without gear ratios on the wire (demo mode and the ACC
+        # broadcast feed never send them). The power curve may only move the
+        # target *down* from there.
+        limiter = float(self.engine.redline)
+        lead = self._clamp(
+            _TARGET_LEAD_FRAC * limiter, _TARGET_LEAD_RPM_MIN, _TARGET_LEAD_RPM_MAX
+        )
+        shift_rpm = limiter - lead
         if self.calculator:
-            optimal = float(self.calculator.get_optimal_rpm(gear))
-            shift_rpm = min(optimal, float(self.engine.redline) - 40.0)
-        else:
-            shift_rpm = float(self.engine.redline) - 40.0
+            shift_rpm = min(float(self.calculator.get_optimal_rpm(gear)), shift_rpm)
 
-        # rev_limiter_alert_active (the game's own red-zone flag) can fire
-        # independently of our threshold ramp above. Limit the top of the
-        # window to rpm_alert.min where that flag actually turns on so
-        # the last LED pair always has room to light before the alert
-        # preempts it (otherwise the ramp can jump straight from pair 3 to
-        # full blink, skipping pair 4 entirely).
-        if frame.rpm_alert is not None and frame.rpm_alert.min > 0:
-            shift_rpm = min(shift_rpm, float(frame.rpm_alert.min))
+        # Deliberately *not* clamped to rpm_alert.min. That clamp existed so
+        # the 4th LED pair could not be skipped when the game's own
+        # rev_limiter_alert_active preempted the ladder — a real bug, but it
+        # was fixed by dragging the target down to the game's warning rpm,
+        # ~500 below the limiter, on every car. The interloper is gone
+        # instead: the alert keys on our own target alone (see enter_alert),
+        # so the ladder always runs to completion and the target can sit
+        # where the engine actually wants it.
 
         self._target_rpm = shift_rpm
 
@@ -349,16 +474,31 @@ class ShiftLightController:
         ):
             self._shift_rpm_by_gear[gear] = shift_rpm
             self._thresholds_by_gear[gear] = self._compute_thresholds(gear, shift_rpm)
+            self._alert_rpm_by_gear[gear] = self._compute_alert_rpm(gear, shift_rpm)
+            # Once per gear per car, so free at 60 Hz — and the only way to
+            # audit shift points against *real* limiters and *real* ratios.
+            # An offline sweep can only use the fabricated redline column.
+            self._logger.info(
+                "shift point: gear %d  limiter %.0f  target %.0f (%.0f%%)  "
+                "blink %.0f  pairs %s  game warns at %s",
+                gear,
+                limiter,
+                shift_rpm,
+                100.0 * shift_rpm / limiter if limiter else 0.0,
+                self._alert_rpm_by_gear[gear],
+                [round(t) for t in self._thresholds_by_gear[gear]],
+                round(frame.rpm_alert.min) if frame.rpm_alert else "n/a",
+            )
 
         thresholds = self._thresholds_by_gear[gear]
+        alert_rpm = self._alert_rpm_by_gear[gear]
 
-        # enter alert if either rev limiter alert is active
-        # or we exceeded shift_rpm
-        enter_alert = rev_alert or (rpm >= shift_rpm)
-
-        # exit alert only if the flag is off
-        # and RPM has fallen below the exit threshold
-        exit_alert = (not rev_alert) and (rpm <= (shift_rpm - self.alert_exit_hys_rpm))
+        # The alert is ours alone. The game's rev_limiter_alert_active turns
+        # on at rpm_alert.min — that is a warning band, and our own ladder
+        # already draws one, per gear and better timed. Two red states on the
+        # same eight LEDs would be two clocks telling different times.
+        enter_alert = rpm >= alert_rpm
+        exit_alert = rpm <= (alert_rpm - self.alert_exit_hys_rpm)
 
         if not self._in_alert:
             if enter_alert:
