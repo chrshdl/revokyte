@@ -90,7 +90,7 @@ class Widget(DirtySprite, ABC):
         self.antialias = antialias
 
         # create gradient surface or None
-        self._bg_gradient_surface = self._create_vertical_gradient(
+        self._bg_gradient_surface = self._create_background_gradient(
             bg_gradient_top,
             bg_gradient_bottom,
         )
@@ -244,11 +244,17 @@ class Widget(DirtySprite, ABC):
         else:
             pygame.draw.rect(self.image, self.bg_color, rect)
 
-    def _create_vertical_gradient(
+    def _create_background_gradient(
         self,
         top_color: tuple[int, int, int] | None,
         bottom_color: tuple[int, int, int] | None,
     ) -> pygame.Surface | None:
+        """Build the panel background ramp, or None for a flat fill.
+
+        Subclasses override this to shape the ramp differently (the tyre
+        cells use a radial glow); the two colours keep their meaning either
+        way — `top_color` is the dark rim, `bottom_color` the lit end.
+        """
         if top_color is None or bottom_color is None:
             return None
         return vertical_gradient((self.w, self.h), top_color, bottom_color)

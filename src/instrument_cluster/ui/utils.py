@@ -85,6 +85,72 @@ def vertical_gradient(
     return surf
 
 
+# Sine-arch glow parameters, all fractions of the cell so one set of
+# numbers holds the look at every size. GLOW_HEADROOM is the slice of panel
+# height the arch's peak leaves free at the top; GLOW_BAND is the width of
+# the transition, as a fraction of panel height — the arch line sits in its
+# middle, so half the band bleeds either side of the curve. GLOW_CREST is
+# an exponent on the sine: 1.0 is the plain curve, and below that the crest
+# widens (the peak flattens out and the flanks steepen) without moving the
+# peak or the corners.
+GLOW_HEADROOM = 0.55  # 0.5
+GLOW_BAND = 1.3  # 1.1
+GLOW_CREST = 0.25
+
+
+def arc_gradient(
+    size: tuple[int, int],
+    edge_color: tuple[int, int, int],
+    glow_color: tuple[int, int, int],
+    headroom: float = GLOW_HEADROOM,
+    band: float = GLOW_BAND,
+    crest: float = GLOW_CREST,
+) -> pygame.Surface:
+    """A glow bounded by a sine arch, fading to `edge_color` above it.
+
+    The companion to :func:`vertical_gradient` for panels whose dark tone is
+    a vignette rather than a strict top-to-bottom ramp. Fit half a sine
+    period across the panel — bottom-left corner up over the middle and back
+    down to the bottom-right corner, peaking `headroom` short of the top
+    edge and broadened at the crest by `crest`. Below that curve is
+    `glow_color`, above it `edge_color`, and the curve itself is the middle
+    of the transition.
+
+    Because the arch dives into the bottom corners, the dark closes in from
+    both sides as well as from the top and meets in the top corners — the
+    soft inner shadow that frames the value digits.
+    """
+    import numpy as np
+
+    width, height = size
+    if width <= 0 or height <= 0:
+        return pygame.Surface((max(width, 1), max(height, 1)))
+
+    span = max(1, width - 1)
+    bottom = height - 1
+    amplitude = (1.0 - headroom) * bottom
+    arch = bottom - amplitude * np.sin(np.pi * np.arange(width) / span) ** crest
+
+    # Signed distance to the arch, in half-bands: -1 at the top of the
+    # transition, 0 on the curve, +1 at its bottom.
+    half_band = max(1.0, band * bottom / 2.0)
+    t = np.clip(
+        0.5 + (np.arange(height)[:, None] - arch[None, :]) / (2.0 * half_band),
+        0.0,
+        1.0,
+    )
+    t = t * t * (3.0 - 2.0 * t)  # smoothstep: no seam where the band ends
+
+    edge = np.array(edge_color, dtype=float)
+    glow = np.array(glow_color, dtype=float)
+    rgb = edge + (glow - edge) * t[:, :, None]
+
+    surf = pygame.Surface(size)
+    # surfarray is (x, y, rgb); the field above is built row-major.
+    pygame.surfarray.blit_array(surf, rgb.transpose(1, 0, 2).round().astype("uint8"))
+    return surf
+
+
 def load_font_px(size: int, family: FontFamily) -> pygame.font.Font:
     """Load a font at an exact pixel size (no scaling applied).
 
