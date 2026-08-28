@@ -17,7 +17,7 @@ from ..peripherals.shift_lights import ShiftLights
 
 class ShiftLightsPlugin(GenericPlugin):
     plugin_id = "shift-lights"
-    version = "1.2.0"
+    version = "1.3.0"
 
     def setup(self) -> None:
         self._peripheral = ShiftLights()

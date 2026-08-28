@@ -305,7 +305,8 @@ torque curve, and the drivetrain ratios.
 
 ```json
 "engine": { "max_power_kw": 380.0, "max_power_rpm": 7200.0,
-            "max_torque_nm": 650.0, "max_torque_rpm": 5500.0 },
+            "max_torque_nm": 650.0, "max_torque_rpm": 5500.0,
+            "power_to_limiter": true },
 "gear_ratios": [2.917, 2.31, 1.85, 1.52, 1.30, 1.14]
 ```
 
@@ -315,11 +316,23 @@ torque curve, and the drivetrain ratios.
 | `max_power_rpm` | number > 0 | yes | RPM of peak power. |
 | `max_torque_nm` | number > 0 | yes | Peak torque. |
 | `max_torque_rpm` | number > 0 | yes | RPM of peak torque. |
+| `power_to_limiter` | boolean | no (default `false`) | The engine holds power all the way to the rev limiter. |
 
 Notes for senders:
 
 - The redline is **not** part of `engine`; it already travels as
   `rpm_alert.max`.
+- `power_to_limiter` exists because the four peak numbers above do not
+  contain the one thing the shift point most depends on: how fast power
+  falls off *past* the peak. A BOP'd race engine holds it almost flat and is
+  shifted at the limiter; a small turbo road car falls off a cliff and wants
+  an early upshift. Both can report identical peaks, so a receiver
+  synthesizing a curve from them has to guess, and guessing costs ~6% of the
+  rev range either way. Set it when the source knows — GT7's feed derives it
+  from the car's group tag (Gr.1–Gr.4 and Gr.X are purpose-built racers) —
+  and omit it otherwise. Receivers that predate it fall back to their own
+  falloff assumption, which is the pre-existing behaviour, so it is safe to
+  send unconditionally.
 - `gear_ratios` may be sourced from the game (GT7 transmits them), from a
   per-car table, or **measured live** as `engine_rpm ÷ wheel rpm` while the
   drivetrain is engaged and not slipping — since only relative ratios

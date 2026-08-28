@@ -148,7 +148,8 @@
         "max_power_kw": { "type": "number", "exclusiveMinimum": 0 },
         "max_power_rpm": { "type": "number", "exclusiveMinimum": 0 },
         "max_torque_nm": { "type": "number", "exclusiveMinimum": 0 },
-        "max_torque_rpm": { "type": "number", "exclusiveMinimum": 0 }
+        "max_torque_rpm": { "type": "number", "exclusiveMinimum": 0 },
+        "power_to_limiter": { "type": "boolean" }
       }
     },
     "bounds": {
