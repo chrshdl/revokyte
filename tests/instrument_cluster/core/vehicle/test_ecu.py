@@ -1,7 +1,13 @@
 """Shift-light ECU tests: the omit-never-null wire convention must not
 crash the controller, and wire-supplied shift-point data must drive it."""
 
-from instrument_cluster.core.vehicle.ecu import EngineModel, ShiftLightController
+import pytest
+
+from instrument_cluster.core.vehicle.ecu import (
+    EngineModel,
+    ShiftLightController,
+    power_droop_for,
+)
 from instrument_cluster.telemetry.models import Bounds, Flags, TelemetryFrame
 
 
@@ -352,3 +358,91 @@ def test_a_steady_limiter_does_not_rebuild_the_curve():
     for _ in range(30):
         controller.calculate_lights(frame, 0.016)
     assert controller.calculator is built
+
+
+# --- engine class -> power falloff ---------------------------------------
+#
+# The four peak numbers a sender can put on the wire do not say how fast
+# power falls away past the peak, and that is what the shift point mostly
+# depends on. The class table (db/car_classes.json) is where that comes from.
+
+
+def test_a_turbo_road_car_droops_harder_than_a_high_revving_na():
+    """The distinction PROTOCOL.md §3.5.5 describes but the boolean cannot
+    express: a small turbo road car falls off a cliff, a high-revving NA
+    holds on. Before the class table both got the same middle assumption."""
+    turbo = power_droop_for("TC", "street", max_power_rpm=6500)
+    high_rev_na = power_droop_for("NA", "street", max_power_rpm=8000)
+    ordinary_na = power_droop_for("NA", "street", max_power_rpm=6000)
+
+    assert turbo > ordinary_na > high_rev_na > 0.0
+
+
+def test_a_race_car_holds_power_to_the_limiter():
+    """Every purpose-built racer is BOP'd flat, whatever it breathes
+    through — car 3588 is a turbocharged Gr.3 and must not be read as a
+    peaky road turbo."""
+    assert power_droop_for("TC", "race", max_power_rpm=6800) == 0.0
+    assert power_droop_for("NA", "race", max_power_rpm=8500) == 0.0
+
+
+def test_an_unknown_class_keeps_the_historical_curve():
+    """Other games' feeds have no entry in a GT7-keyed table, and that is
+    not an error: they must land on exactly the falloff every car used
+    before the classes existed."""
+    assert power_droop_for(None, None, max_power_rpm=7000) == pytest.approx(0.5)
+    assert power_droop_for("", "", max_power_rpm=7000) == pytest.approx(0.5)
+
+
+def test_an_ev_never_droops():
+    """Single-speed: there is no upshift to compute, so the curve decides
+    nothing — and an electric motor has no over-rev region to model."""
+    assert power_droop_for("EV", "street", max_power_rpm=8000) == 0.0
+
+
+def test_the_class_falloff_moves_the_shift_point():
+    """The resolver is only worth having if it reaches the shift point: the
+    same peaks and gearbox, classed turbo instead of unknown, must shift
+    earlier. Numbers are car 1461's (Silvia K's, TC/street), whose ladder
+    finished ~800 rpm after GT7's own shift flash under the flat default."""
+    specs = dict(
+        name="S13",
+        max_power_kw=128,
+        max_power_rpm=6500,
+        max_torque_nm=225,
+        max_torque_rpm=4000,
+        redline_rpm=8000,
+    )
+    ratios = [3.321, 1.902, 1.308, 1.000, 0.759]
+    frame = _frame(
+        engine_rpm=6400.0,
+        current_gear=3,
+        gear_ratios=ratios,
+        rpm_alert=Bounds(min=7000, max=8000),
+    )
+
+    default = ShiftLightController(**specs)
+    _settled(default, frame)
+
+    turbo = ShiftLightController(
+        **specs, power_droop=power_droop_for("TC", "street", 6500)
+    )
+    _settled(turbo, frame)
+
+    assert turbo.target_rpm < default.target_rpm - 400
+
+
+def test_the_sender_still_overrides_the_class():
+    """power_to_limiter is the sender saying it knows this engine. The table
+    only knows the class, so the flag wins — a tuned road car with a race
+    engine must not be dragged back down by its street classification."""
+    engine = EngineModel(
+        128,
+        6500,
+        225,
+        4000,
+        8000,
+        power_to_limiter=True,
+        power_droop=power_droop_for("TC", "street", 6500),
+    )
+    assert engine.power_droop == 0.0
