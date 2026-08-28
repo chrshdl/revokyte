@@ -11,6 +11,11 @@ from .core.plugin_system.plugin_manager import PluginManager
 from .core.system import unhealthy
 from .core.system.wifi_manager import WifiManager
 from .core.vehicle.vehicle_bus import VehicleBus
+from .core.vehicle.accel_recorder import (
+    AccelRunRecorder,
+    AccelRunStore,
+    default_runs_dir,
+)
 from .extensions import runtime as extensions
 from .logger import Logger
 from .peripherals.display import Display
@@ -202,6 +207,18 @@ def run(conf: Config) -> None:
         stall_detector.start()
         last_touch_log = 0.0
 
+        # Opt-in (config: accel_logging), off on every shipped device. The
+        # dyno needs full-throttle pulls, and on the appliance this is the
+        # only place they can be captured: the feed emits to loopback and
+        # the cluster itself owns that port, so no second listener can bind.
+        accel_recorder = (
+            AccelRunRecorder(AccelRunStore(default_runs_dir()))
+            if ConfigManager.get_config().accel_logging
+            else None
+        )
+        if accel_recorder is not None:
+            logger.info("accel logging on — runs go to %s", default_runs_dir())
+
         while state_manager.is_running:
             dt = clock.tick(60) / 1000
             stall_detector.beat()
@@ -209,6 +226,29 @@ def run(conf: Config) -> None:
             vehicle_bus.tick(dt)
             vehicle_bus.merge_signals(extensions.update_signals())
             signal_pipeline.update(vehicle_bus, dt)
+            if accel_recorder is not None:
+                # A dead link ends the pull. Readers hold their last frame
+                # forever, so a stream that just stops — session over, console
+                # asleep — otherwise leaves the run open and unwritten: the
+                # recorder only ever closes one on a lift, an upshift or the
+                # limiter, and none of those arrive after the frames stop.
+                accel_recorder.feed(
+                    None
+                    if vehicle_bus.signals.get("telemetry_stale")
+                    else vehicle_bus.frame
+                )
+                run = accel_recorder.take_result()
+                if run is not None:
+                    # There is no screen for this; the journal is the report.
+                    logger.info(
+                        "accel run %s: gear %d  %d-%d rpm  %d samples  (%s)",
+                        "kept" if run.accepted else "dropped",
+                        run.gear,
+                        run.rpm_lo,
+                        run.rpm_hi,
+                        run.sample_count,
+                        run.reason,
+                    )
             # Plugin reloads may be requested from background threads
             # (extensions do) but execute here — pygame surfaces must be
             # created on the main thread.
