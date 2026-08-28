@@ -42,50 +42,35 @@ _REFERENCE_OVER_REV: float = 0.20
 # fitted alongside it (1.49 m/s² at 200 km/h) — without that the same data
 # reads as droop 1.48, which is what a single-gear fit still cannot rule out.
 _RETENTION_RACE: float = 1.00  # flat — the shift-cost margin holds it in gear
-# Still priors — no naturally aspirated or supercharged car has been measured
-# to a conclusion, and the two measurements below came out flatter than any of
-# these, so treat them as the next things to check rather than as settled.
-#
-# Car 204 (Civic Type R (EK) '98) was driven for this — 14 pulls across three
-# gears, 7239 samples — and could not decide it. Its power peaks at 8300 and
-# it cuts at ~8620, so only 4.9% of the samples sit past the peak at all, and
-# over that span droop 0.00 and 0.50 differ by 1.2% of torque. The fit is
-# correspondingly indifferent: 0.3% of RMS separates droop 0 from droop 2.5,
-# and the answer swings from 0.00 to 1.03 with the rpm window alone. The
-# falloff is only measurable on an engine that revs well past its power peak
-# — and for the same reason it barely moves the shift point on engines like
-# this one, where the limiter is what decides it.
-_RETENTION_NA_HIGH_REV: float = 0.90  # peak above _HIGH_REV_RPM: VTEC and kin
-
 # MEASURED. Car 3487 (Mustang Boss 429 '69), 5 pulls across 3rd and 4th, 2449
 # samples, power peaking at 5000 and pulling to 5830 — 17% of over-rev, which
 # is what makes this the first NA measurement with anything to say. Best fit
 # droop 0.62 (0.5 fitting from the torque peak up), against a prior of 0.80.
 # The V8 does droop, unlike both turbos measured, so the aspiration split is
 # real — just not the "cliff" the turbo prior originally assumed.
-_RETENTION_NA: float = 0.88
-_RETENTION_SUPERCHARGED: float = 0.82  # untested
-# MEASURED, and the prior it replaces (0.74) was badly wrong. Car 1461
-# (Silvia K's (S13) '90, SR20DET), 11 pulls across 2nd and 3rd, 4986 samples:
-# best fit droop 0.08 over the full range and 0.25 fitting from 4500 rpm up
-# (the spread is 4.6% of RMS across droop 0-2.5, so read it as 0.1-0.25 and
-# not as three digits). At 7000
-# rpm the old prior predicted 0.698 of peak where 0.788 was measured. The
-# cliff a small turbo road car is supposed to fall off is not in GT7's model
-# of this one.
 #
-# What the measurement does not cover: this car's real limiter is ~7215 rpm,
-# only 11% past its power peak, so nothing here observes a turbo road car at
-# 20% over-rev — the reference this fraction is quoted against. The value is
-# the measured shape, not an extrapolation past where the data stops.
+# It covers every naturally aspirated road car, high-revving ones included.
+# There used to be a separate, gentler value for engines peaking above 7000
+# rpm, on the reasoning that a short-stroke screamer holds power better. It
+# was never measured and cannot be: such an engine peaks a few percent under
+# its limiter by design, so there is almost no over-rev region for a falloff
+# to act in. Car 204 (Civic Type R (EK) '98) was driven to settle it — 14
+# pulls, 7239 samples — and returned 0.00 or 1.03 depending only on the rpm
+# window, with 0.3% of RMS between droop 0 and droop 2.5. Extrapolating one
+# V8 measurement to a VTEC is a guess too, but it is a traceable one, and on
+# these engines the difference moves the shift point by a few rpm.
+_RETENTION_NA: float = 0.88
+
+# No supercharged car was available to drive, so this inherits the measured
+# forced-induction value rather than a number of its own. A blower makes
+# boost in proportion to rpm, which is why a supercharged engine belongs with
+# the turbos here and not with the naturally aspirated ones. 15 cars.
 _RETENTION_TURBO: float = 0.98
+_RETENTION_SUPERCHARGED: float = _RETENTION_TURBO
 # Unknown car, unknown class (non-GT7 feeds, a car missing from the table):
 # the assumption this model made for every car before the classes existed.
 _RETENTION_DEFAULT: float = 0.90
 
-# An NA engine whose power peaks at or above this revs for a living, and holds
-# power past the peak the way a short-stroke race engine does.
-_HIGH_REV_RPM: float = 7000.0
 
 
 def _droop(retention: float) -> float:
@@ -96,11 +81,7 @@ def _droop(retention: float) -> float:
 _DEFAULT_POWER_DROOP: float = _droop(_RETENTION_DEFAULT)
 
 
-def power_droop_for(
-    aspiration: str | None,
-    car_type: str | None,
-    max_power_rpm: float,
-) -> float:
+def power_droop_for(aspiration: str | None, car_type: str | None) -> float:
     """Falloff for one car's engine class (db/car_classes.json fields).
 
     Either field may be None or empty — an unknown car, or a feed for a game
@@ -120,8 +101,6 @@ def power_droop_for(
     if aspiration == "SC":
         return _droop(_RETENTION_SUPERCHARGED)
     if aspiration == "NA":
-        if max_power_rpm >= _HIGH_REV_RPM:
-            return _droop(_RETENTION_NA_HIGH_REV)
         return _droop(_RETENTION_NA)
     return _DEFAULT_POWER_DROOP
 

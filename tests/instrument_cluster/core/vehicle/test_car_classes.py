@@ -70,7 +70,7 @@ def test_the_library_resolves_a_known_turbo_road_car():
     assert entry["car_type"] == "street"
     # Its falloff is measured (11 pulls, droop 0.08-0.10) rather than
     # assumed; what this pins is that the lookup reaches it at all.
-    assert power_droop_for(entry["aspiration"], entry["car_type"], 6500) < 0.2
+    assert power_droop_for(entry["aspiration"], entry["car_type"]) < 0.2
 
     assert library.get_class(999999) is None
 
