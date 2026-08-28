@@ -27,9 +27,11 @@ class ShiftLights:
         self.car_library = CarLibrary(filepath=cars_path)
 
         # Identity of the specs the current controller was built from:
-        # (car_id, engine-curve tuple or None). Wire-supplied engine data
-        # participates so a sender updating its curve rebuilds the
-        # controller just like a car change does.
+        # (car_id, engine-curve tuple or None, rev limiter). Wire-supplied
+        # engine data participates so a sender updating its curve rebuilds the
+        # controller just like a car change does, and the limiter does too —
+        # it anchors the shift target, so a retuned car is a different car as
+        # far as the shift point is concerned.
         self._profile_key: tuple | None = None
         self.controller = None
 
@@ -85,9 +87,11 @@ class ShiftLights:
                 engine.max_power_rpm,
                 engine.max_torque_nm,
                 engine.max_torque_rpm,
+                engine.power_to_limiter,
             )
             if engine is not None
             else None,
+            frame.rpm_alert.max if frame.rpm_alert is not None else None,
         )
         if profile_key != self._profile_key:
             self._init_controller(frame, profile_key)
@@ -157,6 +161,7 @@ class ShiftLights:
                 "max_torque_nm": engine.max_torque_nm,
                 "max_torque_rpm": engine.max_torque_rpm,
                 "redline_rpm": redline,
+                "power_to_limiter": engine.power_to_limiter,
             }
         else:
             car_data = self.car_library.get_specs(frame.car_id)

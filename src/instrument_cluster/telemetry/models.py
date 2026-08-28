@@ -52,6 +52,11 @@ class Engine(BaseModel):
     max_power_rpm: float = 7000.0
     max_torque_nm: float = 450.0
     max_torque_rpm: float = 5000.0
+    # The engine holds power to the rev limiter, so the receiver should target
+    # the limiter rather than the early upshift its two-peak curve would infer.
+    # Two peak points cannot distinguish a BOP'd race engine from a peaky road
+    # car; a sender that knows which it is says so here.
+    power_to_limiter: bool = False
 
 
 class Bounds(BaseModel):

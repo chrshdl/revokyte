@@ -146,3 +146,20 @@ def test_fresh_telemetry_resumes_after_stale(monkeypatch):
     bus.signals["telemetry_stale"] = False
     lights.update(bus, 0.016)
     assert lights.controller is not None
+
+
+def test_a_power_to_limiter_engine_reaches_the_controller():
+    """PROTOCOL.md §3.5.5: a sender that knows the engine holds power to the
+    limiter says so, because the four peak numbers cannot. It must reach the
+    curve, and it must identify the profile — flipping it is as much a
+    different car, shift-point-wise, as new peak figures are."""
+    specs = _WIRE_ENGINE.model_dump(exclude={"power_to_limiter"})
+
+    lights = ShiftLights()
+    lights.update(_bus(_frame(engine=Engine(**specs, power_to_limiter=True))), 0.016)
+    assert lights.controller.engine.power_droop == 0.0
+    built = lights.controller
+
+    lights.update(_bus(_frame(engine=Engine(**specs, power_to_limiter=False))), 0.016)
+    assert lights.controller is not built
+    assert lights.controller.engine.power_droop > 0.0
