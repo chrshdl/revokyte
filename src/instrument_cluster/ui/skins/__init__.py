@@ -28,9 +28,20 @@ _SKIN_MODULES = {
     "SKIN_1280": ".skin_1280x720",
     "SKIN_1024": ".skin_1024x600",
     "SKIN_800": ".skin_800x480",
+    # Car-specific skins. Same resolution as their base skin; the registry
+    # keys on (size, car_id) so they coexist.
+    "SKIN_1280_CAR3588": ".skin_1280x720_car3588",
 }
 
-_registry: dict[tuple[int, int], Skin] | None = None
+# Keyed by (logical size, car id). A resolution has one skin with car id
+# None -- the panel default -- plus any number of car-specific ones.
+_registry: dict[tuple[tuple[int, int], int | None], Skin] | None = None
+
+# The car the dashboard is currently dressed for. Process state rather than a
+# parameter because active_skin() is called from every widget constructor;
+# adding an argument there would mean threading the car id through the whole
+# view and plugin tree for a value that only ever changes between rebuilds.
+_active_car: int | None = None
 
 
 def __getattr__(name: str):
@@ -39,17 +50,55 @@ def __getattr__(name: str):
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-def active_skin() -> Skin:
-    """The skin matching the active display profile's logical size."""
-    from ...peripherals.display import active_profile
-
+def _ensure_registry() -> None:
     global _registry
     if _registry is None:
         skins = [__getattr__(name) for name in _SKIN_MODULES]
-        _registry = {skin.size: skin for skin in skins}
+        _registry = {(tuple(s.size), s.car_id): s for s in skins}
 
+
+def active_skin() -> Skin:
+    """The skin for the active panel and the currently selected car.
+
+    Falls back to the panel's default skin (car id None) when the car has
+    no hand-tuned skin, which is the case for every car but a handful.
+    """
+    from ...peripherals.display import active_profile
+
+    _ensure_registry()
     size = tuple(active_profile().logical_size)
-    return _registry.get(size, __getattr__("SKIN_1280"))
+    skin = _registry.get((size, _active_car))
+    if skin is None:
+        skin = _registry.get((size, None))
+    return skin if skin is not None else __getattr__("SKIN_1280")
+
+
+def active_car() -> int | None:
+    """The car id the dashboard is currently dressed for."""
+    return _active_car
+
+
+def has_skin_for_car(car_id: int | None) -> bool:
+    """True when some panel carries a skin hand-tuned for ``car_id``."""
+    if car_id is None:
+        return False
+    _ensure_registry()
+    return any(car == car_id for _size, car in _registry)
+
+
+def set_active_car(car_id: int | None) -> bool:
+    """Select the car skin. Returns True when the resolved skin changed.
+
+    The caller owns the (expensive) rebuild, so this reports whether one is
+    actually needed rather than doing it: switching between two cars that
+    both fall back to the panel default must not cost a rebuild.
+    """
+    global _active_car
+    if car_id == _active_car:
+        return False
+    before = active_skin()
+    _active_car = car_id
+    return active_skin() is not before
 
 
 def set_skin_override(skin: Skin) -> None:
@@ -59,14 +108,15 @@ def set_skin_override(skin: Skin) -> None:
     edit and rebuilds the views; the app itself never calls this —
     persisted skin changes are rewrites of the ``skin_*.py`` modules.
     """
-    active_skin()  # ensure the registry exists
-    _registry[tuple(skin.size)] = skin
+    _ensure_registry()
+    _registry[(tuple(skin.size), skin.car_id)] = skin
 
 
 def reset_skin_overrides() -> None:
     """Tooling only: drop overrides; next access reloads the modules."""
-    global _registry
+    global _registry, _active_car
     _registry = None
+    _active_car = None
 
 
 __all__ = [

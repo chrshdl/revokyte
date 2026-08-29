@@ -151,9 +151,14 @@ class ViewRegistry:
             del self._borrowed[cls]
 
     def clear(self) -> None:
-        """Drop every built view. Tests only — views bake in the active skin at
-        construction, so a cached view would leak the wrong profile across
-        tests that use the ``force_profile`` fixture."""
+        """Drop every built view.
+
+        Views bake the active skin at construction, so anything that changes
+        which skin is active invalidates all of them: the ``force_profile``
+        fixture in tests, and a car-skin switch at runtime (see
+        ``DashboardState._rebuild_for_skin``). Callers that need the views
+        back immediately must ``preload`` again — ``acquire`` otherwise
+        rebuilds them one at a time on first use."""
         self._views.clear()
         self._failed.clear()
         self._borrowed.clear()

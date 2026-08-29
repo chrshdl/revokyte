@@ -13,7 +13,8 @@ from tools.skin_editor.bindings import bindings_for
 from tools.skin_editor.paths import get_at, walk
 
 #: The skin's identity — deliberately not designer-editable.
-UNASSIGNED_OK = {"name", "size"}
+# Identity, not geometry: which panel and which car the skin is for.
+UNASSIGNED_OK = {"name", "size", "car_id"}
 
 
 def test_every_schema_field_is_reachable_from_some_view():

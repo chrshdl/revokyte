@@ -68,7 +68,7 @@ def test_all_values_are_ints(skin):
         # counts but may be a verbatim string (dashboard.rpm_variant selects
         # which RPM gauge the panel wears). This guard is about geometry, so
         # skip strings rather than demand ints from a field that is a choice.
-        if where == "name" or axis in ("family", "color"):
+        if where in ("name", "car_id") or axis in ("family", "color"):
             continue
         if axis == "const" and isinstance(value, str):
             continue
@@ -139,11 +139,11 @@ def test_skin_1280_keeps_the_original_grid():
     d = SKIN_1280.dashboard
     assert d.footer_y == 636 and d.button_h == 72
     assert d.track_rect == (186, 454, 352, 94)
-    assert d.gear_rect == (640, 400, 186, 232)
+    assert d.gear_rect == (640, 388, 186, 232)
     assert d.lap_counter_rect == (1172, 630, 90, 78)
-    # Widened and lowered for the Ferrari 296-style segmented bar; the gear
-    # dial dropped to y=400 to keep clear of it.
-    assert d.rpm_rect == (640, 214, 320, 98)
+    # The Ferrari bar's wider/lower rect lives in the car-3588 skin, not
+    # here: the base skin wears the classic gauge and keeps the original grid.
+    assert d.rpm_rect == (640, 194, 254, 98)
 
     s = SKIN_1280.setup
     # 5 uniform cells span the header line (100) to the bottom (720).
@@ -251,3 +251,65 @@ def test_overlay_geometry_stays_inside_every_skin():
         assert o.feed_card_size[0] <= skin.width
         assert o.feed_card_size[1] <= skin.height
         assert o.feed_button_size[0] < o.feed_card_size[0]
+
+
+# --- per-car skins -------------------------------------------------------
+
+
+@pytest.fixture
+def reset_active_car():
+    """Car selection is process state; put it back for the next test."""
+    from instrument_cluster.ui import skins
+
+    yield
+    skins.set_active_car(None)
+
+
+def test_car_skin_is_selected_for_its_car(force_profile, reset_active_car):
+    from instrument_cluster.ui import skins
+
+    with force_profile("rpi_display_2"):
+        assert skins.active_skin().car_id is None
+        assert skins.set_active_car(3588) is True
+        skin = skins.active_skin()
+        assert skin.car_id == 3588
+        assert skin.dashboard.rpm_variant == "ferrari"
+
+
+def test_a_car_without_a_skin_falls_back_to_the_panel_default(
+    force_profile, reset_active_car
+):
+    from instrument_cluster.ui import skins
+
+    with force_profile("rpi_display_2"):
+        base = skins.active_skin()
+        skins.set_active_car(1461)
+        assert skins.active_skin() is base
+        assert skins.active_skin().dashboard.rpm_variant == "classic"
+
+
+def test_switching_between_two_skinless_cars_needs_no_rebuild(
+    force_profile, reset_active_car
+):
+    """set_active_car reports whether the RESOLVED skin changed, not whether
+    the car did — a rebuild is ~115ms and must not fire for cars that both
+    fall back to the same default skin."""
+    from instrument_cluster.ui import skins
+
+    with force_profile("rpi_display_2"):
+        skins.set_active_car(1461)
+        assert skins.set_active_car(9999) is False
+        assert skins.set_active_car(3588) is True   # this one has a skin
+        assert skins.set_active_car(1461) is True   # ...and leaving it
+
+
+def test_car_skins_keep_their_panel_resolution(force_profile, reset_active_car):
+    """A car skin must not leak onto another panel."""
+    from instrument_cluster.ui import skins
+
+    with force_profile("waveshare_5"):
+        skins.set_active_car(3588)
+        skin = skins.active_skin()
+        assert skin.size == (800, 480)
+        assert skin.car_id is None
+        assert skin.dashboard.rpm_variant == "classic"

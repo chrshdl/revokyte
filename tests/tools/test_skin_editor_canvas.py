@@ -48,7 +48,7 @@ def test_click_selects_smallest_hit_binding(rig):
     doc, _undo, canvas, events = rig
     # The gear dial center: gear_rect (640, 400) center-anchored.
     origin = canvas.origin
-    pos = (origin[0] + 640, origin[1] + 400)
+    pos = (origin[0] + 640, origin[1] + 388)
     canvas.handle(_mouse("down", pos), doc.skin, doc.get)
     assert events["selected"] is not None
     assert events["selected"].path == "dashboard.gear_rect"
@@ -57,7 +57,7 @@ def test_click_selects_smallest_hit_binding(rig):
 def test_drag_moves_center_anchored_rect_and_coalesces_undo(rig):
     doc, undo, canvas, _events = rig
     origin = canvas.origin
-    start = (origin[0] + 640, origin[1] + 400)
+    start = (origin[0] + 640, origin[1] + 388)
     old = doc.get("dashboard.gear_rect")
 
     canvas.handle(_mouse("down", start), doc.skin, doc.get)
@@ -77,14 +77,14 @@ def test_drag_moves_center_anchored_rect_and_coalesces_undo(rig):
 
 def test_resize_handle_grows_center_rect_symmetrically(rig):
     doc, _undo, canvas, _events = rig
-    old = doc.get("dashboard.gear_rect")  # (640, 400, 186, 232) center
+    old = doc.get("dashboard.gear_rect")  # (640, 388, 186, 232) center
     origin = canvas.origin
 
     # Select, then grab the east handle (right edge, vertical center).
-    center = (origin[0] + 640, origin[1] + 400)
+    center = (origin[0] + 640, origin[1] + 388)
     canvas.handle(_mouse("down", center), doc.skin, doc.get)
     canvas.handle(_mouse("up", center), doc.skin, doc.get)
-    east = (origin[0] + 640 + old[2] // 2, origin[1] + 400)
+    east = (origin[0] + 640 + old[2] // 2, origin[1] + 388)
     canvas.handle(_mouse("down", east), doc.skin, doc.get)
     canvas.handle(_mouse("move", (east[0] + 10, east[1])), doc.skin, doc.get)
     canvas.handle(_mouse("up", (east[0] + 10, east[1])), doc.skin, doc.get)

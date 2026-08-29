@@ -1,13 +1,14 @@
-"""The 1280x720 skin — the original design, extracted verbatim.
+"""The 1280x720 skin for GT7 car 3588.
 
-This is the layout the HMI has always shipped: the Raspberry Pi Touch
-Display 2 renders it 1:1 (the 270-degree rotation happens in the GPU
-presentation path, no resampling), and it doubles as the dev-window layout.
-Values are copied from their previous homes (``ui/constants.py``, the
-plugin rect literals, ``ListItem`` class attrs, the overlay-window module
-constants, ``Widget.__init__`` defaults) and must stay identical to them
-until the last legacy consumer is migrated — the test suite pins the
-equivalences.
+A full copy of SKIN_1280 hand-tuned for one car, selected at runtime from
+TelemetryFrame.car_id (see ui/skins/__init__.py). It differs from the base
+skin only around the RPM gauge for now: rpm_variant selects the Ferrari 296
+GT3 Evo style segmented bar, whose rect is wider and lower than the classic
+needle gauge needs, with the gear dial dropped to clear it and larger scale
+digits.
+
+Everything else is duplicated verbatim, which is the cost of a per-car skin:
+a layout change to the base skin has to be made here too.
 """
 
 from .schema import (
@@ -28,13 +29,14 @@ from .schema import (
     WidgetStyle,
 )
 
-SKIN_1280 = Skin(
-    name="1280x720",
+SKIN_1280_CAR3588 = Skin(
+    name="1280x720-car3588",
+    car_id=3588,
     size=(1280, 720),
     dashboard=DashboardSkin(
-        gear_rect=(640, 388, 186, 232),
+        gear_rect=(640, 400, 186, 232),
         speed_rect=(640, 92, 220, 140),
-        rpm_rect=(640, 194, 254, 98),
+        rpm_rect=(640, 214, 320, 98),
         delta_rect=(1094, 308, 336, 150),
         fastest_lap_rect=(186, 68, 352, 94),
         predicted_lap_rect=(186, 164, 352, 94),
@@ -75,7 +77,7 @@ SKIN_1280 = Skin(
             gear_family="D_DIN_EXP_BOLD",
             speed=108,
             speed_family="D_DIN_EXP_BOLD",
-            rpm_label=22,
+            rpm_label=26,
             rpm_label_family="D_DIN_EXP_BOLD",
             delta=74,
             delta_family="D_DIN_EXP",
@@ -114,7 +116,7 @@ SKIN_1280 = Skin(
         delta_loss_color="LIGHT_RED",
         tire_gradient_top="DARK_GREY",
         tire_gradient_bottom="RPM_RED",
-        rpm_variant="classic",
+        rpm_variant="ferrari",
         rpm_scale_color="WHITE",
         rpm_redline_color="RPM_RED",
         status_light_tc_color="YELLOW",

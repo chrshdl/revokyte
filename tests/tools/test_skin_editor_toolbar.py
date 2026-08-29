@@ -117,4 +117,4 @@ def test_save_button_click_writes_and_reports(app):
     assert not app.any_dirty
     assert "Saved skin_1280x720.py" in app.flash_text()
     saved = (persist.SKINS_DIR / "skin_1280x720.py").read_text()
-    assert "gear_rect=(645, 400, 186, 232)," in saved
+    assert "gear_rect=(645, 388, 186, 232)," in saved

@@ -410,6 +410,13 @@ class Skin:
     numpad: NumpadSkin = _px("group")
     overlays: OverlaySkin = _px("group")
 
+    # Which car this skin is for, or None for the panel's default skin. A
+    # resolution can carry several: the base skin plus hand-tuned ones keyed
+    # by GT7's car id, selected at runtime from TelemetryFrame.car_id. Not a
+    # _px field — it is identity, not geometry, and the seed generator must
+    # copy it rather than scale it.
+    car_id: int | None = None
+
     @property
     def width(self) -> int:
         return self.size[0]
