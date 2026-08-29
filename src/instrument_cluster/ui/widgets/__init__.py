@@ -244,15 +244,41 @@ class Widget(DirtySprite, ABC):
         return packed
 
     def _fill_background(self, rect: pygame.Rect | None = None):
-        """Fill the given rect with either gradient or flat bg_color."""
+        """Fill the given rect with either gradient or flat bg_color.
+
+        A whole-surface fill is clipped to the border radius. The background
+        used to be filled square and the rounded border drawn over it, which
+        left the fill showing in the four corners *outside* the border — a
+        square shoulder on every rounded panel, invisible at radius 4 and
+        obvious once a skin asks for a real radius. Sub-rect fills (the value
+        area on a redraw) are interior and never touch a corner, so they skip
+        the mask and stay cheap.
+        """
+        full = rect is None
         if rect is None:
             rect = self.image.get_rect()
 
         if self._bg_gradient_surface is not None:
-            # draw the corresponding part of the gradient surface
-            self.image.blit(self._bg_gradient_surface, rect, area=rect)
+            source = self._bg_gradient_surface.subsurface(rect).copy()
         else:
-            pygame.draw.rect(self.image, self.bg_color, rect)
+            source = pygame.Surface(rect.size, pygame.SRCALPHA)
+            source.fill(self.bg_color)
+
+        if full and self.border_radius > 0:
+            mask = pygame.Surface(rect.size, pygame.SRCALPHA)
+            pygame.draw.rect(
+                mask,
+                (255, 255, 255, 255),
+                mask.get_rect(),
+                border_radius=self.border_radius,
+            )
+            source = source.convert_alpha()
+            source.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+            # Clear first: the corners must end up transparent, and blitting
+            # a masked surface over old pixels would leave them behind.
+            self.image.fill((0, 0, 0, 0), rect)
+
+        self.image.blit(source, rect)
 
     def _create_background_gradient(
         self,
