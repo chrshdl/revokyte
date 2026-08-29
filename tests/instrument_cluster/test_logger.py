@@ -64,3 +64,32 @@ def test_installs_only_once(monkeypatch, tmp_path):
     _reset(monkeypatch, tmp_path, **{logger_module.DEBUG_LOG_ENV: str(target)})
     assert logger_module.install_debug_file_log() == target
     assert logger_module.install_debug_file_log() is None
+
+
+def test_debug_log_does_not_silence_the_console(monkeypatch, tmp_path):
+    """Enabling the file log must ADD a sink, never replace the console one.
+
+    install_debug_file_log() attaches to the *root* logger. Logger.__init__
+    used to guard its StreamHandler with hasHandlers(), which walks ancestors
+    — so the root file handler made every named logger skip its console
+    handler, and turning the support marker on turned journal logging off.
+    """
+    target = tmp_path / "instrument-cluster.log"
+    _reset(monkeypatch, tmp_path, **{logger_module.DEBUG_LOG_ENV: str(target)})
+
+    assert logger_module.install_debug_file_log() == target
+    root = logging.getLogger()
+    assert any(
+        isinstance(h, logging.handlers.RotatingFileHandler) for h in root.handlers
+    )
+
+    # A logger created *after* the file handler exists still gets a console one.
+    log = logger_module.Logger("created_after_file_log").get()
+    assert any(
+        type(h) is logging.StreamHandler for h in log.handlers
+    ), "console handler was suppressed by the root file handler"
+
+    log.warning("reaches both sinks")
+    for h in root.handlers:
+        h.flush()
+    assert "reaches both sinks" in target.read_text()
