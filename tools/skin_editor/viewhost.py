@@ -103,11 +103,12 @@ def _render_dashboard(surface: pygame.Surface, lights: bool) -> None:
     # The view owns the chrome; gauge sprites link into its plugin layer,
     # exactly as DashboardState does at runtime.
     view = DashboardView()
-    view.status_lights_enabled = lights
-    view._apply_shifts()
-    if lights:
-        view.widget_layer.empty()
-        view._init_widgets()
+    # set_status_lights(), not a hand-rolled copy of its internals: the chrome
+    # is TWO halves and the copy only rebuilt one. _init_widgets() makes the
+    # LED strips, but _init_ui_elements() is what moves the Setup button and
+    # the slot label off the strip's column — skipping it drew a canvas the
+    # running app never produces, with the button still hard against the edge.
+    view.set_status_lights(lights)
 
     # Three LayeredDirty groups share one surface: force dirty-rect mode so
     # no group's *first* draw blits its background across the whole surface
