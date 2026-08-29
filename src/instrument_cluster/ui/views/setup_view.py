@@ -6,7 +6,6 @@ from ...extensions import runtime as extensions
 from ...peripherals.display import is_raspberry_pi
 from ...telemetry.mode import DiffReferenceMode, TelemetryMode
 from ...ui.colors import Color
-from ...ui.icons import Icon
 from ...ui.events import (
     BUTTON_BACK_PRESSED,
     BUTTON_BACK_RELEASED,
@@ -27,6 +26,7 @@ from ...ui.events import (
     WIFI_SETUP_PRESSED,
     WIFI_SETUP_RELEASED,
 )
+from ...ui.icons import Icon
 from ...ui.skins import active_skin
 from ...ui.utils import FontFamily, load_font_px
 from ...ui.widgets.base.button import ButtonEvents
@@ -36,9 +36,10 @@ from ...ui.widgets.base.scrollbar import Scrollbar
 from ...ui.widgets.base.toggle import Toggle
 from ...ui.widgets.settings.brightness_widget import BrightnessWidget
 from .base import View
-from .scrollable_rows import ScrollableRowsView
 from .header import corner_button, header_line, header_title
+from .scrollable_rows import ScrollableRowsView
 from .setup_rows import row_button, row_icon, row_label
+
 
 def _entry_text(entry) -> str:
     """An extension row's label. Callable button_text is re-evaluated on every
@@ -59,7 +60,6 @@ def _entry_text_static(entry) -> str:
 class SetupView(ScrollableRowsView, View):
     STEP_PERCENT = 10
     DIFF_REFERENCE_OPTIONS = [DiffReferenceMode.PREVIOUS, DiffReferenceMode.FASTEST]
-
 
     def __init__(self):
         # ui_layer: header chrome (title, back button) — plain dirty-rect.
@@ -98,7 +98,8 @@ class SetupView(ScrollableRowsView, View):
             rect=(
                 s.dropdown_x,
                 # Integer cell math: round(-gap/2 + c) banker's-rounds a
-                # half-pixel *upward* on odd gaps (800 skin: -17.5 -> -18),
+                # half-pixel *upward* on odd gaps (gap 37,
+                # clearance 1: -17.5 -> -18),
                 # lifting the control 1px onto the header line — which the
                 # open dropdown's scrim then visibly blanks.
                 clearance - gap // 2,
@@ -129,7 +130,8 @@ class SetupView(ScrollableRowsView, View):
             rect=(
                 s.dropdown_x,
                 # Integer cell math: round(-gap/2 + c) banker's-rounds a
-                # half-pixel *upward* on odd gaps (800 skin: -17.5 -> -18),
+                # half-pixel *upward* on odd gaps (gap 37,
+                # clearance 1: -17.5 -> -18),
                 # lifting the control 1px onto the header line — which the
                 # open dropdown's scrim then visibly blanks.
                 clearance - gap // 2,
@@ -232,9 +234,15 @@ class SetupView(ScrollableRowsView, View):
             )
         ]
         if on_pi:
-            row_contents.append((Icon.BRIGHTNESS.glyph(), "Brightness", self.brightness_widget))
+            row_contents.append(
+                (Icon.BRIGHTNESS.glyph(), "Brightness", self.brightness_widget)
+            )
         row_contents += [
-            (Icon.REFERENCE_LAP.glyph(), "Reference Lap", self.diff_reference_mode_dropdown),
+            (
+                Icon.REFERENCE_LAP.glyph(),
+                "Reference Lap",
+                self.diff_reference_mode_dropdown,
+            ),
             (Icon.STATUS_LIGHTS.glyph(), "Status Lights", self.status_lights_toggle),
             (Icon.SHIFT_LIGHTS.glyph(), "Shift Lights", self.shift_lights_toggle),
         ]

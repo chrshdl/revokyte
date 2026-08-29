@@ -80,7 +80,8 @@ def row_button(text: str, icon: str, events: ButtonEvents) -> Button:
         rect=(
             s.dropdown_x,
             # Integer cell math: round(-gap/2 + c) banker's-rounds a
-            # half-pixel *upward* on odd gaps (800 skin: -17.5 -> -18),
+            # half-pixel *upward* on odd gaps (gap 37,
+            # clearance 1: -17.5 -> -18),
             # lifting the control 1px onto the header line — which the
             # open dropdown's scrim then visibly blanks.
             clearance - gap // 2,
