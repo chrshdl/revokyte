@@ -67,6 +67,8 @@ SKIN_1280 = Skin(
         setup_button_font_family="PIXEL_TYPE",
         setup_button_icon=34,
         setup_button_pad_top=8,
+        setup_button_border_width=2,
+        setup_button_border_radius=4,
         slot_name_left_inset=120,
         slot_dots=SlotDots(center=(640, 700), radius=5, pitch=26),
         fonts=DashboardFonts(
@@ -117,6 +119,7 @@ SKIN_1280 = Skin(
         rpm_redline_color="LIGHT_RED",
         status_light_tc_color="YELLOW",
         status_light_asm_color="BLUE",
+        setup_button_border_color="LIGHT_GREY",
         slot_dot_active_color="WHITE",
         slot_dot_inactive_color="DARKER_GREY",
     ),

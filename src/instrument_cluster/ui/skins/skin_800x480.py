@@ -56,6 +56,8 @@ SKIN_800 = Skin(
         setup_button_font_family="PIXEL_TYPE",
         setup_button_icon=22,
         setup_button_pad_top=5,
+        setup_button_border_width=1,
+        setup_button_border_radius=2,
         slot_name_left_inset=75,
         slot_dots=SlotDots(
             center=(400, 467),
@@ -110,6 +112,7 @@ SKIN_800 = Skin(
         rpm_redline_color="LIGHT_RED",
         status_light_tc_color="YELLOW",
         status_light_asm_color="BLUE",
+        setup_button_border_color="WHITE",
         slot_dot_active_color="WHITE",
         slot_dot_inactive_color="DARKER_GREY",
     ),

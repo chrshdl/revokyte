@@ -56,6 +56,8 @@ SKIN_1024 = Skin(
         setup_button_font_family="PIXEL_TYPE",
         setup_button_icon=28,
         setup_button_pad_top=6,
+        setup_button_border_width=2,
+        setup_button_border_radius=3,
         slot_name_left_inset=96,
         slot_dots=SlotDots(
             center=(512, 583),
@@ -110,6 +112,7 @@ SKIN_1024 = Skin(
         rpm_redline_color="LIGHT_RED",
         status_light_tc_color="YELLOW",
         status_light_asm_color="BLUE",
+        setup_button_border_color="WHITE",
         slot_dot_active_color="WHITE",
         slot_dot_inactive_color="DARKER_GREY",
     ),

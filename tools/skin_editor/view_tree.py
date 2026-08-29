@@ -192,6 +192,9 @@ _DASHBOARD_CORE = [
             "dashboard.setup_button_font_family",
             "dashboard.setup_button_icon",
             "dashboard.setup_button_pad_top",
+            "dashboard.setup_button_border_width",
+            "dashboard.setup_button_border_radius",
+            "dashboard.setup_button_border_color",
         ],
     ),
     (
