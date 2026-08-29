@@ -67,6 +67,11 @@ class DashboardState(State):
             state_manager, "plugin_manager", None
         )
         self._linked_generation = -1
+        # Which status-lights layout the gauge plugins were last BUILT with.
+        # Tracked here rather than read back off the view: DashboardView.reset()
+        # binds the view's own flag from config on every entry and resume, so
+        # the view can never tell us what the plugins are still holding.
+        self._plugin_lights: bool | None = None
 
         debug_dest_ip = os.environ.get("DEBUG_DEST_IP", "")
         if debug_dest_ip:
@@ -195,6 +200,9 @@ class DashboardState(State):
         # Linking and the page dots need the borrowed view, so they happen here
         # rather than in __init__ (which runs before the view is acquired).
         self._link_plugins()
+        # PluginManager.load_plugins() builds every plugin from
+        # LayoutContext.from_config(), so on entry the plugins match config.
+        self._plugin_lights = ConfigManager.get_config().status_lights
         self._refresh_slot_dots()
         self.pipeline.start()
         if self.plugin_manager is not None:
@@ -233,16 +241,23 @@ class DashboardState(State):
         if self.plugin_manager is not None:
             self.plugin_manager.set_dashboard_active(True)
 
-        # The status-lights toggle reshapes the layout (bezel strips
-        # appear/disappear, both widget columns shift). Reflow the gauge
-        # plugins first so their fresh sprites are in place when the view
-        # reflows its chrome; StateManager queues a full repaint on pop.
+        # The status-lights toggle reshapes the layout: the bezel strips
+        # appear/disappear and BOTH widget columns shift inward to clear
+        # them. The view reflows its own chrome from config (super() above
+        # calls view.reset()), but the gauge plugins are rebuilt only here,
+        # so this comparison is what makes the columns move at all.
+        #
+        # It must be against _plugin_lights, not view.status_lights_enabled:
+        # view.reset() has already bound the view's flag to the new value by
+        # the time we get here, so comparing against it is always false and
+        # the plugins silently keep the old geometry — the Setup button moves
+        # aside for the LED strip and the gauges do not.
         status_lights = ConfigManager.get_config().status_lights
-        if (
-            self.plugin_manager is not None
-            and status_lights != self.view.status_lights_enabled
-        ):
+        if self.plugin_manager is not None and status_lights != self._plugin_lights:
             self.plugin_manager.relayout(LayoutContext(status_lights=status_lights))
+            self._plugin_lights = status_lights
+        # No-op when reset() already applied it; kept for the view-less and
+        # reset-less paths (extension states subclass this).
         self.view.set_status_lights(status_lights)
         self._relink_if_stale()
         # Slots may have been synced/edited while Setup was open.

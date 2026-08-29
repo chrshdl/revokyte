@@ -1,5 +1,6 @@
 """DashboardState: plugin linking/relinking and the dashboard-active gate."""
 
+import json
 from dataclasses import dataclass, field
 from unittest.mock import MagicMock
 
@@ -333,3 +334,37 @@ def test_pause_cancels_a_running_slide(isolated_environment):
     state.draw(surface)  # snapshot -> wait
     state.on_pause()
     assert state._slide is None
+
+
+def test_status_lights_toggle_relayouts_the_gauge_plugins(monkeypatch, tmp_path):
+    """Toggling the bezel strips must move the gauge columns, not just chrome.
+
+    The guard used to compare config against view.status_lights_enabled. But
+    super().on_resume() calls view.reset(), which binds that flag from config
+    first — so the comparison was always false and relayout() never ran: the
+    Setup button shifted aside for the LED strip while every gauge stayed put.
+    """
+    from instrument_cluster.config import ConfigManager
+
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps({"status_lights": False}))
+    monkeypatch.setattr(ConfigManager, "path", cfg)
+    ConfigManager.reset()
+
+    pm = make_manager([make_plugin(make_sprite())])
+    state = DashboardState(state_manager=MockStateManager(), plugin_manager=pm)
+    state.pipeline = MagicMock()
+    state.enter(pygame.Surface((1280, 720)))
+    pm.relayout.reset_mock()
+
+    # The user turns the strips on in Setup, then pops back to the dashboard.
+    ConfigManager.set_status_lights(True)
+    state.on_resume()
+
+    assert pm.relayout.call_count == 1, "gauge plugins were never reflowed"
+    assert pm.relayout.call_args[0][0].status_lights is True
+
+    # Resuming again with no change must not rebuild every plugin.
+    pm.relayout.reset_mock()
+    state.on_resume()
+    assert pm.relayout.call_count == 0
