@@ -55,6 +55,7 @@ LOGICAL_SIZE = DESIGN_SIZE
 
 # Profile identifiers (also accepted in config.json's "display" field).
 RPI_DISPLAY_2 = "rpi_display_2"
+RPI_DISPLAY_2_SW = "rpi_display_2_sw"
 WAVESHARE_7 = "waveshare_7"
 WAVESHARE_5 = "waveshare_5"
 DEV = "dev"
@@ -130,6 +131,31 @@ _PROFILES = {
         physical_size=(720, 1280),
         rotation=270,
         renderer="gpu",
+    ),
+    RPI_DISPLAY_2_SW: DisplayProfile(
+        name=RPI_DISPLAY_2_SW,
+        # Diagnostic twin of RPI_DISPLAY_2 on the software path. The Waveshare
+        # panels run the no-scale software branch — physical == logical,
+        # set_mode() at native size, present() flushing dirty rects — which the
+        # GPU profile never touches. A fault that only appears there could
+        # otherwise not be reproduced on a Touch Display 2 at all.
+        #
+        # Portrait on purpose: present() rotates on the GPU path only, so the
+        # logical surface has to match the panel's own orientation. Rendering
+        # 1280x720 here would draw sideways, and rotation=270 would then map
+        # touch against axes the frame was never turned onto. The consequence
+        # is that the UI reads 90 degrees off to someone looking at a panel
+        # mounted in landscape, and 720x1280 has no skin of its own so
+        # active_skin() falls back to SKIN_1280 and overflows the width. Both
+        # are acceptable in a profile whose only job is to exercise a path.
+        #
+        # Never auto-detected: _detect_physical_size() walks an explicit list
+        # in which (720, 1280) resolves to the GPU profile. Select this one by
+        # name through config.json's "display" field.
+        physical_size=(720, 1280),
+        logical_size=(720, 1280),
+        rotation=0,
+        renderer="software",
     ),
     WAVESHARE_7: DisplayProfile(
         name=WAVESHARE_7,
