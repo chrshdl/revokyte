@@ -11,8 +11,8 @@ truth, bindings are only handles. Unbound fields are edited via the tree.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import pygame
 
@@ -58,17 +58,74 @@ def _dashboard(lights: bool) -> list[Binding]:
     d = "dashboard."
     note = "pre-shift column" if lights else ""
     out = [
-        Binding(d + "gear_rect", RECT, lambda s: _centered(s.dashboard.gear_rect), "center"),
-        Binding(d + "speed_rect", RECT, lambda s: _centered(s.dashboard.speed_rect), "center"),
-        Binding(d + "rpm_rect", RECT, lambda s: _centered(s.dashboard.rpm_rect), "center"),
-        Binding(d + "delta_rect", RECT, lambda s: _centered(s.dashboard.delta_rect), "center", note),
-        Binding(d + "lap_time_rect", RECT, lambda s: _centered(s.dashboard.lap_time_rect), "center", note),
-        Binding(d + "fastest_lap_rect", RECT, lambda s: _centered(s.dashboard.fastest_lap_rect), "center", note),
-        Binding(d + "predicted_lap_rect", RECT, lambda s: _centered(s.dashboard.predicted_lap_rect), "center", note),
-        Binding(d + "fuel_per_lap_rect", RECT, lambda s: _centered(s.dashboard.fuel_per_lap_rect), "center", note),
-        Binding(d + "fuel_laps_rect", RECT, lambda s: _centered(s.dashboard.fuel_laps_rect), "center", note),
-        Binding(d + "track_rect", RECT, lambda s: _centered(s.dashboard.track_rect), "center", note),
-        Binding(d + "lap_counter_rect", RECT, lambda s: _r(*s.dashboard.lap_counter_rect), "topleft", note),
+        Binding(
+            d + "gear_rect", RECT, lambda s: _centered(s.dashboard.gear_rect), "center"
+        ),
+        Binding(
+            d + "speed_rect",
+            RECT,
+            lambda s: _centered(s.dashboard.speed_rect),
+            "center",
+        ),
+        Binding(
+            d + "rpm_rect", RECT, lambda s: _centered(s.dashboard.rpm_rect), "center"
+        ),
+        Binding(
+            d + "delta_rect",
+            RECT,
+            lambda s: _centered(s.dashboard.delta_rect),
+            "center",
+            note,
+        ),
+        Binding(
+            d + "lap_time_rect",
+            RECT,
+            lambda s: _centered(s.dashboard.lap_time_rect),
+            "center",
+            note,
+        ),
+        Binding(
+            d + "fastest_lap_rect",
+            RECT,
+            lambda s: _centered(s.dashboard.fastest_lap_rect),
+            "center",
+            note,
+        ),
+        Binding(
+            d + "predicted_lap_rect",
+            RECT,
+            lambda s: _centered(s.dashboard.predicted_lap_rect),
+            "center",
+            note,
+        ),
+        Binding(
+            d + "fuel_per_lap_rect",
+            RECT,
+            lambda s: _centered(s.dashboard.fuel_per_lap_rect),
+            "center",
+            note,
+        ),
+        Binding(
+            d + "fuel_laps_rect",
+            RECT,
+            lambda s: _centered(s.dashboard.fuel_laps_rect),
+            "center",
+            note,
+        ),
+        Binding(
+            d + "track_rect",
+            RECT,
+            lambda s: _centered(s.dashboard.track_rect),
+            "center",
+            note,
+        ),
+        Binding(
+            d + "lap_counter_rect",
+            RECT,
+            lambda s: _r(*s.dashboard.lap_counter_rect),
+            "topleft",
+            note,
+        ),
         Binding(
             d + "tire_grid.origin",
             POINT,
@@ -81,7 +138,11 @@ def _dashboard(lights: bool) -> list[Binding]:
             "topleft",
             "top-left tire cell",
         ),
-        Binding(d + "slot_dots.center", POINT, lambda s: _point_rect(s.dashboard.slot_dots.center)),
+        Binding(
+            d + "slot_dots.center",
+            POINT,
+            lambda s: _point_rect(s.dashboard.slot_dots.center),
+        ),
         Binding(d + "footer_y", HLINE, lambda s: _hline_rect(s, s.dashboard.footer_y)),
     ]
     if lights:
@@ -139,7 +200,11 @@ def _header() -> list[Binding]:
         return _r(s.width - w - s.header.back_button_gap, s.header.back_button_y, w, hh)
 
     return [
-        Binding(h + "title_topleft", POINT, lambda s: _point_rect(s.header.title_topleft, 22)),
+        Binding(
+            h + "title_topleft",
+            POINT,
+            lambda s: _point_rect(s.header.title_topleft, 22),
+        ),
         Binding(h + "line_y", HLINE, lambda s: _hline_rect(s, s.header.line_y)),
         Binding(
             h + "back_button_size",
@@ -166,7 +231,12 @@ def _keyboard() -> list[Binding]:
         return _r(kb_left, kb.pw_row_y, s.width - 2 * kb_left, kb.pw_row_h)
 
     return [
-        Binding(k + "top", HLINE, lambda s: _hline_rect(s, s.keyboard.top), note="keyboard top"),
+        Binding(
+            k + "top",
+            HLINE,
+            lambda s: _hline_rect(s, s.keyboard.top),
+            note="keyboard top",
+        ),
         Binding(k + "pw_row_y", RECT, pw_row, "topleft", "password row (y/h editable)"),
     ] + _header()
 
@@ -174,9 +244,19 @@ def _keyboard() -> list[Binding]:
 def _wifi_manual() -> list[Binding]:
     k = "keyboard."
     return [
-        Binding(k + "manual_field_rect", RECT, lambda s: _r(*s.keyboard.manual_field_rect)),
-        Binding(k + "manual_ssid_label_pos", POINT, lambda s: _point_rect(s.keyboard.manual_ssid_label_pos, 18)),
-        Binding(k + "manual_pw_label_pos", POINT, lambda s: _point_rect(s.keyboard.manual_pw_label_pos, 18)),
+        Binding(
+            k + "manual_field_rect", RECT, lambda s: _r(*s.keyboard.manual_field_rect)
+        ),
+        Binding(
+            k + "manual_ssid_label_pos",
+            POINT,
+            lambda s: _point_rect(s.keyboard.manual_ssid_label_pos, 18),
+        ),
+        Binding(
+            k + "manual_pw_label_pos",
+            POINT,
+            lambda s: _point_rect(s.keyboard.manual_pw_label_pos, 18),
+        ),
     ] + _keyboard()
 
 
@@ -196,8 +276,16 @@ def _numpad() -> list[Binding]:
         Binding(n + "del_rect", RECT, lambda s: _r(*s.numpad.del_rect)),
         Binding(n + "ok_rect", RECT, lambda s: _r(*s.numpad.ok_rect)),
         Binding(n + "offset", POINT, grid, "topleft", "numpad grid origin"),
-        Binding(n + "recent_offset", POINT, lambda s: _point_rect(s.numpad.recent_offset, 20)),
-        Binding(n + "recent_position", POINT, lambda s: _point_rect(s.numpad.recent_position, 20)),
+        Binding(
+            n + "recent_offset",
+            POINT,
+            lambda s: _point_rect(s.numpad.recent_offset, 20),
+        ),
+        Binding(
+            n + "recent_position",
+            POINT,
+            lambda s: _point_rect(s.numpad.recent_position, 20),
+        ),
     ] + _header()
 
 
@@ -209,8 +297,14 @@ def _overlays() -> list[Binding]:
         return _r((s.width - w) // 2, (s.height - h) // 2, w, h)
 
     return [
-        Binding(o + "wifi_pill_center_y", HLINE, lambda s: _hline_rect(s, s.overlays.wifi_pill_center_y)),
-        Binding(o + "feed_card_size", RECT, card, "topleft", "centred; only size editable"),
+        Binding(
+            o + "wifi_pill_center_y",
+            HLINE,
+            lambda s: _hline_rect(s, s.overlays.wifi_pill_center_y),
+        ),
+        Binding(
+            o + "feed_card_size", RECT, card, "topleft", "centred; only size editable"
+        ),
     ]
 
 
