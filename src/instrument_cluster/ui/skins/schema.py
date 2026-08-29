@@ -167,6 +167,31 @@ class DashboardSkin:
     # Per-widget palette references. The *_color entries recolor each
     # gauge's value text (headers keep the shared style.text_color).
     gear_color: str = _px("color")
+    # Gear panel styling. The 296 GT3 wears a light panel with a dark
+    # numeral, so the background, its border and the header text all have to
+    # be skinnable — a white panel with the shared light header text would
+    # hide the "GEAR" label entirely. A gradient whose ends are equal is a
+    # flat fill, and gear_border_width 0 means no border, which is how the
+    # default panels keep their original black, borderless look.
+    gear_gradient_top: str = _px("color")
+    gear_gradient_bottom: str = _px("color")
+    gear_border_color: str = _px("color")
+    gear_border_width: int = _px("u")
+    gear_border_radius: int = _px("u")
+    gear_header_color: str = _px("color")
+    # The gear panel's label. Empty on the 296 GT3, whose dash shows the
+    # numeral alone; Widget reserves no height for an empty header, so the
+    # numeral gets the space back rather than leaving a gap.
+    gear_header_text: str = _px("const")
+    # Depth of the gear panel's inset top shadow, as a percentage of its
+    # height. 0 = flat. Resolution-independent, hence const.
+    gear_shadow_depth_pct: int = _px("const")
+    # The inner top-edge shadow's tone, and the 3D bevel: light along the
+    # top/left outer edges, dark along the bottom/right. Width 0 = no bevel.
+    gear_shadow_color: str = _px("color")
+    gear_bevel_light: str = _px("color")
+    gear_bevel_dark: str = _px("color")
+    gear_bevel_width: int = _px("u")
     speed_color: str = _px("color")
     fastest_lap_color: str = _px("color")
     predicted_lap_color: str = _px("color")

@@ -30,6 +30,20 @@ def test_selecting_a_widget_shows_all_its_properties(app):
         "dashboard.fonts.gear",
         "dashboard.fonts.gear_family",
         "dashboard.gear_color",
+        # Panel styling: skinnable so a car skin can wear a light gear panel
+        # with a dark numeral and a grey border (skin_1280x720_car3588).
+        "dashboard.gear_gradient_top",
+        "dashboard.gear_gradient_bottom",
+        "dashboard.gear_border_color",
+        "dashboard.gear_border_width",
+        "dashboard.gear_border_radius",
+        "dashboard.gear_header_color",
+        "dashboard.gear_header_text",
+        "dashboard.gear_shadow_depth_pct",
+        "dashboard.gear_shadow_color",
+        "dashboard.gear_bevel_light",
+        "dashboard.gear_bevel_dark",
+        "dashboard.gear_bevel_width",
     }
     # Every editor is functional: rect has 4 steppers, the rest 1 each.
     assert len(app.props_panel.steppers_for("dashboard.gear_rect")) == 4

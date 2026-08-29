@@ -49,6 +49,17 @@ class Color(Enum):
     DARK_BLUE = (auto(), (0, 50, 125))
     DARKEST_BLUE = (auto(), (0, 3, 10))
     WHITE = (auto(), (210, 210, 210))
+    # Measured off the 296 GT3 dash: its gear panel is a warm cream, not a
+    # neutral grey, and sits at luminance 166 rather than WHITE's 210.
+    # The 296 GT3's gear panel, measured off ferrari.com's own dash photo:
+    # a neutral near-white that is BRIGHTER than WHITE (210), carrying a
+    # gentle top-to-bottom ramp of roughly 196 -> 240.
+    PANEL_WHITE = (auto(), (240, 240, 240))
+    PANEL_WHITE_SHADOW = (auto(), (140, 140, 140))
+    PANEL_OFF_WHITE = (auto(), (242, 242, 240))
+    PANEL_LIGHT_GREY = (auto(), (205, 205, 205))
+    PANEL_BEVEL_LIGHT = (auto(), (250, 250, 250))
+    PANEL_BEVEL_DARK = (auto(), (96, 96, 96))
     PURPLE = (auto(), (200, 0, 200))
     LIGHT_PURPLE = (auto(), (185, 35, 135))
     MEDIUM_PURPLE = (auto(), (125, 50, 140))
