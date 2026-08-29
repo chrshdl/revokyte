@@ -128,6 +128,8 @@ def main() -> None:
         entry=ENTRY_BOOT if args.boot else ENTRY_SETTINGS,
     )
 
+    state.enter(surface)
+
     background = pygame.Surface(surface.get_size())
     background.fill(state.background_color())
     state.background = background
