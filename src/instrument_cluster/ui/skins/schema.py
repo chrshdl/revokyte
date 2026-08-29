@@ -180,6 +180,12 @@ class DashboardSkin:
     delta_loss_color: str = _px("color")
     tire_gradient_top: str = _px("color")
     tire_gradient_bottom: str = _px("color")
+    # Which RPM gauge this panel draws: "ferrari" for the 296 GT3 Evo style
+    # segmented bar, "classic" for the original needle/scale RpmWidget. A
+    # panel-level design choice rather than geometry, so it lives here and not
+    # in the plugin: the bar is authored against the 1280 grid and has no
+    # per-skin pass on the smaller panels yet.
+    rpm_variant: str = _px("const")
     rpm_scale_color: str = _px("color")
     rpm_redline_color: str = _px("color")
     status_light_tc_color: str = _px("color")

@@ -64,7 +64,13 @@ def _walk(obj, path=""):
 @pytest.mark.parametrize("skin", ALL_SKINS, ids=lambda s: s.name)
 def test_all_values_are_ints(skin):
     for where, axis, value in _walk(skin):
+        # "const" carries resolution-independent values, which are usually
+        # counts but may be a verbatim string (dashboard.rpm_variant selects
+        # which RPM gauge the panel wears). This guard is about geometry, so
+        # skip strings rather than demand ints from a field that is a choice.
         if where == "name" or axis in ("family", "color"):
+            continue
+        if axis == "const" and isinstance(value, str):
             continue
         values = value if isinstance(value, tuple) else (value,)
         for v in values:
@@ -133,8 +139,11 @@ def test_skin_1280_keeps_the_original_grid():
     d = SKIN_1280.dashboard
     assert d.footer_y == 636 and d.button_h == 72
     assert d.track_rect == (186, 454, 352, 94)
-    assert d.gear_rect == (640, 388, 186, 232)
+    assert d.gear_rect == (640, 400, 186, 232)
     assert d.lap_counter_rect == (1172, 630, 90, 78)
+    # Widened and lowered for the Ferrari 296-style segmented bar; the gear
+    # dial dropped to y=400 to keep clear of it.
+    assert d.rpm_rect == (640, 214, 320, 98)
 
     s = SKIN_1280.setup
     # 5 uniform cells span the header line (100) to the bottom (720).

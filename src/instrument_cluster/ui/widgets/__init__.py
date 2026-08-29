@@ -150,10 +150,20 @@ class Widget(DirtySprite, ABC):
                 self.border_radius,
             )
 
-        header_surf = self.font_header.render(self.header_text, False, self.text_color)
-        header_rect = header_surf.get_rect(midtop=(self.w // 2, self.header_margin))
-        self.image.blit(header_surf, header_rect)
-        self._header_bottom = header_rect.bottom
+        # An empty header reserves nothing. render("") still returns a surface
+        # a full font-height tall, so taking its rect unconditionally gave
+        # header-less widgets a ~26px dead band at the top and pushed their
+        # content down into the bottom border — on a short widget that clipped
+        # the last rows off entirely. Only a header that draws costs height.
+        if self.header_text:
+            header_surf = self.font_header.render(
+                self.header_text, False, self.text_color
+            )
+            header_rect = header_surf.get_rect(midtop=(self.w // 2, self.header_margin))
+            self.image.blit(header_surf, header_rect)
+            self._header_bottom = header_rect.bottom
+        else:
+            self._header_bottom = 0
 
     def set_header(self, header_text: str) -> None:
         """Change the header text and rebuild the cached base image.
@@ -275,7 +285,9 @@ class Widget(DirtySprite, ABC):
         # area
         inner_left = self.border_width
         inner_right = self.w - self.border_width
-        inner_top = max(self._header_bottom + self.header_margin, self.border_width)
+        inner_top = self.border_width
+        if self.header_text:
+            inner_top = max(self._header_bottom + self.header_margin, inner_top)
         inner_bottom = self.h - self.border_width
 
         value_area = pygame.Rect(

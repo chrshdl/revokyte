@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
 import pygame
@@ -37,8 +38,30 @@ _SCALE_NUMBERS: tuple[int, ...] = (0, 3, 4, 5, 6, 7, 8)
 _SCALE_MAX = 8
 
 _LED_BLOCK_COUNT = 14
-_LED_BLOCK_GAP = 2
-_LED_BEVEL_INSET = 2
+
+# The real bar reads as a near-continuous ribbon: the lit blocks are wide and
+# the dark seam between them is hairline. Both numbers below take width away
+# from the block, so they are what makes it look like a row of narrow LEDs
+# instead. GAP is the seam; BEVEL_INSET is the dark border drawn INSIDE each
+# block, and it costs twice its value (both edges) off the visible fill.
+_LED_BLOCK_GAP = 3
+_LED_BEVEL_INSET = 1
+
+# Vertical shading of a lit block, top -> bottom, as a factor on its colour.
+# Grey at the top easing to full white at the bottom, which is what gives the
+# blocks their slight domed look rather than reading as flat paint.
+# Corner rounding of a lit block, in px. Applied by insetting the gradient's
+# own rows: the outline underneath is black on black, so rounding that instead
+# would not show, and a masked blit would drag alpha into a path that is
+# deliberately plain shape layering.
+# Clearance between the bottom of a tick and the top frame line, so the ticks
+# read as separate marks rather than as spurs growing out of the line.
+_TICK_LINE_CLEARANCE = 4
+
+_LED_CORNER_RADIUS = 2
+
+_LED_GRADIENT_TOP = 0.62
+_LED_GRADIENT_BOTTOM = 1.0
 
 
 def _shade(rgb: tuple[int, int, int], factor: float) -> tuple[int, int, int]:
@@ -71,6 +94,45 @@ def _draw_gradient_hline(
         t = 1.0 if dist >= fade_px else dist / fade_px
         c = tuple(round(ch * t) for ch in color)
         pygame.draw.line(surf, c, (x, y), (x, y + height - 1))
+
+
+def _fill_vertical_gradient(
+    surf: pygame.Surface,
+    rect: pygame.Rect,
+    color: tuple[int, int, int],
+    top_factor: float = _LED_GRADIENT_TOP,
+    bottom_factor: float = _LED_GRADIENT_BOTTOM,
+    radius: int = _LED_CORNER_RADIUS,
+) -> None:
+    """Fill ``rect`` with a vertical ramp of ``color``, ``top_factor`` at the
+    top row to ``bottom_factor`` at the bottom. One hline per row, and a lit
+    block is a dozen rows tall, so this stays far cheaper than the per-pixel
+    scale rebuild above — and unlike that one it does run per frame, which is
+    why it is a plain loop and not a scaled surface blit."""
+    h = rect.height
+    if h <= 0:
+        return
+    if h == 1:
+        pygame.draw.rect(surf, _shade(color, bottom_factor), rect)
+        return
+    r = max(0, min(radius, (h - 1) // 2, rect.width // 2))
+    for i in range(h):
+        t = i / (h - 1)
+        f = top_factor + (bottom_factor - top_factor) * t
+        y = rect.top + i
+        # Circle inset for the rounded corners: d is the row's distance from
+        # the nearer end, and dy its offset from that corner's centre.
+        inset = 0
+        if r:
+            d = min(i, h - 1 - i)
+            if d < r:
+                dy = r - d
+                inset = r - int(round(math.sqrt(max(0.0, r * r - dy * dy))))
+        x1 = rect.left + inset
+        x2 = rect.right - 1 - inset
+        if x2 < x1:
+            continue
+        pygame.draw.line(surf, _shade(color, f), (x1, y), (x2, y))
 
 
 class FerrariRpmWidget(Widget):
@@ -118,7 +180,7 @@ class FerrariRpmWidget(Widget):
         d = active_skin().dashboard
         self._scale_color = Color[d.rpm_scale_color].rgb()
         self._redline_color = Color[d.rpm_redline_color].rgb()
-        self._unlit_color = Color.DARKER_GREY.rgb()
+        self._unlit_color = Color.DARK_GREY.rgb()
         self._outline_color = Color.BLACK.rgb()
 
         self._max_rpm = int(max_rpm)
@@ -181,7 +243,12 @@ class FerrariRpmWidget(Widget):
         """
         inner_left = self.border_width
         inner_right = self.w - self.border_width
-        inner_top = max(self._header_bottom + self.header_margin, self.border_width)
+        # Mirrors Widget's own value-area anchor: a header that draws costs
+        # its height, an empty one costs nothing. This widget has none ("RPM"
+        # is drawn inline beside the 0), so the scale starts at the border.
+        inner_top = self.border_width
+        if self.header_text:
+            inner_top = max(self._header_bottom + self.header_margin, inner_top)
         inner_bottom = self.h - self.border_width
 
         return pygame.Rect(
@@ -202,11 +269,19 @@ class FerrariRpmWidget(Widget):
         area_width = max(1, area_right - area_left)
 
         total_h = value_area.height
+        # The three bands share the widget height. tick_h is the drop from the
+        # numbers down to the top frame line, so lengthening the ticks has to
+        # come out of the numbers' band — the blocks below keep their share.
         number_h = max(10, int(total_h * 0.34))
-        tick_h = max(4, int(total_h * 0.14))
-        block_h = max(10, int(total_h * 0.36))
+        tick_h = max(4, int(total_h * 0.16))
+        block_h = max(10, int(total_h * 0.28))
 
-        numbers_top = value_area.top + padding_y
+        # The digits ride down by exactly what the tick gave up, so the gap
+        # between a digit and its own tick stays constant and the top frame
+        # line does not move. Shortening the tick alone would leave the
+        # numbers floating above a widening gap.
+        digit_drop = max(0, int(total_h * 0.04))
+        numbers_top = value_area.top + padding_y + digit_drop
         tick_top = numbers_top + number_h
         frame_top_y = tick_top + tick_h
         # Blocks are painted per-frame on top of the cached scale surface,
@@ -214,9 +289,9 @@ class FerrariRpmWidget(Widget):
         # a gap — otherwise their opaque outline paints over its bottom rows
         # wherever a block sits, leaving it looking thinner than the bottom
         # line (which already has full clearance below the blocks).
-        block_top = frame_top_y + _FRAME_LINE_H + 2
+        block_top = frame_top_y + _FRAME_LINE_H + 5
         block_bottom = block_top + block_h
-        frame_bottom_y = block_bottom + 2
+        frame_bottom_y = block_bottom + 5
 
         def _x_for(n: int) -> int:
             return area_left + round((n / _SCALE_MAX) * area_width)
@@ -310,7 +385,7 @@ class FerrariRpmWidget(Widget):
         inner_rect = rect.inflate(-2 * _LED_BEVEL_INSET, -2 * _LED_BEVEL_INSET)
         if inner_rect.width <= 0 or inner_rect.height <= 0:
             return
-        pygame.draw.rect(surf, fill_color, inner_rect)
+        _fill_vertical_gradient(surf, inner_rect, fill_color)
 
         shadow_color = _shade(fill_color, 0.55)
         highlight_color = _shade(fill_color, 1.5)
@@ -383,7 +458,11 @@ class FerrariRpmWidget(Widget):
         # --- Numbers (0, skip 1/2, 3-8) + ticks dropping to the top line ---
         zero_rect = None
         for n in _SCALE_NUMBERS:
+            # The number turns red from 7 up, but 7's own tick stays white:
+            # it marks where the redline band begins, so it belongs to the
+            # scale below it rather than to the band above.
             color = self._redline_color if n >= 7 else self._scale_color
+            tick_color = self._redline_color if n > 7 else self._scale_color
             label_surf = self._label_font.render(str(n), self.antialias, color)
             label_rect = label_surf.get_rect(midtop=(x_for(n), numbers_top))
             surf.blit(label_surf, label_rect)
@@ -391,7 +470,17 @@ class FerrariRpmWidget(Widget):
                 zero_rect = label_rect
 
             tick_x = label_rect.centerx
-            pygame.draw.line(surf, color, (tick_x, tick_top), (tick_x, frame_top_y), 2)
+            # Thickness from the skin's tick_major_w. The len fields stay
+            # unused here (ticks drop to the frame line rather than running a
+            # uniform step), but the width is the same idea and gives each
+            # panel its own knob.
+            pygame.draw.line(
+                surf,
+                tick_color,
+                (tick_x, tick_top),
+                (tick_x, frame_top_y - _TICK_LINE_CLEARANCE),
+                max(1, self._style.tick_major_w),
+            )
 
         # --- "RPM" text immediately right of "0", aligned with the numbers ---
         if zero_rect is not None:
