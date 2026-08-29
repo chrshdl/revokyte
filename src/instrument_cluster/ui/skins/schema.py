@@ -150,6 +150,11 @@ class DashboardSkin:
     setup_button_font_family: str = _px("family")
     setup_button_icon: int = _px("font")
     setup_button_pad_top: int = _px("u")
+    # The Setup button sits among the gauges, so its border is skinned like
+    # theirs (style.border_*) rather than carrying the 1280 design's stroke
+    # onto every panel.
+    setup_button_border_width: int = _px("u")
+    setup_button_border_radius: int = _px("u")
     slot_name_left_inset: int = _px("x")
     slot_dots: SlotDots = _px("group")
 
@@ -179,6 +184,7 @@ class DashboardSkin:
     rpm_redline_color: str = _px("color")
     status_light_tc_color: str = _px("color")
     status_light_asm_color: str = _px("color")
+    setup_button_border_color: str = _px("color")
     slot_dot_active_color: str = _px("color")
     slot_dot_inactive_color: str = _px("color")
 

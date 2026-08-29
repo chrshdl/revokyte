@@ -188,9 +188,7 @@ def _plugin_classes():
     ]
 
 
-@pytest.mark.parametrize(
-    "profile", ["dev", "waveshare_7", "waveshare_5"], ids=str
-)
+@pytest.mark.parametrize("profile", ["dev", "waveshare_7", "waveshare_5"], ids=str)
 @pytest.mark.parametrize("lights", [False, True], ids=["plain", "lights"])
 def test_dashboard_gauges_fit_per_skin(force_profile, profile, lights):
     import pygame

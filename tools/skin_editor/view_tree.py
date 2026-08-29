@@ -59,8 +59,24 @@ _WIDGET_FRAME = [
 ]
 
 _DASHBOARD_CORE = [
-    ("Gear", ["dashboard.gear_rect", "dashboard.fonts.gear", "dashboard.fonts.gear_family", "dashboard.gear_color"]),
-    ("Speed", ["dashboard.speed_rect", "dashboard.fonts.speed", "dashboard.fonts.speed_family", "dashboard.speed_color"]),
+    (
+        "Gear",
+        [
+            "dashboard.gear_rect",
+            "dashboard.fonts.gear",
+            "dashboard.fonts.gear_family",
+            "dashboard.gear_color",
+        ],
+    ),
+    (
+        "Speed",
+        [
+            "dashboard.speed_rect",
+            "dashboard.fonts.speed",
+            "dashboard.fonts.speed_family",
+            "dashboard.speed_color",
+        ],
+    ),
     (
         "RPM bar",
         [
@@ -110,12 +126,15 @@ _DASHBOARD_CORE = [
             "dashboard.tire_gradient_bottom",
         ],
     ),
-    ("Fastest lap", [
+    (
+        "Fastest lap",
+        [
             "dashboard.fastest_lap_rect",
             "dashboard.fonts.fastest_lap",
             "dashboard.fonts.fastest_lap_family",
             "dashboard.fastest_lap_color",
-        ]),
+        ],
+    ),
     (
         "Predicted lap",
         [
@@ -125,24 +144,33 @@ _DASHBOARD_CORE = [
             "dashboard.predicted_lap_color",
         ],
     ),
-    ("Previous lap", [
+    (
+        "Previous lap",
+        [
             "dashboard.lap_time_rect",
             "dashboard.fonts.lap_time",
             "dashboard.fonts.lap_time_family",
             "dashboard.lap_time_color",
-        ]),
-    ("Lap counter", [
+        ],
+    ),
+    (
+        "Lap counter",
+        [
             "dashboard.lap_counter_rect",
             "dashboard.fonts.lap_counter",
             "dashboard.fonts.lap_counter_family",
             "dashboard.lap_counter_color",
-        ]),
-    ("Track name", [
+        ],
+    ),
+    (
+        "Track name",
+        [
             "dashboard.track_rect",
             "dashboard.fonts.track",
             "dashboard.fonts.track_family",
             "dashboard.track_color",
-        ]),
+        ],
+    ),
     (
         "Fuel pair",
         [
@@ -164,6 +192,9 @@ _DASHBOARD_CORE = [
             "dashboard.setup_button_font_family",
             "dashboard.setup_button_icon",
             "dashboard.setup_button_pad_top",
+            "dashboard.setup_button_border_width",
+            "dashboard.setup_button_border_radius",
+            "dashboard.setup_button_border_color",
         ],
     ),
     (
@@ -268,23 +299,27 @@ _KEYBOARD = [
     ),
 ]
 
-_SETUP_VIEW_TREE = _HEADER + _SETUP_GRID + [
-    (
-        "Controls column",
-        ["setup.value_x", "setup.dropdown_x", "setup.chevron_icon_size"],
-    ),
-    (
-        "Toggle pill",
-        [
-            "style.toggle.track_w",
-            "style.toggle.track_h",
-            "style.toggle.knob_margin",
-            "style.toggle.on_color",
-            "style.toggle.off_color",
-            "style.toggle.knob_color",
-        ],
-    ),
-]
+_SETUP_VIEW_TREE = (
+    _HEADER
+    + _SETUP_GRID
+    + [
+        (
+            "Controls column",
+            ["setup.value_x", "setup.dropdown_x", "setup.chevron_icon_size"],
+        ),
+        (
+            "Toggle pill",
+            [
+                "style.toggle.track_w",
+                "style.toggle.track_h",
+                "style.toggle.knob_margin",
+                "style.toggle.on_color",
+                "style.toggle.off_color",
+                "style.toggle.knob_color",
+            ],
+        ),
+    ]
+)
 
 # ---------------------------------------------------------------------------
 # The per-view trees
@@ -313,15 +348,15 @@ VIEW_TREES: dict[str, list[tuple[str, list[str]]]] = {
                 "overlays.feed_card_size",
                 "overlays.feed_card_radius",
                 "overlays.feed_title_font",
-            "overlays.feed_title_font_family",
+                "overlays.feed_title_font_family",
                 "overlays.feed_body_font",
-            "overlays.feed_body_font_family",
+                "overlays.feed_body_font_family",
                 "overlays.feed_title_top",
                 "overlays.feed_body_top",
                 "overlays.feed_body_line_pitch",
                 "overlays.feed_button_size",
                 "overlays.feed_button_font",
-            "overlays.feed_button_font_family",
+                "overlays.feed_button_font_family",
                 "overlays.feed_button_bottom_margin",
                 "overlays.feed_accent_color",
             ],
@@ -333,7 +368,11 @@ VIEW_TREES: dict[str, list[tuple[str, list[str]]]] = {
     + [
         (
             "Scan button",
-            ["keyboard.rescan_size", "keyboard.rescan_font", "keyboard.rescan_font_family"],
+            [
+                "keyboard.rescan_size",
+                "keyboard.rescan_font",
+                "keyboard.rescan_font_family",
+            ],
         ),
         (
             "Network list",
@@ -348,9 +387,9 @@ VIEW_TREES: dict[str, list[tuple[str, list[str]]]] = {
             "Manual-entry form",
             [
                 "keyboard.manual_label_font",
-            "keyboard.manual_label_font_family",
+                "keyboard.manual_label_font_family",
                 "keyboard.manual_field_font",
-            "keyboard.manual_field_font_family",
+                "keyboard.manual_field_font_family",
                 "keyboard.manual_ssid_label_pos",
                 "keyboard.manual_pw_label_pos",
                 "keyboard.manual_field_rect",
@@ -363,8 +402,12 @@ VIEW_TREES: dict[str, list[tuple[str, list[str]]]] = {
     + [
         (
             "IP field",
-            ["numpad.field_rect", "numpad.field_font",
-            "numpad.field_font_family", "numpad.del_rect"],
+            [
+                "numpad.field_rect",
+                "numpad.field_font",
+                "numpad.field_font_family",
+                "numpad.del_rect",
+            ],
         ),
         (
             "Numpad",
@@ -374,7 +417,7 @@ VIEW_TREES: dict[str, list[tuple[str, list[str]]]] = {
                 "numpad.button_margin",
                 "numpad.offset",
                 "numpad.key_font",
-            "numpad.key_font_family",
+                "numpad.key_font_family",
                 "numpad.ok_rect",
             ],
         ),
@@ -383,7 +426,7 @@ VIEW_TREES: dict[str, list[tuple[str, list[str]]]] = {
             [
                 "numpad.recent_position",
                 "numpad.recent_label_font",
-            "numpad.recent_label_font_family",
+                "numpad.recent_label_font_family",
                 "numpad.recent_per_row",
                 "numpad.recent_dims",
                 "numpad.recent_margin",

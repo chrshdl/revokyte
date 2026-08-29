@@ -293,6 +293,14 @@ class Button(AbstractButton):
         padding: tuple[int, int, int, int] | tuple[int, int] | int = 0,
         icon_cell_width: int | None = None,
         bg_color: tuple[int, int, int] | None = None,
+        # Replaces the resting border color only; the disabled and pressed
+        # states keep their own feedback colors.
+        border_color: tuple[int, int, int] | None = None,
+        # The stroke defaults to the original 1280 design's 2px / r4. A
+        # button placed among skinned widgets should pass its skin's values
+        # instead — see DashboardView's Setup button.
+        border_width: int = 2,
+        border_radius: int = 4,
         # None disables the pressed fill; the sentinel resolves to the
         # palette default at construction (live palette overrides).
         pressed_gradient: tuple[tuple[int, int, int], tuple[int, int, int]]
@@ -337,6 +345,9 @@ class Button(AbstractButton):
         self.padding = padding
         self.icon_cell_width = icon_cell_width
         self.bg_color = bg_color
+        self.border_color = border_color
+        self.border_width = int(border_width)
+        self.border_radius = int(border_radius)
         self.pressed_gradient = (
             (Color.DARK_BLUE.rgb(), Color.BLACK.rgb())
             if pressed_gradient == "default"
@@ -423,7 +434,7 @@ class Button(AbstractButton):
         if self.is_pressed():
             # If text is white, use blue border for better contrast.
             return Color.BLUE.rgb() if self.color == Color.WHITE.rgb() else self.color
-        return Color.LIGHT_GREY.rgb()
+        return self.border_color or Color.LIGHT_GREY.rgb()
 
     def _ensure_text_surface(self) -> pygame.Surface:
         effective_color = self.color if self.enabled else Color.LIGHT_GREY.rgb()
@@ -693,6 +704,8 @@ class Button(AbstractButton):
             self.is_pressed(),
             (tl, tr, bl, br, any_corner),
             self.show_border,
+            self.border_width,
+            self.border_radius,
             self.enabled,
             # content
             self._text_cache_key,
@@ -727,7 +740,9 @@ class Button(AbstractButton):
                     border_bottom_right_radius=br,
                 )
             else:
-                pygame.draw.rect(composed, self.bg_color, rect, border_radius=4)
+                pygame.draw.rect(
+                    composed, self.bg_color, rect, border_radius=self.border_radius
+                )
 
         # Border
         if self.show_border:
@@ -736,14 +751,20 @@ class Button(AbstractButton):
                     composed,
                     border_color,
                     rect,
-                    width=2,
+                    width=self.border_width,
                     border_top_left_radius=tl,
                     border_top_right_radius=tr,
                     border_bottom_left_radius=bl,
                     border_bottom_right_radius=br,
                 )
             else:
-                pygame.draw.rect(composed, border_color, rect, width=2, border_radius=4)
+                pygame.draw.rect(
+                    composed,
+                    border_color,
+                    rect,
+                    width=self.border_width,
+                    border_radius=self.border_radius,
+                )
 
         # Content
         if icon_surf is not None and icon_pos is not None:
