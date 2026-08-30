@@ -24,7 +24,7 @@ dependencies = [
 # proxy. Note: the PyPI project named "granturismo" is an unrelated package —
 # this must stay a git reference to chrshdl/granturismo.
 pc = [
-    "granturismo @ git+https://github.com/chrshdl/granturismo@v0.3.18",
+    "granturismo @ git+https://github.com/chrshdl/granturismo@v0.3.19",
     "acc-telemetry @ git+https://github.com/chrshdl/assettocorsa@v0.1.4",
     "fh6-telemetry @ git+https://github.com/chrshdl/forza-horizon-6@v0.1.0",
 ]
@@ -53,7 +53,7 @@ instrument_cluster = [
 [dependency-groups]
 dev = [
     # Same pins as the "pc" extra, so dev machines can run direct GT7/ACC mode.
-    "granturismo @ git+https://github.com/chrshdl/granturismo@v0.3.18",
+    "granturismo @ git+https://github.com/chrshdl/granturismo@v0.3.19",
     "acc-telemetry @ git+https://github.com/chrshdl/assettocorsa@v0.1.4",
     "matplotlib>=3.11.0",
     "pytest>=9.0.1",
