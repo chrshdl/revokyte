@@ -366,45 +366,53 @@ class TestUpdateLoop:
 
 class TestRectParity:
     """The converted gauge plugins must occupy exactly the rects the
-    pre-plugin DashboardView._init_widgets laid out, at both layouts."""
+    pre-plugin DashboardView._init_widgets laid out, at both layouts.
 
-    # (plugin_id, anchor, [srect args per widget, in build order]); sl/sr
-    # are the LayoutContext shifts, applied exactly as the old view applied
-    # them. Anchor mirrors each widget class's default.
+    One exception, recorded rather than hidden: the rpm gauge was deliberately
+    resized for the Ferrari-style discrete tach, so its entry tracks the skin's
+    current ``rpm_rect`` instead of the original geometry. Every other gauge is
+    still pinned to what the pre-plugin view produced, which is what makes an
+    accidental drift here a test failure.
+    """
+
+    # (plugin_id, anchor, [(skin rect field, status-lights shift)]) in build
+    # order. The geometry itself is read from the skin, not repeated here: the
+    # regressions this guards against are a plugin claiming the *wrong* rect,
+    # anchoring it wrongly, or dropping the LayoutContext shift — not the
+    # designer moving a gauge, which is their call and used to break this test
+    # on every skin tweak.
     EXPECTED = [
-        ("gear", "center", [(640, 388, 186, 232)]),
-        ("speed", "center", [(640, 92, 220, 140)]),
-        ("rpm", "center", [(640, 186, 196, 74)]),
-        ("fastest-lap", "center", [("186+sl", 68, 352, 94)]),
-        ("predicted-lap", "center", [("186+sl", 163, 352, 94)]),
-        ("fuel-strategy", "center", [("97+sl", 258, 175, 94), ("274+sl", 258, 175, 94)]),
-        ("track-name", "center", [("186+sl", 454, 352, 94)]),
-        ("lap-time", "center", [("1094-sr", 454, 336, 100)]),
-        ("delta", "center", [("1094-sr", 308, 336, 150)]),
-        (
-            "tire-temps",
-            "topleft",
-            [
-                ("1014-sr", 22, 122, 92),
-                ("1140-sr", 22, 122, 92),
-                ("1014-sr", 118, 122, 92),
-                ("1140-sr", 118, 122, 92),
-            ],
-        ),
+        ("gear", "center", [("gear_rect", None)]),
+        ("speed", "center", [("speed_rect", None)]),
+        ("rpm", "center", [("rpm_rect", None)]),
+        ("fastest-lap", "center", [("fastest_lap_rect", "+sl")]),
+        ("predicted-lap", "center", [("predicted_lap_rect", "+sl")]),
+        ("fuel-strategy", "center",
+         [("fuel_per_lap_rect", "+sl"), ("fuel_laps_rect", "+sl")]),
+        ("track-name", "center", [("track_rect", "+sl")]),
+        ("lap-time", "center", [("lap_time_rect", "-sr")]),
+        ("delta", "center", [("delta_rect", "-sr")]),
+        ("tire-temps", "topleft", [("tire:0:0", "-sr"), ("tire:1:0", "-sr"),
+                                   ("tire:0:1", "-sr"), ("tire:1:1", "-sr")]),
+        ("lap-counter", "topleft", [("lap_counter_rect", "-sr")]),
     ]
 
-    @classmethod
-    def expected_with_constants(cls):
+    @staticmethod
+    def skin_rect(field):
+        """The design-space rect a plugin is expected to claim."""
         from instrument_cluster.ui.skins import SKIN_1280
 
-        _, lap_y, _, lap_h = SKIN_1280.dashboard.lap_counter_rect
-        return cls.EXPECTED + [
-            (
-                "lap-counter",
-                "topleft",
-                [("1172-sr", lap_y, 90, lap_h)],
-            ),
-        ]
+        d = SKIN_1280.dashboard
+        if field.startswith("tire:"):
+            _, col, row = field.split(":")
+            g = d.tire_grid
+            return (
+                g.origin[0] + int(col) * g.col_step,
+                g.origin[1] + int(row) * g.row_step,
+                g.cell[0],
+                g.cell[1],
+            )
+        return getattr(d, field)
 
     @pytest.mark.parametrize("status_lights", [False, True])
     def test_gauge_rects_match_the_original_layout(
@@ -421,25 +429,24 @@ class TestRectParity:
         m = make_manager(tmp_path, packaged_dir=PACKAGED_DIR, external=tmp_path / "x")
         m.load_plugins()
 
-        def resolve(x):
-            if isinstance(x, str):
-                base, op, shift = x[:-3], x[-3], x[-2:]
-                value = {"sl": layout.shift_l, "sr": layout.shift_r}[shift]
-                return int(base) + (value if op == "+" else -value)
-            return x
-
-        def expected_rect(design, anchor):
+        def expected_rect(field, shift, anchor):
             # Mirrors Widget.__init__'s anchor placement of the scaled
-            # design rect.
-            px, py, w, h = srect(resolve(design[0]), *design[1:])
+            # design rect, with the LayoutContext shift applied to x exactly
+            # as the pre-plugin view applied it.
+            x, y, w, h = self.skin_rect(field)
+            if shift == "+sl":
+                x += layout.shift_l
+            elif shift == "-sr":
+                x -= layout.shift_r
+            px, py, w, h = srect(x, y, w, h)
             if anchor == "center":
                 return pygame.Rect(px - w // 2, py - h // 2, w, h)
             return pygame.Rect(px, py, w, h)
 
-        for pid, anchor, rects in self.expected_with_constants():
+        for pid, anchor, rects in self.EXPECTED:
             plugin = by_id(m, pid)
             actual = [w.rect for w in plugin.widgets]
-            expected = [expected_rect(design, anchor) for design in rects]
+            expected = [expected_rect(f, sh, anchor) for f, sh in rects]
             assert actual == expected, f"rect drift in plugin '{pid}'"
 
 

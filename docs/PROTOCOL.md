@@ -293,7 +293,7 @@ When `wheels` is present, all four corners (`front_left`, `front_right`,
 | `suspension_height` | number **0.0–1.0** | yes | Normalized suspension compression (0 = fully extended). **Strictly enforced**: an out-of-range value invalidates the whole frame — senders MUST clamp (suspension travel goes out of range over kerbs). |
 | `radius` | number | yes | Tyre radius, meters. |
 | `rps` | number | yes | Wheel rotation, **revolutions per second** (not rad/s). Signed; negative when rolling backwards. |
-| `ground_speed` | number | yes | Contact-patch speed (ω·r), m/s. Receivers compare it against `car_speed` for wheelspin/lockup. |
+| `ground_speed` | number | yes | Contact-patch speed (ω·r), m/s. Receivers compare it against `car_speed` for wheelspin/lockup — **by magnitude**: the sign is a sender's own convention (GT7's feed reports it negative going forward), unlike `rps`, whose sign is specified above. |
 | `temperature` | number | no (default 20.0) | Tyre temperature, °C. |
 
 #### 3.5.5 `engine` and `gear_ratios` — shift-point data
@@ -305,7 +305,8 @@ torque curve, and the drivetrain ratios.
 
 ```json
 "engine": { "max_power_kw": 380.0, "max_power_rpm": 7200.0,
-            "max_torque_nm": 650.0, "max_torque_rpm": 5500.0 },
+            "max_torque_nm": 650.0, "max_torque_rpm": 5500.0,
+            "power_to_limiter": true },
 "gear_ratios": [2.917, 2.31, 1.85, 1.52, 1.30, 1.14]
 ```
 
@@ -315,11 +316,23 @@ torque curve, and the drivetrain ratios.
 | `max_power_rpm` | number > 0 | yes | RPM of peak power. |
 | `max_torque_nm` | number > 0 | yes | Peak torque. |
 | `max_torque_rpm` | number > 0 | yes | RPM of peak torque. |
+| `power_to_limiter` | boolean | no (default `false`) | The engine holds power all the way to the rev limiter. |
 
 Notes for senders:
 
 - The redline is **not** part of `engine`; it already travels as
   `rpm_alert.max`.
+- `power_to_limiter` exists because the four peak numbers above do not
+  contain the one thing the shift point most depends on: how fast power
+  falls off *past* the peak. A BOP'd race engine holds it almost flat and is
+  shifted at the limiter; a small turbo road car falls off a cliff and wants
+  an early upshift. Both can report identical peaks, so a receiver
+  synthesizing a curve from them has to guess, and guessing costs ~6% of the
+  rev range either way. Set it when the source knows — GT7's feed derives it
+  from the car's group tag (Gr.1–Gr.4 and Gr.X are purpose-built racers) —
+  and omit it otherwise. Receivers that predate it fall back to their own
+  falloff assumption, which is the pre-existing behaviour, so it is safe to
+  send unconditionally.
 - `gear_ratios` may be sourced from the game (GT7 transmits them), from a
   per-car table, or **measured live** as `engine_rpm ÷ wheel rpm` while the
   drivetrain is engaged and not slipping — since only relative ratios
@@ -466,6 +479,7 @@ they are being corrected in feed releases:
 |---|---|---|---|
 | GT7 feed proxy | Emits `current_gear: null` when the gearbox is in neutral (raw nibble 15 passed through). | Violates §3.6; receivers discard those frames whole, so gauges freeze while in neutral. | To fix: map to `−1`. |
 | GT7 feed proxy | Emits `throttle`/`brake` as raw 0–255 integers. | Violates §3.6. Harmless today (no shipped receiver gauge consumes pedals) but non-conformant. | To fix: divide by 255. |
+| GT7 feed proxy | Emits `wheels[*].ground_speed` **negative** while the car drives forward (measured: `car_speed` 45.2, all four corners −45.2…−46.3). | §3.5.4 gives `ground_speed` no sign rule (only `rps` has one), so this is underspecified rather than illegal — but a receiver comparing it against `car_speed` signed sees ~200% slip on every sample. | Receivers MUST compare magnitudes; the sign rule belongs in §3.5.4. |
 | GT7 feed proxy | Dumps ~20 undefined keys (velocity, rotation, oil data, …) per frame, ≈ 2.3 kB. | Exceeds the §2.2 LAN recommendation. Tolerated because this sender is loopback-only. | Acceptable on loopback; MUST NOT be imitated by network senders. |
 | GT7 feed proxy | Drops frames while the game is paused instead of sending `paused: true`. | Receiver shows signal loss ~1 s into every pause (§2.4). | To fix: forward paused frames. |
 | GT7 feed proxy | No silence-bridging replay (§2.4). | Brief source gaps surface as signal loss. | Optional improvement. |

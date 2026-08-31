@@ -93,3 +93,15 @@ WIFI_OTHER_ROW_PRESSED = pygame.event.custom_type()  # visual-only press; no han
 # is the point of the notice, so there is nothing to decline.
 FEED_UPDATE_NOW_PRESSED = pygame.event.custom_type()
 FEED_UPDATE_NOW_RELEASED = pygame.event.custom_type()
+
+# Testing & Validation: the standing-start acceleration timer
+# (states/accel_test_state.py).
+ACCEL_TEST_PRESSED = pygame.event.custom_type()
+ACCEL_TEST_RELEASED = pygame.event.custom_type()
+
+ACCEL_DISTANCE_PRESSED = pygame.event.custom_type()
+ACCEL_DISTANCE_RELEASED = pygame.event.custom_type()
+ACCEL_DISTANCE_SELECTED = pygame.event.custom_type()  # event_data: mode (metres)
+
+ACCEL_RESET_PRESSED = pygame.event.custom_type()
+ACCEL_RESET_RELEASED = pygame.event.custom_type()

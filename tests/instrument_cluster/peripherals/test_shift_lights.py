@@ -146,3 +146,39 @@ def test_fresh_telemetry_resumes_after_stale(monkeypatch):
     bus.signals["telemetry_stale"] = False
     lights.update(bus, 0.016)
     assert lights.controller is not None
+
+
+def test_a_power_to_limiter_engine_reaches_the_controller():
+    """PROTOCOL.md §3.5.5: a sender that knows the engine holds power to the
+    limiter says so, because the four peak numbers cannot. It must reach the
+    curve, and it must identify the profile — flipping it is as much a
+    different car, shift-point-wise, as new peak figures are."""
+    specs = _WIRE_ENGINE.model_dump(exclude={"power_to_limiter"})
+
+    lights = ShiftLights()
+    lights.update(_bus(_frame(engine=Engine(**specs, power_to_limiter=True))), 0.016)
+    assert lights.controller.engine.power_droop == 0.0
+    built = lights.controller
+
+    lights.update(_bus(_frame(engine=Engine(**specs, power_to_limiter=False))), 0.016)
+    assert lights.controller is not built
+    assert lights.controller.engine.power_droop > 0.0
+
+
+def test_the_engine_class_reaches_the_wire_profile():
+    """The wire supplies the curve's peaks; the class table supplies its
+    shape. Car 1461 (Silvia K's (S13) '90) is turbocharged, so it must droop
+    harder than the same peaks on an unclassified id — the wire path is
+    exactly where the regression lived, since a cars.json-only lookup never
+    runs for a sender that sends `engine`."""
+    specs = _WIRE_ENGINE.model_dump(exclude={"power_to_limiter"})
+
+    def droop_for(car_id: int) -> float:
+        lights = ShiftLights()
+        lights.update(_bus(_frame(car_id=car_id, engine=Engine(**specs))), 0.016)
+        return lights.controller.engine.power_droop
+
+    # Same wire peaks, three classes, three falloffs: 1461 is TC/street
+    # (measured), 3588 is TC/race (flat), and an id in no table falls back.
+    # No ordering is asserted — the values are measurements, not beliefs.
+    assert len({droop_for(1461), droop_for(3588), droop_for(999999)}) == 3

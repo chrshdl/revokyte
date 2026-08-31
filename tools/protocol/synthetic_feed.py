@@ -61,7 +61,36 @@ _TYRE_RADIUS = 0.33      # m
 _RPM_IDLE = 900.0
 _RPM_MIN, _RPM_MAX = 2800.0, 8800.0
 _RPM_WARN = 8300.0
+_CAR_ID: int | None = None
 _TAU = 2.0 * math.pi
+
+
+def configure(
+    car_id: int | None = None,
+    ratios: tuple[float, ...] | None = None,
+    engine: dict | None = None,
+    limiter: float | None = None,
+    warn: float | None = None,
+) -> None:
+    """Point the synthetic car at a different vehicle.
+
+    Every argument defaults to None and leaves its constant alone, so a plain
+    run — and therefore ``--record`` — stays byte-identical. This exists so a
+    specific car's shift points can be driven onto real hardware without the
+    console: the receiver's LED ladder is a function of the limiter, the
+    ratios and the engine curve, and those are exactly the four knobs.
+    """
+    global _CAR_ID, _GEAR_RATIOS, _ENGINE, _RPM_MAX, _RPM_WARN
+    if car_id is not None:
+        _CAR_ID = car_id
+    if ratios is not None:
+        _GEAR_RATIOS = tuple(ratios)
+    if engine is not None:
+        _ENGINE = dict(engine)
+    if limiter is not None:
+        _RPM_MAX = limiter
+    if warn is not None:
+        _RPM_WARN = warn
 
 
 def parse_udp_url(url: str) -> tuple[str, int]:
@@ -176,6 +205,8 @@ def frame_at(t: float) -> dict:
             "tcs_active": wheelspin,
         },
     }
+    if _CAR_ID is not None:
+        frame["car_id"] = _CAR_ID
     return frame
 
 
@@ -197,6 +228,26 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--record", metavar="PATH",
                         help="write the session as a recording-envelope "
                              "NDJSON file instead of sending UDP")
+    car = parser.add_argument_group(
+        "vehicle",
+        "Override the synthetic car. Omit them all and the session is "
+        "unchanged, so --record stays byte-identical.")
+    car.add_argument("--car-id", type=int,
+                     help="car id; omitted from the frame unless given, so "
+                          "the receiver falls back to its own car table")
+    car.add_argument("--ratios",
+                     help="comma-separated gear ratios, 1st first (default "
+                          + ",".join(str(r) for r in _GEAR_RATIOS) + ")")
+    car.add_argument("--engine",
+                     help="max_power_kw,max_power_rpm,max_torque_nm,"
+                          "max_torque_rpm")
+    car.add_argument("--power-to-limiter", action="store_true",
+                     help="engine holds power to the limiter (PROTOCOL.md "
+                          "§3.5.5); GT7 sets this for Gr.1-4 and Gr.X cars")
+    car.add_argument("--rpm-limiter", type=float,
+                     help=f"rev limiter, rpm_alert.max (default {_RPM_MAX})")
+    car.add_argument("--rpm-warn", type=float,
+                     help=f"rev warning, rpm_alert.min (default {_RPM_WARN})")
     return parser
 
 
@@ -205,6 +256,30 @@ def main(argv: list[str] | None = None) -> int:
     if args.rate <= 0:
         sys.stderr.write("--rate must be positive\n")
         return 2
+
+    engine = None
+    if args.engine or args.power_to_limiter:
+        engine = dict(_ENGINE)
+        if args.engine:
+            try:
+                values = [float(v) for v in args.engine.split(",")]
+                engine = dict(zip(
+                    ("max_power_kw", "max_power_rpm",
+                     "max_torque_nm", "max_torque_rpm"),
+                    values, strict=True))
+            except ValueError:
+                sys.stderr.write("--engine wants four comma-separated numbers\n")
+                return 2
+        if args.power_to_limiter:
+            engine["power_to_limiter"] = True
+
+    configure(
+        car_id=args.car_id,
+        ratios=([float(r) for r in args.ratios.split(",")] if args.ratios else None),
+        engine=engine,
+        limiter=args.rpm_limiter,
+        warn=args.rpm_warn,
+    )
 
     if args.record:
         if args.duration <= 0:

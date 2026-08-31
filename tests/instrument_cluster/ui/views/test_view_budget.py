@@ -33,6 +33,7 @@ EXPECTED_VIEWS = {
     "InstallView",
     "AgentSetupView",
     "ListenerSetupView",
+    "AccelTestView",
 }
 
 

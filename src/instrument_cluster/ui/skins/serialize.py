@@ -72,7 +72,7 @@ def _emit(
     out.extend(f"{pad}    {line}" for line in head)
     for f, value in iter_px_fields(obj):
         axis = axis_of(f)
-        if f.name == "name" or f.name == "size":
+        if f.name in ("name", "size", "car_id"):
             continue  # emitted via `head` on the top-level Skin
         mark = "  # TODO tune" if f.name in tune else ""
         if axis == "group":
@@ -129,6 +129,15 @@ def emit_skin_module(
     """
     w, h = size if size is not None else skin.size
     var = f"SKIN_{w}"
+    head = [f'name="{w}x{h}",', f"size=({w}, {h}),"]
+    # A car skin shares its resolution with the panel default, so both the
+    # module symbol and Skin.name have to carry the car too — otherwise the
+    # editor's save path emits a second definition of SKIN_<w> and the file
+    # silently shadows the base skin.
+    if skin.car_id is not None:
+        var = f"{var}_CAR{skin.car_id}"
+        head[0] = f'name="{w}x{h}-car{skin.car_id}",'
+        head.insert(1, f"car_id={skin.car_id},")
     lines: list[str] = []
     _emit(
         skin,
@@ -136,7 +145,7 @@ def emit_skin_module(
         tune,
         0,
         lines,
-        head=(f'name="{w}x{h}",', f"size=({w}, {h}),"),
+        head=tuple(head),
     )
     body = _merge_nested(lines)
 

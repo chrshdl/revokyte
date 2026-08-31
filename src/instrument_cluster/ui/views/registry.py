@@ -30,6 +30,7 @@ from ...logger import Logger
 def core_views() -> tuple[type, ...]:
     """The views the community build ships. Imported lazily so importing the
     registry does not drag every view module (and its skin lookups) in."""
+    from .accel_test_view import AccelTestView
     from .agent_setup_view import AgentSetupView
     from .dashboard_view import DashboardView
     from .enter_ip_view import EnterIPView
@@ -48,6 +49,7 @@ def core_views() -> tuple[type, ...]:
         InstallView,
         AgentSetupView,
         ListenerSetupView,
+        AccelTestView,
     )
 
 
@@ -151,9 +153,14 @@ class ViewRegistry:
             del self._borrowed[cls]
 
     def clear(self) -> None:
-        """Drop every built view. Tests only — views bake in the active skin at
-        construction, so a cached view would leak the wrong profile across
-        tests that use the ``force_profile`` fixture."""
+        """Drop every built view.
+
+        Views bake the active skin at construction, so anything that changes
+        which skin is active invalidates all of them: the ``force_profile``
+        fixture in tests, and a car-skin switch at runtime (see
+        ``DashboardState._rebuild_for_skin``). Callers that need the views
+        back immediately must ``preload`` again — ``acquire`` otherwise
+        rebuilds them one at a time on first use."""
         self._views.clear()
         self._failed.clear()
         self._borrowed.clear()

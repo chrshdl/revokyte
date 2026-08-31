@@ -7,7 +7,9 @@ identification misbehaves.
 | File | What it is |
 |---|---|
 | `tracks.json` | The bundled, read-only track database (~100 layouts). GPL-3.0, see `NOTICE.md`. |
-| `NOTICE.md` | Provenance and licensing of `tracks.json` (derived from GPL-3.0 data). |
+| `cars.json` | Per-car engine scalars (peak power/torque and their rpm) for the shift points. Provenance unrecorded — see `NOTICE.md`. |
+| `car_classes.json` | Per-car aspiration / car type / category / engine layout, which pick the shift-point power curve. MIT, regenerate with `tools/fetch_car_classes.py`. |
+| `NOTICE.md` | Provenance and licensing of the bundled data files. |
 | `plot_diagnostics.py` | Diagnostic plots + ambiguity analysis of `tracks.json` (this guide). |
 | `plot_tracks.py` | Older, minimal overlap plot (all boxes + gates in one interactive matplotlib window). |
 | `overview.png`, `brands_hatch.png` | Outputs of `plot_diagnostics.py` in static mode. |
@@ -145,6 +147,26 @@ gets specific.
 
      For these the identifier locks the best-fitting sibling
      deterministically.
+
+## The car tables
+
+Two files, both keyed by GT7's car id as a string:
+
+- **`cars.json`** — `{name, max_power_kw, max_power_rpm, max_torque_nm,
+  max_torque_rpm, redline_rpm}`. The receiver's fallback for senders that
+  supply no `engine` object (PROTOCOL.md §3.5.5). Its `redline_rpm` column is
+  fabricated — 539 of 540 rows are exactly `max_power_rpm + 1000` — which is
+  why no curve is ever anchored on it.
+- **`car_classes.json`** — `{aspiration, car_type, category, engine_layout}`,
+  e.g. `"1461": {"aspiration": "TC", "car_type": "street", "category":
+  "Gr.N", "engine_layout": "I4"}`. Aspiration (`NA` / `TC` / `SC` / `TC+SC` /
+  `EV`) and car type (`street` / `tuned` / `race`) choose how fast power falls
+  off past the peak; the other two are carried for finer splits. It holds 577
+  cars, a superset of `cars.json`, so a car that only ever arrives on the wire
+  still gets a curve.
+
+`car_classes.json` is generated — rerun `tools/fetch_car_classes.py` when
+upstream adds cars, and `--check` in CI-style use tells you when it has.
 
 ## How `TrackSignal` uses this data
 

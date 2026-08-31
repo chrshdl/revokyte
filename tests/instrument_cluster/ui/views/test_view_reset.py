@@ -12,6 +12,7 @@ import pytest
 
 from instrument_cluster.config import ConfigManager
 from instrument_cluster.telemetry.mode import DiffReferenceMode, TelemetryMode
+from instrument_cluster.ui.views.accel_test_view import AccelTestView
 from instrument_cluster.ui.views.enter_ip_view import EnterIPContext, EnterIPView
 from instrument_cluster.ui.views.install_view import InstallContext, InstallView
 from instrument_cluster.ui.views.setup_view import SetupView
@@ -272,3 +273,22 @@ def test_reset_clears_a_button_left_pressed_by_its_own_transition():
 
     assert not view.back_button.is_pressed()
     assert view.back_button._pressed_time == 0.0
+
+
+# --------------------------------------------------------------------------
+# AccelTestView — the one holding a measurement
+# --------------------------------------------------------------------------
+def test_a_previous_visits_time_never_greets_the_next_one():
+    """A time on screen is a claim about the run the driver just did. Left
+    over from the last visit it is a claim about nothing, and there is no way
+    to tell the two apart by looking."""
+    view = AccelTestView()
+    view.set_readout(12.55)
+    view.set_status("400 m at 228 km/h")
+    view.distance_dropdown._set_open(True)
+
+    view.reset(None)
+
+    assert view.time_label.text == "0.00"
+    assert view.status_label.text == ""
+    assert not view.distance_dropdown.open

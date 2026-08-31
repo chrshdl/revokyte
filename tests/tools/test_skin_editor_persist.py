@@ -114,3 +114,28 @@ def test_replace_at_round_trips_every_path():
         edited = paths.replace_at(skin, path, changed)
         assert paths.get_at(edited, path) == changed, path
         assert edited != skin
+
+
+def test_car_skin_saves_to_its_own_file_and_round_trips():
+    """A car skin shares its resolution with the panel default, so both the
+    filename and the emitted symbol have to carry the car id. Without that,
+    saving the car skin overwrites the base skin for that panel and the file
+    declares a second SKIN_1280."""
+    from instrument_cluster.ui.skins import SKIN_1280, SKIN_1280_CAR3588
+    from instrument_cluster.ui.skins.serialize import emit_skin_module
+
+    base_path = persist.skin_path(SKIN_1280)
+    car_path = persist.skin_path(SKIN_1280_CAR3588)
+    assert base_path != car_path
+    assert car_path.name == "skin_1280x720_car3588.py"
+
+    emitted = emit_skin_module(
+        SKIN_1280_CAR3588, docstring=persist._existing_docstring(car_path)
+    )
+    assert emitted == car_path.read_text(), "car skin no-op save is not byte-identical"
+    assert "SKIN_1280_CAR3588 = Skin(" in emitted
+    assert "car_id=3588," in emitted
+    # ...and the base skin must not have gained a car_id line.
+    base = emit_skin_module(SKIN_1280, docstring=persist._existing_docstring(base_path))
+    assert "car_id" not in base
+    assert base == base_path.read_text()

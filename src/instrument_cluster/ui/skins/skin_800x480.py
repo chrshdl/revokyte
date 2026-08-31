@@ -108,6 +108,7 @@ SKIN_800 = Skin(
         delta_loss_color="LIGHT_RED",
         tire_gradient_top="DARK_GREY",
         tire_gradient_bottom="RPM_RED",
+        rpm_variant="classic",
         rpm_scale_color="LIGHT_GREY",
         rpm_redline_color="LIGHT_RED",
         status_light_tc_color="YELLOW",

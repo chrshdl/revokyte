@@ -7,6 +7,7 @@ from ..peripherals.backlight import Backlight
 from ..states.state_manager import StateManager
 from ..telemetry.mode import TelemetryMode
 from ..ui.events import (
+    ACCEL_TEST_RELEASED,
     BRIGHTNESS_DOWN_RELEASED,
     BRIGHTNESS_UP_RELEASED,
     BUTTON_BACK_RELEASED,
@@ -116,6 +117,12 @@ class SetupState(State):
             from .software_state import SoftwareState
 
             self.state_manager.push_state(SoftwareState(self.state_manager))
+            return True
+
+        if event.type == ACCEL_TEST_RELEASED:
+            from .accel_test_state import AccelTestState
+
+            self.state_manager.push_state(AccelTestState(self.state_manager))
             return True
 
         return False

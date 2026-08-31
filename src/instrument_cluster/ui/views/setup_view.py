@@ -7,6 +7,8 @@ from ...peripherals.display import is_raspberry_pi
 from ...telemetry.mode import DiffReferenceMode, TelemetryMode
 from ...ui.colors import Color
 from ...ui.events import (
+    ACCEL_TEST_PRESSED,
+    ACCEL_TEST_RELEASED,
     BUTTON_BACK_PRESSED,
     BUTTON_BACK_RELEASED,
     DIFF_REFERENCE_MODE_PRESSED,
@@ -28,7 +30,6 @@ from ...ui.events import (
 )
 from ...ui.icons import Icon
 from ...ui.skins import active_skin
-from ...ui.utils import FontFamily, load_font_px
 from ...ui.widgets.base.button import ButtonEvents
 from ...ui.widgets.base.dropdown import Dropdown
 from ...ui.widgets.base.list_item import ListItem, ListItemGroup
@@ -38,7 +39,13 @@ from ...ui.widgets.settings.brightness_widget import BrightnessWidget
 from .base import View
 from .header import corner_button, header_line, header_title
 from .scrollable_rows import ScrollableRowsView
-from .setup_rows import row_button, row_icon, row_label
+from .setup_rows import (
+    row_button,
+    row_control_rect,
+    row_dropdown,
+    row_icon,
+    row_label,
+)
 
 
 def _entry_text(entry) -> str:
@@ -89,65 +96,7 @@ class SetupView(ScrollableRowsView, View):
         closed dropdown header (whole control column as touch target, same
         pressed-grey glow, same separator_clearance) with the switch pill
         right-aligned where the chevron sits."""
-        skin = active_skin()
-        s = skin.setup
-        width = skin.width - s.separator_inset - s.dropdown_x
-        gap = s.row_pitch - s.row_height
-        clearance = s.separator_clearance
-        return Toggle(
-            rect=(
-                s.dropdown_x,
-                # Integer cell math: round(-gap/2 + c) banker's-rounds a
-                # half-pixel *upward* on odd gaps (gap 37,
-                # clearance 1: -17.5 -> -18),
-                # lifting the control 1px onto the header line — which the
-                # open dropdown's scrim then visibly blanks.
-                clearance - gap // 2,
-                width,
-                s.row_height + gap - 2 * clearance,
-            ),
-            checked=checked,
-            events=events,
-        )
-
-    def _row_dropdown(
-        self, options, selected, events: ButtonEvents, labels=None
-    ) -> Dropdown:
-        """Standard row dropdown at row-local (dropdown_x, 0), extending to
-        the row's right edge (matching the separator lines) with no margin.
-        Also stretched vertically to fill the row's grid cell (rather than
-        leaving the row's natural top/bottom gap as black bands), stopping
-        separator_clearance short of the separator lines so the closed
-        background and pressed fill never cover them — the open menu's
-        option rows share this same sizing automatically, see
-        Dropdown.get_option_rects()."""
-        skin = active_skin()
-        s = skin.setup
-        width = skin.width - s.separator_inset - s.dropdown_x
-        gap = s.row_pitch - s.row_height
-        clearance = s.separator_clearance
-        return Dropdown(
-            rect=(
-                s.dropdown_x,
-                # Integer cell math: round(-gap/2 + c) banker's-rounds a
-                # half-pixel *upward* on odd gaps (gap 37,
-                # clearance 1: -17.5 -> -18),
-                # lifting the control 1px onto the header line — which the
-                # open dropdown's scrim then visibly blanks.
-                clearance - gap // 2,
-                width,
-                s.row_height + gap - 2 * clearance,
-            ),
-            options=options,
-            events=events,
-            labels=labels,
-            font=load_font_px(s.row_font_size, FontFamily[s.row_font_family]),
-            selected_index=options.index(selected),
-            menu_pitch=s.row_pitch,
-            text_left_pad=s.value_x - s.dropdown_x,
-            menu_separator_color=ListItem.separator_color(),
-            menu_separator_width=s.separator_width,
-        )
+        return Toggle(rect=row_control_rect(), checked=checked, events=events)
 
     def _init_ui_elements(self):
         self.title_label = header_title("System settings")
@@ -169,7 +118,7 @@ class SetupView(ScrollableRowsView, View):
         # Desktop builds have no proxy installer, so only feeds that can be
         # read in-process (plus Demo) are offered off the appliance.
         telemetry_options = telemetry_choices(direct_only=not is_raspberry_pi())
-        self.telemetry_mode_dropdown = self._row_dropdown(
+        self.telemetry_mode_dropdown = row_dropdown(
             options=telemetry_options,
             selected=telemetry_options[0],
             events=ButtonEvents(
@@ -179,7 +128,7 @@ class SetupView(ScrollableRowsView, View):
             ),
         )
         self.brightness_widget = BrightnessWidget(x=active_skin().setup.value_x)
-        self.diff_reference_mode_dropdown = self._row_dropdown(
+        self.diff_reference_mode_dropdown = row_dropdown(
             options=self.DIFF_REFERENCE_OPTIONS,
             selected=self.DIFF_REFERENCE_OPTIONS[0],
             # Without these the row would read a bare, lowercase "fastest" —
@@ -259,6 +208,19 @@ class SetupView(ScrollableRowsView, View):
             ),
         )
         row_contents.append((Icon.SOFTWARE.glyph(), "Software", self.software_button))
+        # The acceleration timer: a driving measurement, not a setting, so
+        # it gets its own screen rather than a control in this list.
+        self.testing_button = row_button(
+            text="Acceleration",
+            icon=Icon.CHEVRON_RIGHT.glyph(),
+            events=ButtonEvents(
+                pressed=ACCEL_TEST_PRESSED,
+                released=ACCEL_TEST_RELEASED,
+            ),
+        )
+        row_contents.append(
+            (Icon.TESTING.glyph(), "Testing & Validation", self.testing_button)
+        )
         # Held as (entry, button) pairs: button_text may be a callable that is
         # re-evaluated on every entry to Setup (an extension's licence row
         # reads its tier that way), and a pooled view would otherwise show

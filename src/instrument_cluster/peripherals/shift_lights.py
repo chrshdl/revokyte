@@ -4,8 +4,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..config import ConfigManager
-from ..core.vehicle.car_profiler import CarLibrary
-from ..core.vehicle.ecu import ShiftLightController
+from ..core.vehicle.car_profiler import CarClassLibrary, CarLibrary
+from ..core.vehicle.ecu import ShiftLightController, power_droop_for
 from ..core.vehicle.vehicle_bus import VehicleBus
 from ..logger import Logger
 
@@ -25,11 +25,19 @@ class ShiftLights:
         cars_path = DATA_DIR / "cars.json"
 
         self.car_library = CarLibrary(filepath=cars_path)
+        # Engine class is looked up for *every* car, including the ones whose
+        # peaks arrive on the wire: the sender supplies the curve's peaks, this
+        # supplies its shape.
+        self.car_class_library = CarClassLibrary(
+            filepath=DATA_DIR / "car_classes.json"
+        )
 
         # Identity of the specs the current controller was built from:
-        # (car_id, engine-curve tuple or None). Wire-supplied engine data
-        # participates so a sender updating its curve rebuilds the
-        # controller just like a car change does.
+        # (car_id, engine-curve tuple or None, rev limiter). Wire-supplied
+        # engine data participates so a sender updating its curve rebuilds the
+        # controller just like a car change does, and the limiter does too —
+        # it anchors the shift target, so a retuned car is a different car as
+        # far as the shift point is concerned.
         self._profile_key: tuple | None = None
         self.controller = None
 
@@ -85,9 +93,11 @@ class ShiftLights:
                 engine.max_power_rpm,
                 engine.max_torque_nm,
                 engine.max_torque_rpm,
+                engine.power_to_limiter,
             )
             if engine is not None
             else None,
+            frame.rpm_alert.max if frame.rpm_alert is not None else None,
         )
         if profile_key != self._profile_key:
             self._init_controller(frame, profile_key)
@@ -157,16 +167,29 @@ class ShiftLights:
                 "max_torque_nm": engine.max_torque_nm,
                 "max_torque_rpm": engine.max_torque_rpm,
                 "redline_rpm": redline,
+                "power_to_limiter": engine.power_to_limiter,
             }
         else:
             car_data = self.car_library.get_specs(frame.car_id)
+
+        # The falloff past the power peak comes from the car's class, on both
+        # paths: the wire's four peaks cannot express it, and a sender that
+        # does know says so with power_to_limiter, which still wins.
+        car_class = self.car_class_library.get_class(frame.car_id) or {}
+        car_data["power_droop"] = power_droop_for(
+            car_class.get("aspiration"), car_class.get("car_type")
+        )
+
         self.controller = ShiftLightController(**car_data)
         self._profile_key = profile_key
         self._force_render_next_frame()
 
         self.logger.info(
             f"Controller loaded for car {frame.car_id}: "
-            f"{car_data.get('name', 'Unknown')}"
+            f"{car_data.get('name', 'Unknown')} "
+            f"[{car_class.get('aspiration') or '??'}/"
+            f"{car_class.get('car_type') or '??'}, "
+            f"droop {self.controller.engine.power_droop:.2f}]"
         )
         self.logger.info(f"Redline RPM: {car_data.get('redline_rpm', 'Unknown')}")
 

@@ -46,6 +46,7 @@ class Icon(Enum):
     SHIFT_LIGHTS = "\ue260"  # linear_scale (LED row), shift-lights toggle
     FACTORY_RESET = "\ue8ba"  # settings_backup_restore
     SOFTWARE = "\ue322"  # memory (chip), Software row
+    TESTING = "\uea4b"  # science (flask), Testing & Validation row
     APP = "\ue9e4"  # speed (gauge), Software screen App row
     OS_IMAGE = "\ue623"  # sd_storage, Software screen OS row
     EXTENSION = "\ue87b"  # extension (puzzle), contributed version rows
@@ -56,6 +57,9 @@ class Icon(Enum):
     PLUS = "\ue145"
     BACKSPACE = "\ue14a"
     OK_CHECK = "\ue5ca"  # EnterIP confirm
+    DISTANCE = "\ue41c"  # straighten (ruler), accel-test distance row
+    TIMER = "\ue425"  # stopwatch, accel-test timer row (as REFERENCE_LAP)
+    RESET_TIMER = "\ue042"  # replay, accel-test reset row
 
     # Wi-Fi flow
     RESCAN = "\ue5d5"  # refresh

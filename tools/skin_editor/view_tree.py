@@ -83,6 +83,7 @@ _DASHBOARD_CORE = [
             "dashboard.rpm_rect",
             "dashboard.fonts.rpm_label",
             "dashboard.fonts.rpm_label_family",
+            "dashboard.rpm_variant",
             "dashboard.rpm_scale_color",
             "dashboard.rpm_redline_color",
             "style.rpm.padding_x",

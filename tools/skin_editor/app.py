@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import pygame
 
-from instrument_cluster.ui.skins import SKIN_800, SKIN_1024, SKIN_1280
+from instrument_cluster.ui.skins import (
+    SKIN_800,
+    SKIN_1024,
+    SKIN_1280,
+    SKIN_1280_CAR3588,
+)
 
 from . import paths, persist, uikit, viewhost as viewhost_mod
 from .bindings import bindings_for
@@ -80,6 +85,7 @@ class EditorApp:
 
         self.skin_docs = [
             SkinDocument(SKIN_1280),
+            SkinDocument(SKIN_1280_CAR3588),
             SkinDocument(SKIN_1024),
             SkinDocument(SKIN_800),
         ]

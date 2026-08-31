@@ -127,6 +127,7 @@ Key states in `states/`:
 - `DashboardState` — the main racing view; a pure consumer that links plugin sprites into `DashboardView.plugin_layer` and re-links whenever `PluginManager.generation` changes (plugin reload). The view itself owns only chrome (Setup button, bezel LED strips). Signal processing is handled by `SignalPipeline` in the main loop, not here.
 - `SetupState` — first-run / connection setup; renders extra rows contributed by extensions (none installed = none shown)
 - `EnterIPState` — PS5 IP entry via soft keyboard
+- `AccelTestState` — Testing & Validation: the standing-start acceleration timer (see below)
 
 ### Wi-Fi first-boot gate
 
@@ -187,6 +188,56 @@ The old design-space helpers (`sx/sy/su/srect/spos` in `ui/utils.py`, `DESIGN_WI
 The delta calculator is **vendored pure-Python source** in `core/delta_calculator/` (copied from `../delta-calculator`, upstream version in its `__init__.__version__`; its tests are vendored too as `tests/instrument_cluster/core/delta_calculator/test_delta_calculator.py` / `test_delta_math_lite.py`). It ships inside the OS bundle and is bytecode-compiled with the image's own interpreter — the previously separate compiled package (`delta_calculator` `.so`) was pinned to one CPython ABI and would break the moment an OS update bumps Python; a stale copy in site-packages on deployed devices is simply ignored. `delta_calc.py::make_delta_calculator()` returns the vendored implementation, with the no-op `delta_calc_fallback.py` as the safety net.
 
 For performance, the OS image build Cython-compiles the vendored modules with the image's own interpreter: `setup.py` builds them as extensions when `CYTHONIZE_DELTA_CALCULATOR=1` is set (the `python-instrument-cluster` Buildroot package sets it and provides `host-python-cython`). Python prefers the built `.so` over the `.py` next to it, so dev machines and tests (flag unset) transparently run the source.
+
+### Shift points & the car databases
+
+The LED ladder's shift point is computed, not tabulated: `ShiftPointCalculator`
+(`core/vehicle/ecu.py`) finds where the next gear puts more torque at the
+wheels than the current one. Gear ratios cancel out of that comparison, so
+only the *shape* of the power curve matters — which is what makes the curve
+measurable from telemetry alone, with no mass or drag constant.
+
+Two db files feed it, both keyed by GT7 car id: `db/cars.json` (peak power and
+torque with their rpm — no recorded provenance, and its `redline_rpm` column
+is fabricated on 539 of 540 rows, so no curve is ever anchored on it) and
+`db/car_classes.json` (aspiration, car type, category, engine layout, from
+zetetos/gt-telemetry, MIT; regenerate with `tools/fetch_car_classes.py`). The
+class picks how fast power falls away past the peak — the one thing the four
+peak numbers on the wire cannot say, and the thing the shift point mostly
+depends on. A sender's `power_to_limiter` still overrides it.
+
+Every falloff value is measured off a real car rather than assumed: the app
+captures full-throttle pulls behind the `accel_logging` config flag
+(`core/vehicle/accel_recorder.py`) and the runs are fitted offline. The
+constants in `ecu.py` carry the car, the pull count and the strength of the
+evidence in their comments.
+The measurements overturned the intuition the first priors encoded: in GT7
+both turbos measured hold power nearly flat and the naturally aspirated V8 is
+the one that droops.
+
+Whether the computed shift point is actually *faster* than shifting on the
+game's own light is a driving question, so the answer is measured on the
+device: Setup → **Testing & Validation** opens a 0-to-100/200/300/400 m
+timer (`core/vehicle/accel_timer.py`, driven by `states/accel_test_state.py`).
+It arms itself when the car stops, starts on the launch and stops on the
+target distance, so a run needs no screen taps — and it voids a run rather
+than publishing a number that was measured differently from the one it is
+being compared against (a pause, a car change, a gap in the stream, a car
+that rolls to a stop). Distance is integrated from `car_speed`, the one
+channel every feed carries; timing is on the *receiving* clock, because
+`received_time`'s unit varies by reader. The clock is a
+`DigitReadout` (`ui/widgets/base/digit_readout.py`) on the gauges' own
+fixed digit grid (`ui/widgets/base/digits.py`, shared with `Widget`), so
+hundredths ticking 100 times a second don't make the number squirm.
+`tools/preview_accel_test.py` plays a synthetic pull through the real state
+on any panel.
+
+`rpm_alert.max` is a tachometer number, not the fuel cut — car 1461 declares
+8000 and cuts at 7215 — so the controller learns the real limiter from the
+engine (rpm falling while the pedal is down in an unchanged gear) and anchors
+the target on that, never above the declared value. Without it the shift
+target can sit above any rpm the engine can reach, which leaves the ladder
+permanently unfinished.
 
 ### Desktop (PC) builds
 

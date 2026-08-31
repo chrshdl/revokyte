@@ -35,7 +35,18 @@ def _atomic_write(path: Path, text: str) -> None:
 
 
 def skin_path(skin) -> Path:
-    return SKINS_DIR / f"skin_{skin.width}x{skin.height}.py"
+    """Where a skin's module lives.
+
+    A resolution can carry more than one skin — the panel default plus
+    car-specific ones (Skin.car_id) — so the car has to be part of the
+    filename. Without it, saving a car skin would silently overwrite the
+    base skin for that panel, which is the same file every other skin of
+    that resolution maps to.
+    """
+    stem = f"skin_{skin.width}x{skin.height}"
+    if skin.car_id is not None:
+        stem += f"_car{skin.car_id}"
+    return SKINS_DIR / f"{stem}.py"
 
 
 def _existing_docstring(path: Path) -> str:

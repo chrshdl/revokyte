@@ -7,6 +7,7 @@ from ..peripherals.backlight import Backlight
 from ..peripherals.display import active_profile
 from ..config import ConfigManager
 from ..core.plugin_system.plugin_layout import LayoutContext
+from ..ui import skins
 from ..debug.debug_sender import DebugSender
 from ..logger import Logger
 from ..signals.signal_pipeline import SignalPipeline
@@ -72,6 +73,8 @@ class DashboardState(State):
         # binds the view's own flag from config on every entry and resume, so
         # the view can never tell us what the plugins are still holding.
         self._plugin_lights: bool | None = None
+        # Car the dashboard is currently dressed for (see _sync_car_skin).
+        self._applied_car: int | None = None
 
         debug_dest_ip = os.environ.get("DEBUG_DEST_IP", "")
         if debug_dest_ip:
@@ -321,10 +324,71 @@ class DashboardState(State):
 
     def update(self, dt: float):
         super().update(dt)
+        self._sync_car_skin()
         # A plugin reload (e.g. a feature-grant change) may have replaced
         # every plugin instance — link the new sprites into the draw layer.
         self._relink_if_stale()
         self.view.update(self.bus, dt)
+
+    # --- per-car skins -----------------------------------------------------
+
+    def _sync_car_skin(self) -> None:
+        """Re-dress the dashboard when the car changes to one with its own skin.
+
+        GT7 reports car_id on every frame, so this runs at 60 Hz and must be
+        nearly free in the common case: skins.set_active_car() early-returns
+        on the same id, and reports whether the *resolved* skin actually
+        changed — two cars that both fall back to the panel default cost
+        nothing. Only a real change reaches the rebuild below.
+
+        The rebuild is expensive (~115 ms for the views alone, plus every
+        gauge) because both views and plugin widgets read active_skin() at
+        construction. That is acceptable here: a car change happens in the
+        garage, not mid-lap.
+        """
+        frame = self.bus.frame
+        if frame is None:
+            return
+        car_id = getattr(frame, "car_id", -1)
+        # -1 is the schema default (no telemetry yet); never re-dress on it.
+        if car_id is None or car_id <= 0 or car_id == self._applied_car:
+            return
+        self._applied_car = car_id
+        if not skins.set_active_car(car_id):
+            return
+        self.logger.info(
+            "Car %s selected; rebuilding for skin %s",
+            car_id,
+            skins.active_skin().name,
+        )
+        self._rebuild_for_skin()
+
+    def _rebuild_for_skin(self) -> None:
+        """Drop and rebuild everything that baked the old skin."""
+        from ..extensions import runtime as extensions
+        from ..ui.views.registry import core_views, views
+
+        # Views bake the skin at construction, so every one of them is stale —
+        # not just this state's. Rebuild the whole set now rather than paying
+        # for it on the next Setup entry.
+        views.clear()
+        views.preload(core_views() + tuple(extensions.view_classes))
+        self.view = views.acquire(self.view_class, borrower=self)
+        if self.view is not None:
+            self.view.reset(self.view_context())
+        self.repaint_background()
+
+        # Gauge widgets read the skin in build_widgets(); relayout() is the
+        # existing teardown+rebuild path and bumps generation, so the next
+        # _relink_if_stale() picks the fresh sprites up.
+        if self.plugin_manager is not None:
+            self.plugin_manager.relayout(
+                LayoutContext(status_lights=ConfigManager.get_config().status_lights)
+            )
+        self._link_plugins()
+        self._refresh_slot_dots()
+        if self.state_manager is not None:
+            self.state_manager.request_full_paint()
 
     def handle_event(self, event):
         self.view.handle_event(event)

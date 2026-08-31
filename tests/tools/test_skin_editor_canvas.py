@@ -46,7 +46,7 @@ def _mouse(kind, pos, button=1):
 
 def test_click_selects_smallest_hit_binding(rig):
     doc, _undo, canvas, events = rig
-    # The gear dial center: gear_rect (640, 388) center-anchored.
+    # The gear dial center: gear_rect (640, 400) center-anchored.
     origin = canvas.origin
     pos = (origin[0] + 640, origin[1] + 388)
     canvas.handle(_mouse("down", pos), doc.skin, doc.get)

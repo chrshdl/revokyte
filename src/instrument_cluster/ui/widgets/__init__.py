@@ -7,6 +7,7 @@ from ...core.vehicle.vehicle_bus import VehicleBus
 from ..colors import Color
 from ..skins import active_skin
 from ..utils import FontFamily, load_font_px, vertical_gradient
+from .base.digits import DIGIT_CHARS, PUNCT_SCALE, DigitMetrics, digit_metrics
 
 # Spec-space (1280x720) header caption size, used when no explicit
 # header_font_size is given: the custom-dashboard path authors in spec
@@ -90,7 +91,7 @@ class Widget(DirtySprite, ABC):
         self.antialias = antialias
 
         # create gradient surface or None
-        self._bg_gradient_surface = self._create_vertical_gradient(
+        self._bg_gradient_surface = self._create_background_gradient(
             bg_gradient_top,
             bg_gradient_bottom,
         )
@@ -150,10 +151,20 @@ class Widget(DirtySprite, ABC):
                 self.border_radius,
             )
 
-        header_surf = self.font_header.render(self.header_text, False, self.text_color)
-        header_rect = header_surf.get_rect(midtop=(self.w // 2, self.header_margin))
-        self.image.blit(header_surf, header_rect)
-        self._header_bottom = header_rect.bottom
+        # An empty header reserves nothing. render("") still returns a surface
+        # a full font-height tall, so taking its rect unconditionally gave
+        # header-less widgets a ~26px dead band at the top and pushed their
+        # content down into the bottom border — on a short widget that clipped
+        # the last rows off entirely. Only a header that draws costs height.
+        if self.header_text:
+            header_surf = self.font_header.render(
+                self.header_text, False, self.text_color
+            )
+            header_rect = header_surf.get_rect(midtop=(self.w // 2, self.header_margin))
+            self.image.blit(header_surf, header_rect)
+            self._header_bottom = header_rect.bottom
+        else:
+            self._header_bottom = 0
 
     def set_header(self, header_text: str) -> None:
         """Change the header text and rebuild the cached base image.
@@ -209,46 +220,78 @@ class Widget(DirtySprite, ABC):
     def _get_digit_metrics(
         self,
         color: tuple[int, int, int],
-        chars: str = ".:0123456789",
-        punct_scale: float = 0.6,
-    ):
+        chars: str = DIGIT_CHARS,
+        punct_scale: float = PUNCT_SCALE,
+    ) -> DigitMetrics:
+        """This widget's slot layout for ``color``, built once.
+
+        The layout itself lives in ``base/digits.py`` — it is shared with the
+        readouts outside the dashboard — but the cache stays here: building it
+        renders every digit, and a gauge redraws on every value change.
+        """
         key = (id(self.font_value), bool(self.antialias), color, chars, punct_scale)
         cached = self._digit_cache.get(key)
         if cached is not None:
             return cached
 
-        surf = {ch: self.font_value.render(ch, self.antialias, color) for ch in chars}
-        h = max(s.get_height() for s in surf.values())
-        advance = max(s.get_width() for s in surf.values())
-
-        adv: dict[str, int] = {}
-        for ch in chars:
-            if ch in ".:":
-                slot = int(max(surf[ch].get_width(), advance * punct_scale))
-            else:
-                slot = advance
-            adv[ch] = slot
-
-        packed = {"surf": surf, "h": h, "advance": advance, "adv": adv}
-        self._digit_cache[key] = packed
-        return packed
+        metrics = digit_metrics(
+            self.font_value,
+            color,
+            antialias=self.antialias,
+            chars=chars,
+            punct_scale=punct_scale,
+        )
+        self._digit_cache[key] = metrics
+        return metrics
 
     def _fill_background(self, rect: pygame.Rect | None = None):
-        """Fill the given rect with either gradient or flat bg_color."""
+        """Fill the given rect with either gradient or flat bg_color.
+
+        A whole-surface fill is clipped to the border radius. The background
+        used to be filled square and the rounded border drawn over it, which
+        left the fill showing in the four corners *outside* the border — a
+        square shoulder on every rounded panel, invisible at radius 4 and
+        obvious once a skin asks for a real radius. Sub-rect fills (the value
+        area on a redraw) are interior and never touch a corner, so they skip
+        the mask and stay cheap.
+        """
+        full = rect is None
         if rect is None:
             rect = self.image.get_rect()
 
         if self._bg_gradient_surface is not None:
-            # draw the corresponding part of the gradient surface
-            self.image.blit(self._bg_gradient_surface, rect, area=rect)
+            source = self._bg_gradient_surface.subsurface(rect).copy()
         else:
-            pygame.draw.rect(self.image, self.bg_color, rect)
+            source = pygame.Surface(rect.size, pygame.SRCALPHA)
+            source.fill(self.bg_color)
 
-    def _create_vertical_gradient(
+        if full and self.border_radius > 0:
+            mask = pygame.Surface(rect.size, pygame.SRCALPHA)
+            pygame.draw.rect(
+                mask,
+                (255, 255, 255, 255),
+                mask.get_rect(),
+                border_radius=self.border_radius,
+            )
+            source = source.convert_alpha()
+            source.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+            # Clear first: the corners must end up transparent, and blitting
+            # a masked surface over old pixels would leave them behind.
+            self.image.fill((0, 0, 0, 0), rect)
+
+        self.image.blit(source, rect)
+
+    def _create_background_gradient(
         self,
         top_color: tuple[int, int, int] | None,
         bottom_color: tuple[int, int, int] | None,
     ) -> pygame.Surface | None:
+        """Build the panel background ramp, or None for a flat fill.
+
+        Subclasses override this to shape the ramp differently (the tyre
+        cells use a radial glow); the two colours keep their meaning either
+        way — `top_color` is the dark rim, `bottom_color` the lit end.
+        """
         if top_color is None or bottom_color is None:
             return None
         return vertical_gradient((self.w, self.h), top_color, bottom_color)
@@ -262,14 +305,13 @@ class Widget(DirtySprite, ABC):
             color = self.value_color or self.text_color
 
         metrics = self._get_digit_metrics(color)
-        surf_map = metrics["surf"]
-        digit_h = metrics["h"]
-        advance_map = metrics["adv"]
 
         # area
         inner_left = self.border_width
         inner_right = self.w - self.border_width
-        inner_top = max(self._header_bottom + self.header_margin, self.border_width)
+        inner_top = self.border_width
+        if self.header_text:
+            inner_top = max(self._header_bottom + self.header_margin, inner_top)
         inner_bottom = self.h - self.border_width
 
         value_area = pygame.Rect(
@@ -281,22 +323,15 @@ class Widget(DirtySprite, ABC):
 
         self.image.blit(self._base_image, (0, 0))
 
-        # total width from per-char advances
-        advances = [advance_map.get(ch, metrics["advance"]) for ch in value_str]
-        total_w = sum(advances) + max(0, len(value_str) - 1) * self.digit_gap
-
+        total_w = metrics.width(value_str, self.digit_gap)
         x = value_area.centerx - total_w // 2
-        y = value_area.centery - self.value_offset_y - digit_h // 2 - 2  # FIXME: -2
-
-        for i, ch in enumerate(value_str):
-            slot_w = advances[i]
-            ch_surf = surf_map.get(ch)
-            if ch_surf is None:
-                ch_surf = self.font_value.render(ch, self.antialias, color)
-            gx = x + (slot_w - ch_surf.get_width()) // 2
-            gy = y + (digit_h - ch_surf.get_height()) // 2
-            self.image.blit(ch_surf, (gx, gy))
-            x += slot_w + self.digit_gap
+        y = (
+            value_area.centery
+            - self.value_offset_y
+            - metrics.height // 2
+            - 2  # FIXME: -2
+        )
+        metrics.draw(self.image, value_str, self.digit_gap, x, y)
 
         return value_area
 

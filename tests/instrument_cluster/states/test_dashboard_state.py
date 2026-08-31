@@ -368,3 +368,60 @@ def test_status_lights_toggle_relayouts_the_gauge_plugins(monkeypatch, tmp_path)
     pm.relayout.reset_mock()
     state.on_resume()
     assert pm.relayout.call_count == 0
+
+
+def _frame_with_car(car_id):
+    f = MagicMock()
+    f.car_id = car_id
+    return f
+
+
+def test_car_change_rebuilds_only_when_the_skin_actually_changes(
+    monkeypatch, tmp_path
+):
+    """The car id arrives at 60Hz, so the guard has to be on the resolved
+    skin, not on the car: two cars that both fall back to the panel default
+    must not each cost a ~115ms rebuild."""
+    from instrument_cluster.config import ConfigManager
+
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps({"status_lights": False}))
+    monkeypatch.setattr(ConfigManager, "path", cfg)
+    ConfigManager.reset()
+
+    pm = make_manager([make_plugin(make_sprite())])
+    state = DashboardState(state_manager=MockStateManager(), plugin_manager=pm)
+    state.pipeline = MagicMock()
+    state.enter(pygame.Surface((1280, 720)))
+
+    rebuilds = []
+    monkeypatch.setattr(state, "_rebuild_for_skin", lambda: rebuilds.append(1))
+
+    # No telemetry yet: car_id defaults to -1 and must never re-dress.
+    state.bus.frame = _frame_with_car(-1)
+    state.update(0.016)
+    assert rebuilds == []
+
+    # A car with no skin of its own: resolves to the same default skin.
+    state.bus.frame = _frame_with_car(1461)
+    state.update(0.016)
+    assert rebuilds == []
+
+    # ...and another one. Still the same resolved skin, still no rebuild.
+    state.bus.frame = _frame_with_car(9999)
+    state.update(0.016)
+    assert rebuilds == []
+
+    # The car that HAS a skin: one rebuild.
+    state.bus.frame = _frame_with_car(3588)
+    state.update(0.016)
+    assert len(rebuilds) == 1
+
+    # Holding that car for more frames must not rebuild again.
+    for _ in range(5):
+        state.update(0.016)
+    assert len(rebuilds) == 1
+
+    from instrument_cluster.ui import skins
+
+    skins.set_active_car(None)

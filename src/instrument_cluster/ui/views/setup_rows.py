@@ -12,7 +12,9 @@ from ..colors import Color
 from ..skins import active_skin
 from ..utils import FontFamily, load_font_px, su
 from ..widgets.base.button import Button, ButtonEvents
+from ..widgets.base.dropdown import Dropdown
 from ..widgets.base.label import Label
+from ..widgets.base.list_item import ListItem
 
 
 def row_label(text: str) -> Label:
@@ -64,6 +66,50 @@ def row_value(text: str) -> Label:
     return label
 
 
+def row_control_rect() -> tuple[int, int, int, int]:
+    """The row-local rect every stretched row control shares: from
+    ``dropdown_x`` to the row's right edge (matching the separator lines,
+    no margin), and filled to the row's whole grid cell rather than leaving
+    its top/bottom gap as black bands — stopping ``separator_clearance``
+    short of the separator lines so no background or pressed fill covers
+    them. Dropdown headers, toggles and action buttons all use it, which is
+    what makes the control column one straight edge down the screen.
+    """
+    skin = active_skin()
+    s = skin.setup
+    gap = s.row_pitch - s.row_height
+    clearance = s.separator_clearance
+    return (
+        s.dropdown_x,
+        # Integer cell math: round(-gap/2 + c) banker's-rounds a half-pixel
+        # *upward* on odd gaps (gap 37, clearance 1: -17.5 -> -18), lifting
+        # the control 1px onto the header line — which the open dropdown's
+        # scrim then visibly blanks.
+        clearance - gap // 2,
+        skin.width - s.separator_inset - s.dropdown_x,
+        s.row_height + gap - 2 * clearance,
+    )
+
+
+def row_dropdown(options, selected, events: ButtonEvents, labels=None) -> Dropdown:
+    """Standard row dropdown, filling the control column's grid cell. The
+    open menu's option rows share that sizing automatically (see
+    ``Dropdown.get_option_rects()``), so the menu lands on the row grid."""
+    s = active_skin().setup
+    return Dropdown(
+        rect=row_control_rect(),
+        options=options,
+        events=events,
+        labels=labels,
+        font=load_font_px(s.row_font_size, FontFamily[s.row_font_family]),
+        selected_index=options.index(selected),
+        menu_pitch=s.row_pitch,
+        text_left_pad=s.value_x - s.dropdown_x,
+        menu_separator_color=ListItem.separator_color(),
+        menu_separator_width=s.separator_width,
+    )
+
+
 def row_button(text: str, icon: str, events: ButtonEvents) -> Button:
     """Standard row action button, styled like a closed dropdown header:
     same rect (DROPDOWN_X to the row's right edge, stretched to touch
@@ -71,23 +117,9 @@ def row_button(text: str, icon: str, events: ButtonEvents) -> Button:
     the chevron's spot, and the dropdown's pressed-grey glow instead of
     a border. Stops separator_clearance short of the separator lines so
     the pressed fill never covers them."""
-    skin = active_skin()
-    s = skin.setup
-    width = skin.width - s.separator_inset - s.dropdown_x
-    gap = s.row_pitch - s.row_height
-    clearance = s.separator_clearance
+    s = active_skin().setup
     return Button(
-        rect=(
-            s.dropdown_x,
-            # Integer cell math: round(-gap/2 + c) banker's-rounds a
-            # half-pixel *upward* on odd gaps (gap 37,
-            # clearance 1: -17.5 -> -18),
-            # lifting the control 1px onto the header line — which the
-            # open dropdown's scrim then visibly blanks.
-            clearance - gap // 2,
-            width,
-            s.row_height + gap - 2 * clearance,
-        ),
+        rect=row_control_rect(),
         text=text,
         text_visible=True,
         font=load_font_px(s.row_font_size, FontFamily[s.row_font_family]),
