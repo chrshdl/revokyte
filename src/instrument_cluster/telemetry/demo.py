@@ -19,7 +19,7 @@ SHIFT_PRE = 0.2  # seconds before change to show in_gear = False
 # the LED ladder was the one gauge the demo could not show. A car id is enough
 # to route through the local car table, which is the honest path for a local
 # reader (a wire `engine` object is a sender's job).
-_DEMO_CAR_ID = 2149  # Mercedes-AMG GT S '15, in cars.json
+_DEMO_CAR_ID = 3588  # 296 GT3 '23, in cars.json — the car the Ferrari skin dresses
 _DEMO_GEAR_RATIOS = [3.4, 2.19, 1.63, 1.29, 1.03, 0.84]
 
 

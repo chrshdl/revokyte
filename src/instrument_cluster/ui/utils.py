@@ -93,57 +93,6 @@ def vertical_gradient(
 # an exponent on the sine: 1.0 is the plain curve, and below that the crest
 # widens (the peak flattens out and the flanks steepen) without moving the
 # peak or the corners.
-#: Fraction of a panel's height that the inset top shadow occupies, as a
-#: percentage. Measured off the 296 GT3's gear panel, whose shadow runs from
-#: luminance 140 at the very top to 225 by 22% down, after which the body is
-#: flat within 14 levels for the remaining three quarters.
-TOP_SHADOW_DEPTH_PCT = 22
-
-
-def top_shadow_gradient(
-    size: tuple[int, int],
-    shadow_color: tuple[int, int, int],
-    fill_color: tuple[int, int, int],
-    depth_pct: int = TOP_SHADOW_DEPTH_PCT,
-    fill_bottom_color: tuple[int, int, int] | None = None,
-) -> pygame.Surface:
-    """A flat panel with an inset shadow along its top edge.
-
-    Not a top-to-bottom ramp: on the panel this imitates the darkening is
-    confined to the top fifth and the rest is flat, so spreading it linearly
-    over the full height leaves the top too light and the middle too dark.
-    ``depth_pct`` 0 gives a flat ``fill_color``, which is how panels with no
-    shadow are expressed.
-
-    Smoothstepped so the shadow meets the flat body without a visible seam.
-    """
-    width, height = size
-    if width <= 0 or height <= 0:
-        return pygame.Surface((max(width, 1), max(height, 1)))
-    surf = pygame.Surface(size)
-    band = max(0, min(height, round(height * depth_pct / 100.0)))
-    bottom = fill_bottom_color if fill_bottom_color is not None else fill_color
-
-    # Body first: a gentle ramp from fill_color to fill_bottom_color. Equal
-    # ends give the flat panel the default skins want.
-    span = max(1, height - 1)
-    for y in range(height):
-        t = y / span
-        c = tuple(round(a + (b - a) * t) for a, b in zip(fill_color, bottom))
-        pygame.draw.line(surf, c, (0, y), (width - 1, y))
-
-    # Then the inset shadow over the top band, blending into whatever the
-    # body already is at that row rather than into fill_color — otherwise the
-    # shadow and the ramp disagree where they meet.
-    for y in range(band):
-        t = (y + 1) / band if band else 1.0
-        t = t * t * (3.0 - 2.0 * t)  # smoothstep
-        under = surf.get_at((0, y))[:3]
-        c = tuple(round(s + (f - s) * t) for s, f in zip(shadow_color, under))
-        pygame.draw.line(surf, c, (0, y), (width - 1, y))
-    return surf
-
-
 GLOW_HEADROOM = 0.55  # 0.5
 GLOW_BAND = 1.3  # 1.1
 GLOW_CREST = 0.25
