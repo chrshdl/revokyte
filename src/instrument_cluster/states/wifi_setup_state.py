@@ -340,7 +340,6 @@ class WifiSetupState(State):
 
         if event.type == WIFI_BACKSPACE_LONGPRESSED:
             self._clear()
-            self.logger.info("TODO: implement WIFI_BACKSPACE_LONGPRESSED")
             return True
 
         if event.type == WIFI_SHIFT_RELEASED:
@@ -430,5 +429,6 @@ class WifiSetupState(State):
             field.set_text(field.text[:-1])
 
     def _clear(self):
-        self.view.license_input.set_text("")
-        self.license_input.cursor_position = 0
+        field = self.view.active_field()
+        if field is not None and field.text:
+            field.set_text("")
