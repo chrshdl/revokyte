@@ -58,6 +58,50 @@ def spos(x: float, y: float) -> tuple[int, int]:
 GRADIENT_EXPONENT = 1.1
 
 
+def opaque_layer(
+    size: tuple[int, int], color: tuple[int, int, int]
+) -> pygame.Surface:
+    """A scratch layer filled opaque with ``color``. Draw on it, then seal it
+    with :func:`seal_layer` before returning it to be blitted.
+
+    For layers composed once and then re-blitted whole onto a widget's image
+    (the RPM scales), where the destination pixels are *replaced*.
+
+    ``pygame.Surface(size).convert()`` looks like the way to say "opaque",
+    and it is what this used to be, but it is a trap: convert() copies the
+    *display* format, and a plain (non-SCALED) macOS window is ARGB8888 — so
+    the layer inherits an alpha channel that nothing initialises. Fills and
+    ``draw.*`` write alpha 255 into it, but blitting antialiased text does
+    not: the glyph pixels land with alpha 0, the copy carries that hole into
+    the widget image, and the text is invisible wherever the widget's own
+    image isn't fully opaque (any skin with a border radius). It cost the
+    RPM scale its 0/2/4/6/8 labels on the desktop build; the Pi and the
+    SCALED dev window never showed it, their formats having no alpha channel
+    at all. So the channel is created explicitly and filled opaque here.
+    """
+    surf = pygame.Surface(size, pygame.SRCALPHA).convert_alpha()
+    surf.fill((color[0], color[1], color[2], 255))
+    return surf
+
+
+def seal_layer(surf: pygame.Surface) -> pygame.Surface:
+    """Finish an :func:`opaque_layer` so it blits as a raw copy.
+
+    ``set_alpha(None)`` is the same raw-copy semantics
+    ``Widget._refresh_base_image`` relies on: it replaces the destination
+    pixels instead of compositing a layer that has nothing to composite —
+    measured at 206 vs 2143 us for 900x120 on a Pi 4 at 1000 MHz, which was
+    the single largest cost in the RPM widget.
+
+    It must be the *last* thing done to the layer. A surface with blending
+    switched off is also blended-into differently: antialiased text drawn
+    onto it after this call lands with alpha 0 (verified on pygame 2.6.1 /
+    SDL 2.28.4), which is the very hole :func:`opaque_layer` exists to avoid.
+    """
+    surf.set_alpha(None)
+    return surf
+
+
 def vertical_gradient(
     size: tuple[int, int],
     top_color: tuple[int, int, int],
