@@ -58,6 +58,12 @@ _LED_BEVEL_INSET = 1
 # read as separate marks rather than as spurs growing out of the line.
 _TICK_LINE_CLEARANCE = 4
 
+# Clearance between the LED block row and each framing line. It sets how far
+# apart the two lines sit, since the blocks between them keep their height:
+# the pair reads as one channel holding the blocks rather than as two rules
+# with the row floating loose between them.
+_BLOCK_LINE_CLEARANCE = 2
+
 _LED_CORNER_RADIUS = 2
 
 _LED_GRADIENT_TOP = 0.62
@@ -289,9 +295,9 @@ class FerrariRpmWidget(Widget):
         # a gap — otherwise their opaque outline paints over its bottom rows
         # wherever a block sits, leaving it looking thinner than the bottom
         # line (which already has full clearance below the blocks).
-        block_top = frame_top_y + _FRAME_LINE_H + 5
+        block_top = frame_top_y + _FRAME_LINE_H + _BLOCK_LINE_CLEARANCE
         block_bottom = block_top + block_h
-        frame_bottom_y = block_bottom + 5
+        frame_bottom_y = block_bottom + _BLOCK_LINE_CLEARANCE
 
         def _x_for(n: int) -> int:
             return area_left + round((n / _SCALE_MAX) * area_width)
