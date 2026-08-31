@@ -127,6 +127,7 @@ Key states in `states/`:
 - `DashboardState` — the main racing view; a pure consumer that links plugin sprites into `DashboardView.plugin_layer` and re-links whenever `PluginManager.generation` changes (plugin reload). The view itself owns only chrome (Setup button, bezel LED strips). Signal processing is handled by `SignalPipeline` in the main loop, not here.
 - `SetupState` — first-run / connection setup; renders extra rows contributed by extensions (none installed = none shown)
 - `EnterIPState` — PS5 IP entry via soft keyboard
+- `AccelTestState` — Testing & Validation: the standing-start acceleration timer (see below)
 
 ### Wi-Fi first-boot gate
 
@@ -213,6 +214,23 @@ evidence in their comments.
 The measurements overturned the intuition the first priors encoded: in GT7
 both turbos measured hold power nearly flat and the naturally aspirated V8 is
 the one that droops.
+
+Whether the computed shift point is actually *faster* than shifting on the
+game's own light is a driving question, so the answer is measured on the
+device: Setup → **Testing & Validation** opens a 0-to-100/200/300/400 m
+timer (`core/vehicle/accel_timer.py`, driven by `states/accel_test_state.py`).
+It arms itself when the car stops, starts on the launch and stops on the
+target distance, so a run needs no screen taps — and it voids a run rather
+than publishing a number that was measured differently from the one it is
+being compared against (a pause, a car change, a gap in the stream, a car
+that rolls to a stop). Distance is integrated from `car_speed`, the one
+channel every feed carries; timing is on the *receiving* clock, because
+`received_time`'s unit varies by reader. The clock is a
+`DigitReadout` (`ui/widgets/base/digit_readout.py`) on the gauges' own
+fixed digit grid (`ui/widgets/base/digits.py`, shared with `Widget`), so
+hundredths ticking 100 times a second don't make the number squirm.
+`tools/preview_accel_test.py` plays a synthetic pull through the real state
+on any panel.
 
 `rpm_alert.max` is a tachometer number, not the fuel cut — car 1461 declares
 8000 and cuts at 7215 — so the controller learns the real limiter from the

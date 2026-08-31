@@ -216,16 +216,16 @@ def test_set_brightness_text_updates_percent_label(view):
 
 
 def test_base_view_has_no_extension_rows(view):
-    # With no extension wired, Setup ends at the Software row (appliance:
-    # Telemetry, Brightness, Reference Lap, Status Lights, Shift Lights,
-    # Network, Software — versions and factory reset live on the
-    # Software screen).
-    assert len(view.rows.rows) == 7
+    # With no extension wired, Setup ends at the Testing & Validation row
+    # (appliance: Telemetry, Brightness, Reference Lap, Status Lights,
+    # Shift Lights, Network, Software, Testing — versions and factory reset
+    # live on the Software screen).
+    assert len(view.rows.rows) == 8
 
 
 def test_extension_entries_append_rows_in_order(view, extension_entries):
     ext_view = SetupView()
-    assert len(ext_view.rows.rows) == 7 + len(extension_entries)
+    assert len(ext_view.rows.rows) == 8 + len(extension_entries)
 
 
 def test_all_row_sprites_are_in_the_rows_layer(view):
@@ -236,7 +236,8 @@ def test_all_row_sprites_are_in_the_rows_layer(view):
 
 
 def test_desktop_view_hides_appliance_only_rows(desktop_view):
-    assert len(desktop_view.rows.rows) == 5  # Telemetry, Reference, 2x Lights, Software
+    # Telemetry, Reference, 2x Lights, Software, Testing
+    assert len(desktop_view.rows.rows) == 6
     texts = {
         s.text
         for s in desktop_view.rows_layer.sprites()
@@ -245,7 +246,14 @@ def test_desktop_view_hides_appliance_only_rows(desktop_view):
     assert "Brightness" not in texts
     assert "Network" not in texts
     assert "Factory Reset" not in texts  # lives on the Software screen now
-    assert {"Telemetry Mode", "Reference Lap", "Status Lights", "Shift Lights", "Software"} <= texts
+    assert {
+        "Telemetry Mode",
+        "Reference Lap",
+        "Status Lights",
+        "Shift Lights",
+        "Software",
+        "Testing & Validation",
+    } <= texts
 
 
 

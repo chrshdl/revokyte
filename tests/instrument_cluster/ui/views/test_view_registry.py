@@ -117,16 +117,16 @@ def test_clear_drops_everything(registry):
 
 
 def test_every_core_view_builds_and_resets():
-    # The budget this refactor spends: eight views held for the process.
+    # The budget this refactor spends: nine views held for the process.
     # A new screen shows up here as a reviewable change, not a surprise.
     registry = ViewRegistry()
     classes = core_views()
-    assert len(classes) == 8
+    assert len(classes) == 9
     assert SetupView in classes
 
     registry.preload(classes)
     assert registry.failed == (), "every shipped view must build headless"
-    assert len(registry.built) == 8
+    assert len(registry.built) == 9
 
     for cls in classes:
         registry.acquire(cls).reset(None)

@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass, field, fields
 from json import JSONDecodeError
 from pathlib import Path
 
+from .core.vehicle.accel_timer import DEFAULT_DISTANCE_M, DISTANCES_M
 from .logger import Logger
 from .telemetry.mode import DiffReferenceMode, TelemetryMode
 
@@ -71,6 +72,10 @@ class Config:
     # only way to capture: the feed emits to the device's own loopback and
     # the cluster already owns that port, so nothing else can listen.
     accel_logging: bool = field(default=False)
+    # Distance the Testing & Validation screen's acceleration timer runs
+    # to, in metres (see core/vehicle/accel_timer.py). Remembered between
+    # visits so a session of back-to-back runs is set up once.
+    accel_test_distance: int = field(default=DEFAULT_DISTANCE_M)
     # Optional Wi-Fi regulatory domain override (ISO 3166-1 alpha-2, e.g.
     # "GB"). Empty (the default) writes no country= line: the radio starts
     # in the world domain and adopts the country the router itself
@@ -115,6 +120,14 @@ class Config:
         self.status_lights = bool(self.status_lights)
         self.shift_lights = bool(self.shift_lights)
         self.accel_logging = bool(self.accel_logging)
+
+        if self.accel_test_distance not in DISTANCES_M:
+            LOGGER.warning(
+                "Invalid accel_test_distance %r — defaulting to %d m.",
+                self.accel_test_distance,
+                DEFAULT_DISTANCE_M,
+            )
+            self.accel_test_distance = DEFAULT_DISTANCE_M
 
         valid_telemetry_modes = {m.value for m in TelemetryMode}
         if self.telemetry_mode not in valid_telemetry_modes:
@@ -256,6 +269,13 @@ class ConfigManager:
     def set_dashboard_slot(cls, slot: int, persist: bool = True) -> None:
         cfg = cls.get_config()
         cfg.dashboard_slot = int(slot)
+        if persist:
+            cls.persist()
+
+    @classmethod
+    def set_accel_test_distance(cls, meters: int, persist: bool = True) -> None:
+        cfg = cls.get_config()
+        cfg.accel_test_distance = int(meters)
         if persist:
             cls.persist()
 

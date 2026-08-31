@@ -43,6 +43,14 @@ class Label(DirtySprite):
             self.visible = is_visible
             self.dirty = 1
 
+    def set_color(self, color: tuple[int, int, int]) -> None:
+        """Recolour without changing the text — set_text() is a no-op for
+        text that hasn't changed, so a status line that goes red on the same
+        words has no other way to say so."""
+        if color != self.color:
+            self.color = color
+            self._rerender()
+
     def set_bg_color(self, bg_color: tuple[int, int, int] | None) -> None:
         if bg_color != self.bg_color:
             self.bg_color = bg_color
