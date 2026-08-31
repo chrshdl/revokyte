@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from ...telemetry.models import TelemetryFrame
 from ..colors import Color
 from ..skins.schema import RpmStyle
-from ..utils import FontFamily, load_font_px
+from ..utils import FontFamily, load_font_px, opaque_layer, seal_layer
 from ..widgets import Widget
 
 # Spec-space (1280x720) bar internals, used by the custom-dashboard path
@@ -431,8 +431,7 @@ class FerrariRpmWidget(Widget):
         """Background + number scale + "RPM" label + ticks + framing lines,
         at widget-image coordinates (only the value area is ever blitted).
         Opaque on purpose — see RpmWidget._render_scale for why."""
-        surf = pygame.Surface((self.w, self.h)).convert()
-        surf.fill(self.bg_color)
+        surf = opaque_layer((self.w, self.h), self.bg_color)
 
         area_left = layout["area_left"]
         area_right = layout["area_right"]
@@ -500,4 +499,4 @@ class FerrariRpmWidget(Widget):
             )
             surf.blit(rpm_surf, rpm_rect)
 
-        return surf
+        return seal_layer(surf)
