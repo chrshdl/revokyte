@@ -263,6 +263,9 @@ class SetupView(ScrollableRowsView, View):
             # Keep the track the same distance off the screen bottom as its
             # top sits below the header line.
             track_margin_bottom=s.row_top - skin.header.line_y,
+            # Come to rest on whole rows — never leave one half-cut under
+            # the header.
+            snap_interval=s.row_pitch,
         )
 
         self.ui_layer.add(self.title_label, self.back_button)

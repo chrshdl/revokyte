@@ -193,6 +193,9 @@ class SoftwareView(ScrollableRowsView, View):
             viewport_height=skin.height - s.row_top,
             content_height=self.rows.content_height,
             track_margin_bottom=s.row_top - skin.header.line_y,
+            # Come to rest on whole rows — never leave one half-cut under
+            # the header.
+            snap_interval=s.row_pitch,
         )
 
         self.ui_layer.add(self.title_label, self.back_button)
